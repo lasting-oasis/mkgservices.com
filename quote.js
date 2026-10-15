@@ -14,7 +14,7 @@
   var steps = Array.prototype.slice.call(form.querySelectorAll("[data-step]"));
   var marks = Array.prototype.slice.call(form.querySelectorAll("[data-step-mark]"));
   var current = 1;
-  var draft = { service: null, outOfArea: false };
+  var draft = { service: null, outOfArea: false, pick: false };
 
   function $(sel, root) { return (root || form).querySelector(sel); }
   function $all(sel, root) { return Array.prototype.slice.call((root || form).querySelectorAll(sel)); }
@@ -63,7 +63,7 @@
   }
   function renderPlanOptions() {
     var box = $("[data-plan-options]");
-    var html = C.plans.map(function (p) {
+    var html = (draft.pick ? [] : C.plans).map(function (p) {
       return '<label class="plan-option"><input type="radio" name="planChoice" value="plan:' + p.id + '">' +
         '<span class="plan-option-body">' +
           '<span class="plan-option-name">' + A.esc(L(p.name)) + "</span>" +
@@ -82,6 +82,8 @@
     $all('input[name="planChoice"]').forEach(function (input) {
       input.addEventListener("change", function () {
         var parts = input.value.split(":");
+        draft.pick = false;
+        $("[data-plan-error]").hidden = true;
         if (parts[0] === "plan") { draft.service = null; A.set({ plan: parts[1] }); }
         else { draft.service = parts[1]; }
         syncPlanUI();
@@ -90,10 +92,10 @@
     });
   }
   function syncPlanUI() {
-    var single = !!draft.service;
+    var single = !!draft.service || draft.pick;
     var val = single ? "single:" + draft.service : "plan:" + A.state.plan;
     var input = $('input[name="planChoice"][value="' + val + '"]');
-    if (input) input.checked = true;
+    if (input && !draft.pick) input.checked = true;
     $("[data-freq-field]").hidden = single;
     $("[data-estimate]").hidden = single;
     $("[data-single-note]").hidden = !single;
@@ -118,6 +120,7 @@
         note.hidden = true;
       }
     }
+    if (step === 3 && draft.pick) { $("[data-plan-error]").hidden = false; return false; }
     if (step === 4) {
       if (!value("name")) { setError("name", t("err.name")); ok = false; } else setError("name", "");
       if (!validEmail(value("email"))) { setError("email", t("err.email")); ok = false; } else setError("email", "");
@@ -247,6 +250,7 @@
     renderPlanOptions();
     var q = new URLSearchParams(location.search);
     if (singleClean(q.get("service"))) draft.service = q.get("service");
+    else if (q.get("single") === "1") { draft.service = null; draft.pick = true; renderPlanOptions(); }
     else if (q.get("plan")) draft.service = null;
     A.render();
     A.onChange(function () { if (current === 3) syncPlanUI(); });

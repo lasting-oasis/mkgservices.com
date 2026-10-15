@@ -46,6 +46,7 @@
     "hero.cta": "Get my quote",
     "hero.compare": "Compare plans",
     "hero.single": "Book a single clean",
+    "err.pick": "Choose the kind of clean you need to continue.",
     "hero.note": "Estimates are for planning. Your exact price is confirmed in your quote, before anyone shows up.",
 
     "dial.aria": "Plan price estimator",
@@ -291,6 +292,7 @@
     "hero.cta": "Pedir mi cotización",
     "hero.compare": "Comparar planes",
     "hero.single": "Una sola limpieza",
+    "err.pick": "Elige el tipo de limpieza que necesitas para continuar.",
     "hero.note": "Los estimados son para orientarte. Tu precio exacto se confirma en la cotización, antes de que llegue nadie.",
 
     "dial.aria": "Estimador de precio del plan",

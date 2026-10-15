@@ -118,6 +118,14 @@ Object.assign(window.MKG, {
   // Single cleans are quoted individually; no estimate is shown.
   singleCleans: [
     {
+      id: "standard",
+      name: { en: "One-time standard clean", es: "Limpieza estándar única" },
+      description: {
+        en: "A regular top-to-bottom tidy for a home that is already in good shape, for example after a recent deep clean. One visit, no plan.",
+        es: "Una limpieza regular completa para una casa que ya está en buen estado, por ejemplo después de una limpieza profunda reciente. Una visita, sin plan.",
+      },
+    },
+    {
       id: "deep",
       name: { en: "Deep clean", es: "Limpieza profunda" },
       description: {
