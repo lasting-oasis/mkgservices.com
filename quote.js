@@ -267,6 +267,7 @@
     renderPlanOptions();
     var q = new URLSearchParams(location.search);
     if (singleClean(q.get("service"))) draft.service = q.get("service");
+    else if (q.get("single")) draft.service = "deep"; // older links: ?single=1
     else if (q.get("plan")) draft.service = null;
     A.render();
     renderTabs();
