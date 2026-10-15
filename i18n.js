@@ -569,7 +569,12 @@
   function apply() {
     document.documentElement.lang = lang;
     var all = document.querySelectorAll("[data-i18n]");
-    for (var i = 0; i < all.length; i++) fill(all[i], t(all[i].getAttribute("data-i18n")));
+    for (var i = 0; i < all.length; i++) {
+      var key = all[i].getAttribute("data-i18n");
+      // A key missing from both dictionaries keeps the text already in the page instead of showing the key.
+      if (D[lang][key] === undefined && D.en[key] === undefined) continue;
+      fill(all[i], t(key));
+    }
     var attrs = document.querySelectorAll("[data-i18n-attr]");
     for (var j = 0; j < attrs.length; j++) {
       attrs[j].getAttribute("data-i18n-attr").split(";").forEach(function (pair) {
