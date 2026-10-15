@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MKG Services, LLC | Residential Cleaning</title>
+  <meta name="description" content="MKG Services, LLC offers reliable residential cleaning: standard, deep, and move-in/move-out cleans. Request a free quote today.">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="wrap nav">
+      <a class="brand" href="#top">MKG <span>Services</span></a>
+      <nav aria-label="Main">
+        <a href="#services">Services</a>
+        <a href="#how">How it works</a>
+        <a href="#faq">FAQ</a>
+        <a class="btn btn-small" href="#quote">Get a quote</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="top">
+    <section class="hero">
+      <div class="wrap hero-grid">
+        <div>
+          <p class="eyebrow">Residential cleaning</p>
+          <h1>A cleaner home, without the hassle.</h1>
+          <p class="lead">Dependable, detail-focused cleaning for busy households. Tell us about your home and get a free, no-pressure quote.</p>
+          <div class="cta-row">
+            <a class="btn" href="#quote">Request a free quote</a>
+            <a class="btn btn-ghost" href="#services">See services</a>
+          </div>
+        </div>
+        <ul class="hero-card" aria-label="What you can expect">
+          <li><strong>Flexible scheduling</strong> One-time, weekly, bi-weekly, or monthly.</li>
+          <li><strong>Clear pricing</strong> Your quote up front, before we start.</li>
+          <li><strong>Your checklist</strong> Tell us what matters most in your home.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section id="services" class="section">
+      <div class="wrap">
+        <h2>Services</h2>
+        <p class="section-sub">Pick the clean that fits, or ask us to mix and match.</p>
+        <div class="cards">
+          <article class="card">
+            <h3>Standard cleaning</h3>
+            <p>Recurring upkeep: dusting, vacuuming, mopping, kitchen and bathroom surfaces.</p>
+          </article>
+          <article class="card">
+            <h3>Deep cleaning</h3>
+            <p>A top-to-bottom reset for built-up grime, baseboards, appliances, and hard-to-reach spots.</p>
+          </article>
+          <article class="card">
+            <h3>Move-in / move-out</h3>
+            <p>Get a home ready for new owners or tenants, or get your deposit back with a thorough clean.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="how" class="section alt">
+      <div class="wrap">
+        <h2>How it works</h2>
+        <ol class="steps">
+          <li><strong>Request a quote.</strong> Share your home size, services, and preferred timing.</li>
+          <li><strong>Confirm your plan.</strong> We reply with pricing and available dates.</li>
+          <li><strong>Enjoy a clean home.</strong> We show up, clean, and follow up to make sure you're happy.</li>
+        </ol>
+      </div>
+    </section>
+
+    <section id="quote" class="section">
+      <div class="wrap narrow">
+        <h2>Request a free quote</h2>
+        <p class="section-sub">Fill this out and we'll get back to you.</p>
+        <form id="quote-form" class="form" action="#" method="post">
+          <label>Name <input name="name" type="text" autocomplete="name" required></label>
+          <label>Email <input name="email" type="email" autocomplete="email" required></label>
+          <label>Phone <input name="phone" type="tel" autocomplete="tel"></label>
+          <label>Service
+            <select name="service">
+              <option>Standard cleaning</option>
+              <option>Deep cleaning</option>
+              <option>Move-in / move-out</option>
+              <option>Not sure yet</option>
+            </select>
+          </label>
+          <label>Anything we should know? <textarea name="details" rows="4"></textarea></label>
+          <button class="btn" type="submit">Send request</button>
+          <p id="form-note" class="note" role="status"></p>
+        </form>
+      </div>
+    </section>
+
+    <section id="faq" class="section alt">
+      <div class="wrap narrow">
+        <h2>FAQ</h2>
+        <details><summary>Do I need to be home?</summary><p>No. Many clients arrange access in advance. We'll agree on the details when you book.</p></details>
+        <details><summary>Do you bring supplies?</summary><p>Yes, unless you'd like us to use specific products. Just let us know.</p></details>
+        <details><summary>How is pricing determined?</summary><p>It depends on home size, condition, and the service you choose. We quote before we start.</p></details>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap">
+      <p>&copy; <span id="year"></span> MKG Services, LLC. All rights reserved.</p>
+    </div>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
