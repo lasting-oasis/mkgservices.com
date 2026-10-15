@@ -14,7 +14,7 @@
   var steps = Array.prototype.slice.call(form.querySelectorAll("[data-step]"));
   var marks = Array.prototype.slice.call(form.querySelectorAll("[data-step-mark]"));
   var current = 1;
-  var draft = { service: null, outOfArea: false };
+  var draft = { service: null, outOfArea: false, recency: (C.followUp || {}).defaultTier };
 
   function $(sel, root) { return (root || form).querySelector(sel); }
   function $all(sel, root) { return Array.prototype.slice.call((root || form).querySelectorAll(sel)); }
@@ -35,7 +35,7 @@
       zip: value("zip"), homeType: checked("homeType")[0], pets: checked("pets")[0], notes: value("notes"),
       name: value("name"), email: value("email"), phone: value("phone"),
       contactMethod: checked("contactMethod")[0], days: checked("days"), timeOfDay: checked("timeOfDay")[0],
-      service: draft.service, outOfArea: draft.outOfArea, step: current,
+      service: draft.service, recency: draft.recency, outOfArea: draft.outOfArea, step: current,
     };
     try { localStorage.setItem(DRAFT_KEY, JSON.stringify(d)); } catch (e) { /* ignore */ }
   }
@@ -52,6 +52,7 @@
       var el = $('input[name="days"][value="' + day + '"]'); if (el) el.checked = true;
     });
     draft.service = d.service || null;
+    if (fuTier(d.recency)) draft.recency = d.recency;
     draft.outOfArea = !!d.outOfArea;
   }
   function clearDraft() { try { localStorage.removeItem(DRAFT_KEY); } catch (e) { /* ignore */ } }
@@ -74,7 +75,7 @@
       return '<label class="plan-option"><input type="radio" name="planChoice" value="single:' + s.id + '">' +
         '<span class="plan-option-body">' +
           '<span class="plan-option-name">' + A.esc(L(s.name)) + "</span>" +
-          '<span class="plan-option-price"><span>' + A.esc(t("q.custom")) + "</span><small>" + A.esc(t("q.customSub")) + "</small></span>" +
+          '<span class="plan-option-price"><span>' + A.esc(t(s.id === "followup" ? "q.fu.optPrice" : "q.custom")) + "</span><small>" + A.esc(t(s.id === "followup" ? "q.fu.optSub" : "q.customSub")) + "</small></span>" +
           '<span class="plan-option-desc">' + A.esc(t("q.single.desc")) + "</span>" +
         "</span></label>";
     })).join("");
@@ -89,6 +90,42 @@
       });
     });
   }
+  // ---------- follow-up pricing ----------
+  // Essentials one-time price for the home, less the tier's discount (borrowed from the member ladder).
+  function fuTier(id) {
+    var tiers = (C.followUp || {}).tiers || [];
+    for (var i = 0; i < tiers.length; i++) if (tiers[i].id === id) return tiers[i];
+    return null;
+  }
+  function fuEstimate(id) {
+    var tier = fuTier(id), s = A.state;
+    return tier ? A.estimate(C.followUp.basePlan, s.bedrooms, s.bathrooms, tier.uses) : null;
+  }
+  function renderFollowUp() {
+    var on = draft.service === "followup";
+    $("[data-fu-field]").hidden = !on;
+    $("[data-fu-estimate]").hidden = !on;
+    if (!on) return;
+    var seg = $("[data-fu-control]");
+    seg.setAttribute("role", "group");
+    seg.innerHTML = C.followUp.tiers.map(function (tier) {
+      var f = A.frequency(tier.uses);
+      return '<button type="button" class="seg-btn" data-fu="' + tier.id + '" aria-pressed="' + (draft.recency === tier.id) + '">' +
+        '<span class="seg-label">' + A.esc(L(tier.label)) + "</span>" +
+        (f.discount ? '<span class="seg-off">' + A.esc(t("seg.off", { pct: A.pct(f.discount) })) + "</span>"
+                    : '<span class="seg-off seg-off-none">' + A.esc(t("seg.full")) + "</span>") + "</button>";
+    }).join("");
+    $all("[data-fu]", seg).forEach(function (b) {
+      b.addEventListener("click", function () { draft.recency = b.getAttribute("data-fu"); renderFollowUp(); saveDraft(); });
+    });
+    var e = fuEstimate(draft.recency), s = A.state;
+    $("[data-fu-estimate]").innerHTML =
+      '<div class="estimate-price"><span class="price-big">' + A.esc(A.dollars(e.perVisit)) + '</span><span class="price-unit">' + A.esc(t("q.fu.unit")) + "</span></div>" +
+      (e.saving ? '<span class="pill">' + A.esc(t("dial.save", { discount: A.pct(e.discount) })) + "</span>" : "") +
+      "<p>" + A.esc(e.saving ? t("q.fu.was", { oneTime: A.dollars(e.oneTime), saving: A.dollars(e.saving) }) : t("q.fu.full", { oneTime: A.dollars(e.oneTime) })) + " " +
+      A.esc(t("q.fu.note", { bedrooms: s.bedrooms, bathrooms: s.bathrooms })) + "</p>";
+  }
+
   // Tabs above "Where's the home?" for the deep-clean visits: a first deep clean, or a follow-up after a recent one.
   var TAB_IDS = ["deep", "followup"];
   function renderTabs() {
@@ -116,7 +153,8 @@
     renderTabs();
     $("[data-freq-field]").hidden = single;
     $("[data-estimate]").hidden = single;
-    $("[data-single-note]").hidden = !single;
+    $("[data-single-note]").hidden = !single || draft.service === "followup";
+    renderFollowUp();
   }
 
   // ---------- validation ----------
@@ -158,7 +196,16 @@
       [t("review.size"), s.bedrooms + " " + I.plural("unit.bedroom", s.bedrooms) + ", " + s.bathrooms + " " + I.plural("unit.bathroom", s.bathrooms) + ", " + t("review.pets." + pets), 2],
     ];
     if (draft.service) {
-      rows.push([t("review.service"), L(singleClean(draft.service).name) + ", " + t("review.quoted"), 3]);
+      if (draft.service === "followup") {
+        var fu = fuEstimate(draft.recency);
+        rows.push([t("review.service"), L(singleClean("followup").name), 3]);
+        rows.push([t("review.fuTiming"), L(fuTier(draft.recency).label), 3]);
+        rows.push([t("review.estimate"), fu.saving
+          ? t("review.fuEstimateV", { price: A.dollars(fu.perVisit), pct: A.pct(fu.discount), oneTime: A.dollars(fu.oneTime) })
+          : t("review.fuEstimateFull", { price: A.dollars(fu.perVisit) }), 3]);
+      } else {
+        rows.push([t("review.service"), L(singleClean(draft.service).name) + ", " + t("review.quoted"), 3]);
+      }
     } else {
       var e = A.estimate(s.plan, s.bedrooms, s.bathrooms, s.frequency);
       var f = A.frequency(s.frequency);
@@ -225,6 +272,11 @@
     };
     if (draft.service) {
       p.service = singleClean(draft.service).name.en;
+      if (draft.service === "followup") {
+        var fu = fuEstimate(draft.recency);
+        p.deepCleanWithin = fuTier(draft.recency).label.en;
+        p.estimateOneVisit = fu.perVisit; p.estimateFullPrice = fu.oneTime; p.discount = fu.discount;
+      }
     } else {
       var e = A.estimate(s.plan, s.bedrooms, s.bathrooms, s.frequency);
       p.plan = A.plan(s.plan).name.en; p.frequency = A.frequency(s.frequency).label.en;
@@ -276,6 +328,7 @@
       renderPlanOptions();
       A.render();
       renderTabs();
+      renderFollowUp();
       if (current === 3) syncPlanUI();
       if (current === 5) renderReview($("[data-review]"), true);
       if (current === "done") renderReview($("[data-review-done]"), false);

@@ -143,6 +143,22 @@ Object.assign(window.MKG, {
     },
   ],
 
+  // Follow-up clean after a recent deep clean. Priced from the Essentials one-time
+  // price for the home's size. The sooner the follow-up comes after the deep clean,
+  // the less there is to do, so it earns the same discount ladder members get:
+  // within 1 week = weekly's %, within 2 weeks = every-2-weeks' %, within 1 month =
+  // monthly's %, older = full price. Change a % in `frequencies` and this follows.
+  followUp: {
+    basePlan: "essentials",
+    defaultTier: "month",
+    tiers: [
+      { id: "week",     uses: "weekly",   label: { en: "Within 1 week",    es: "En la última semana" } },
+      { id: "twoweeks", uses: "biweekly", label: { en: "Within 2 weeks",   es: "En las últimas 2 semanas" } },
+      { id: "month",    uses: "monthly",  label: { en: "Within 1 month",   es: "En el último mes" } },
+      { id: "older",    uses: "onetime",  label: { en: "Over a month ago", es: "Hace más de un mes" } },
+    ],
+  },
+
   defaults: { bedrooms: 3, bathrooms: 2, plan: "family", frequency: "biweekly" },
   limits: { bedrooms: [1, 7], bathrooms: [1, 6] },
 });
