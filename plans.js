@@ -118,19 +118,19 @@ Object.assign(window.MKG, {
   // Single cleans are quoted individually; no estimate is shown.
   singleCleans: [
     {
-      id: "standard",
-      name: { en: "One-time standard clean", es: "Limpieza estándar única" },
-      description: {
-        en: "A regular top-to-bottom tidy for a home that is already in good shape, for example after a recent deep clean. One visit, no plan.",
-        es: "Una limpieza regular completa para una casa que ya está en buen estado, por ejemplo después de una limpieza profunda reciente. Una visita, sin plan.",
-      },
-    },
-    {
       id: "deep",
       name: { en: "Deep clean", es: "Limpieza profunda" },
       description: {
         en: "A top-to-bottom reset: built-up grime, inside appliances, baseboards, and the spots a regular visit skips. Also the usual first visit before starting a plan.",
         es: "Un reinicio de arriba abajo: mugre acumulada, interior de electrodomésticos, zócalos y los rincones que una visita regular no cubre. También es la primera visita habitual antes de empezar un plan.",
+      },
+    },
+    {
+      id: "followup",
+      name: { en: "Recent deep clean follow-up", es: "Seguimiento de limpieza profunda reciente" },
+      description: {
+        en: "For a home that had a deep clean recently and only needs to be kept up: a lighter one-time visit that builds on that clean, with no plan.",
+        es: "Para una casa que tuvo una limpieza profunda hace poco y solo necesita mantenimiento: una visita única más ligera que se apoya en esa limpieza, sin plan.",
       },
     },
     {

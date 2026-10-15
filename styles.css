@@ -418,3 +418,8 @@ fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
   .compare th, .compare td { padding: 10px 8px; }
   .band { padding: 56px 0; }
 }
+
+.service-tabs { margin-bottom: 22px; }
+.service-tabs .seg { display: flex; flex-wrap: wrap; }
+.service-tabs .seg-btn { flex: 1 1 160px; }
+.service-tabs .step-intro { margin-top: 12px; }

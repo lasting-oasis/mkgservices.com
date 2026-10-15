@@ -14,7 +14,7 @@
   var steps = Array.prototype.slice.call(form.querySelectorAll("[data-step]"));
   var marks = Array.prototype.slice.call(form.querySelectorAll("[data-step-mark]"));
   var current = 1;
-  var draft = { service: null, outOfArea: false, pick: false };
+  var draft = { service: null, outOfArea: false };
 
   function $(sel, root) { return (root || form).querySelector(sel); }
   function $all(sel, root) { return Array.prototype.slice.call((root || form).querySelectorAll(sel)); }
@@ -63,7 +63,7 @@
   }
   function renderPlanOptions() {
     var box = $("[data-plan-options]");
-    var html = (draft.pick ? [] : C.plans).map(function (p) {
+    var html = C.plans.map(function (p) {
       return '<label class="plan-option"><input type="radio" name="planChoice" value="plan:' + p.id + '">' +
         '<span class="plan-option-body">' +
           '<span class="plan-option-name">' + A.esc(L(p.name)) + "</span>" +
@@ -82,8 +82,6 @@
     $all('input[name="planChoice"]').forEach(function (input) {
       input.addEventListener("change", function () {
         var parts = input.value.split(":");
-        draft.pick = false;
-        $("[data-plan-error]").hidden = true;
         if (parts[0] === "plan") { draft.service = null; A.set({ plan: parts[1] }); }
         else { draft.service = parts[1]; }
         syncPlanUI();
@@ -91,11 +89,31 @@
       });
     });
   }
+  // Tabs above "Where's the home?" for the deep-clean visits: a first deep clean, or a follow-up after a recent one.
+  var TAB_IDS = ["deep", "followup"];
+  function renderTabs() {
+    var box = $("[data-service-tabs]");
+    var on = TAB_IDS.indexOf(draft.service) !== -1;
+    box.hidden = !on;
+    if (!on) return;
+    box.innerHTML = '<div class="seg" role="group" aria-label="' + A.esc(t("q.tabs.label")) + '">' + TAB_IDS.map(function (id) {
+      var s = singleClean(id);
+      return '<button type="button" class="seg-btn" data-tab="' + id + '" aria-pressed="' + (draft.service === id) + '"><span class="seg-label">' + A.esc(L(s.name)) + "</span></button>";
+    }).join("") + '</div><p class="step-intro">' + A.esc(L(singleClean(draft.service).description)) + "</p>";
+    $all("[data-tab]", box).forEach(function (b) {
+      b.addEventListener("click", function () {
+        draft.service = b.getAttribute("data-tab");
+        syncPlanUI();
+        saveDraft();
+      });
+    });
+  }
   function syncPlanUI() {
-    var single = !!draft.service || draft.pick;
+    var single = !!draft.service;
     var val = single ? "single:" + draft.service : "plan:" + A.state.plan;
     var input = $('input[name="planChoice"][value="' + val + '"]');
-    if (input && !draft.pick) input.checked = true;
+    if (input) input.checked = true;
+    renderTabs();
     $("[data-freq-field]").hidden = single;
     $("[data-estimate]").hidden = single;
     $("[data-single-note]").hidden = !single;
@@ -120,7 +138,6 @@
         note.hidden = true;
       }
     }
-    if (step === 3 && draft.pick) { $("[data-plan-error]").hidden = false; return false; }
     if (step === 4) {
       if (!value("name")) { setError("name", t("err.name")); ok = false; } else setError("name", "");
       if (!validEmail(value("email"))) { setError("email", t("err.email")); ok = false; } else setError("email", "");
@@ -250,13 +267,14 @@
     renderPlanOptions();
     var q = new URLSearchParams(location.search);
     if (singleClean(q.get("service"))) draft.service = q.get("service");
-    else if (q.get("single") === "1") { draft.service = null; draft.pick = true; renderPlanOptions(); }
     else if (q.get("plan")) draft.service = null;
     A.render();
+    renderTabs();
     A.onChange(function () { if (current === 3) syncPlanUI(); });
     document.addEventListener("mkg:langchange", function () {
       renderPlanOptions();
       A.render();
+      renderTabs();
       if (current === 3) syncPlanUI();
       if (current === 5) renderReview($("[data-review]"), true);
       if (current === "done") renderReview($("[data-review-done]"), false);

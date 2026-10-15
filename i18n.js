@@ -46,7 +46,6 @@
     "hero.cta": "Get my quote",
     "hero.compare": "Compare plans",
     "hero.single": "Book a single clean",
-    "err.pick": "Choose the kind of clean you need to continue.",
     "hero.note": "Estimates are for planning. Your exact price is confirmed in your quote, before anyone shows up.",
 
     "dial.aria": "Plan price estimator",
@@ -168,6 +167,7 @@
     "q.step.3": "Plan",
     "q.step.4": "Contact",
     "q.step.5": "Review",
+    "q.tabs.label": "Type of clean",
     "q.s1.h": "Where's the home?",
     "q.s1.p": "We'll check your area first so you don't fill in anything for nothing.",
     "q.zip": "ZIP code",
@@ -292,7 +292,6 @@
     "hero.cta": "Pedir mi cotización",
     "hero.compare": "Comparar planes",
     "hero.single": "Una sola limpieza",
-    "err.pick": "Elige el tipo de limpieza que necesitas para continuar.",
     "hero.note": "Los estimados son para orientarte. Tu precio exacto se confirma en la cotización, antes de que llegue nadie.",
 
     "dial.aria": "Estimador de precio del plan",
@@ -414,6 +413,7 @@
     "q.step.3": "Plan",
     "q.step.4": "Contacto",
     "q.step.5": "Revisar",
+    "q.tabs.label": "Tipo de limpieza",
     "q.s1.h": "¿Dónde está la casa?",
     "q.s1.p": "Primero revisamos tu zona para que no llenes nada en vano.",
     "q.zip": "Código postal",
