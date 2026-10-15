@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Plans and pricing | MKG Services</title>
+  <meta name="description" content="Compare MKG Services cleaning plans. Set your home size and schedule to see an estimated per-visit price, with the recurring discount shown up front.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="container site-header-inner">
+      <a class="brand" href="index.html" aria-label="MKG Services home">
+        <span class="brand-mark" aria-hidden="true">
+          <svg width="16" height="16" viewBox="0 0 16 16"><path d="M8 0c.6 4.4 3.6 7.4 8 8-4.4.6-7.4 3.6-8 8-.6-4.4-3.6-7.4-8-8 4.4-.6 7.4-3.6 8-8z" fill="#fff"/></svg>
+        </span>
+        MKG Services
+      </a>
+      <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav" aria-label="Menu">
+        <svg width="20" height="14" viewBox="0 0 20 14" aria-hidden="true"><path d="M1 1h18M1 7h18M1 13h18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      </button>
+      <nav class="site-nav" id="site-nav" aria-label="Main">
+        <a href="plans.html" aria-current="page">Plans</a>
+        <a href="index.html#single-cleans">Single cleans</a>
+        <a href="index.html#faq">FAQ</a>
+        <a class="btn btn-sm" href="quote.html">Get a quote</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section class="page-head">
+      <div class="container">
+        <h1 class="display">Pick what gets cleaned. Pick how often.</h1>
+        <p class="lead">The price adjusts as you go. Set your home size and schedule once; every number on this page updates.</p>
+      </div>
+    </section>
+
+    <section class="section" style="padding-top: 0;">
+      <div class="container">
+        <div class="plans-toolbar">
+          <div class="plans-toolbar-home">
+            <span>Your home:</span>
+            <div data-stepper="bedrooms" data-label="bed"></div>
+            <div data-stepper="bathrooms" data-label="bath"></div>
+          </div>
+          <div class="seg" data-freq-control aria-label="How often"></div>
+        </div>
+
+        <div class="plans-grid" data-render-plans>
+          <noscript><p>Turn on JavaScript to see plans and prices, or <a href="quote.html">request a quote</a>.</p></noscript>
+        </div>
+        <p class="plans-note">Estimates use placeholder pricing until MKG confirms rates. Homes that need a deep clean first are quoted separately, so the plan price stays the same from the first regular visit on.</p>
+      </div>
+    </section>
+
+    <section class="section section-mist" id="compare">
+      <div class="container">
+        <div class="section-head">
+          <h2 class="title">What each plan covers</h2>
+          <p class="lead">The same list every visit. "Rotation" items are done on alternating visits so each clean stays the same length.</p>
+        </div>
+        <div style="overflow-x: auto;">
+          <table class="compare" data-render-comparison aria-label="What each plan includes"></table>
+        </div>
+        <p class="compare-legend">Add a note about your home in the quote form and it becomes part of your list.</p>
+      </div>
+    </section>
+
+    <section class="section" id="single-cleans">
+      <div class="container">
+        <div class="section-head">
+          <h2 class="title">Single cleans</h2>
+          <p class="lead">Quoted individually, because a first deep clean or an empty house for move-out is a different job from keeping a home tidy.</p>
+        </div>
+        <div class="singles" data-render-singles></div>
+      </div>
+    </section>
+
+    <section class="section section-mist" id="pricing-notes">
+      <div class="container narrow">
+        <div class="section-head">
+          <h2 class="title">How the estimate is built</h2>
+        </div>
+        <div class="faq">
+          <details open>
+            <summary>Home size</summary>
+            <div>Each plan starts from a base price and adds an amount per bedroom and per bathroom. Essentials skips bedrooms, so only bathrooms change its price.</div>
+          </details>
+          <details>
+            <summary>Schedule discount</summary>
+            <div><span data-text="discountSentence">Booking monthly takes 5% off every visit, every 2 weeks takes 10% off, and weekly takes 15% off.</span> It applies to the full per-visit price and stays as long as the schedule does.</div>
+          </details>
+          <details>
+            <summary>What can change the final price</summary>
+            <div>Unusually large rooms, heavy build-up that needs a deep clean first, or extras you ask for. If anything moves the number, you hear about it in the quote reply, never on the invoice.</div>
+          </details>
+        </div>
+      </div>
+    </section>
+
+    <section class="band on-dark">
+      <div class="container band-inner">
+        <div>
+          <h2 class="title">Get an exact price for your home</h2>
+          <p>Your plan and schedule carry over to the quote form.</p>
+        </div>
+        <a class="btn btn-light" data-quote-link="current"><span>Get a quote for the <span data-text="planName"></span> plan</span></a>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container footer-grid">
+      <div class="footer-contact">
+        <strong data-business="name">MKG Services, LLC</strong>
+        <span data-business-wrap="serviceArea">Serving <span data-business="serviceArea"></span></span>
+        <a data-business="phone" href="#"></a>
+        <a data-business="email" href="#"></a>
+      </div>
+      <nav class="footer-links" aria-label="Footer">
+        <a href="plans.html">Plans</a>
+        <a href="index.html#single-cleans">Single cleans</a>
+        <a href="index.html#faq">FAQ</a>
+        <a href="quote.html">Get a quote</a>
+      </nav>
+      <p>&copy; <span data-year></span> MKG Services, LLC</p>
+    </div>
+  </footer>
+
+  <script src="plans.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
