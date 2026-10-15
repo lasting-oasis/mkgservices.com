@@ -1,12 +1,13 @@
 /*
   Shared behaviour for every page: pricing, the plan dial state, segmented
   controls, steppers, and small chrome (nav, footer, contact details).
-  Reads window.MKG from plans.js.
+  Reads window.MKG from plans.js and window.MKG.i18n from i18n.js.
 */
 (function () {
   "use strict";
   var C = window.MKG;
-  if (!C) return;
+  if (!C || !C.i18n) return;
+  var I = C.i18n, t = I.t, L = I.L;
 
   var STORAGE_KEY = "mkg.state";
 
@@ -29,20 +30,17 @@
       perVisit: perVisit,
       saving: Math.round(oneTime) - perVisit,
       discount: f.discount,
-      perVisitLabel: f.perVisitLabel,
+      perVisitLabel: L(f.perVisitLabel),
     };
   }
   function dollars(n) { return "$" + n.toLocaleString("en-US"); }
-  // "Booking monthly takes 5% off every visit, every 2 weeks takes 10% off, and weekly takes 15% off."
-  function discountSentence() {
-    var parts = C.frequencies.filter(function (f) { return f.discount > 0; }).map(function (f, i) {
-      return (i === 0 ? "Booking " : "") + f.label.toLowerCase() + " takes " + pct(f.discount) + " off" + (i === 0 ? " every visit" : "");
-    });
-    if (!parts.length) return "";
-    if (parts.length === 1) return parts[0] + ".";
-    return parts.slice(0, -1).join(", ") + ", and " + parts[parts.length - 1] + ".";
-  }
   function pct(d) { return Math.round(d * 100) + "%"; }
+  // "Monthly: 5% off every visit. Every 2 weeks: 10% off. Weekly: 15% off."
+  function discountSentence() {
+    return C.frequencies.filter(function (f) { return f.discount > 0; }).map(function (f, i) {
+      return t(i === 0 ? "discount.first" : "discount.rest", { label: L(f.label), pct: pct(f.discount) });
+    }).join(" ");
+  }
 
   // ---------- state ----------
   var state = {
@@ -88,36 +86,34 @@
   // Frequency segmented controls: <div data-freq-control></div>
   function buildFrequencyControls() {
     $all("[data-freq-control]").forEach(function (el) {
-      if (el.dataset.built) return;
-      el.dataset.built = "1";
+      el.innerHTML = "";
       el.setAttribute("role", "group");
-      if (!el.getAttribute("aria-label")) el.setAttribute("aria-label", "How often");
+      el.setAttribute("aria-label", t("seg.aria"));
       C.frequencies.forEach(function (f) {
         var b = document.createElement("button");
         b.type = "button";
         b.className = "seg-btn";
         b.dataset.freq = f.id;
-        b.setAttribute("aria-label", f.label + (f.discount ? ", " + pct(f.discount) + " off" : ", full price"));
-        b.innerHTML = '<span class="seg-label">' + (f.short || f.label) + "</span>" +
-          (f.discount ? '<span class="seg-off">' + pct(f.discount) + " off</span>" : '<span class="seg-off seg-off-none">full price</span>');
+        b.setAttribute("aria-label", L(f.label) + ", " + (f.discount ? t("seg.off", { pct: pct(f.discount) }) : t("seg.full")));
+        b.innerHTML = '<span class="seg-label">' + esc(L(f.short) || L(f.label)) + "</span>" +
+          (f.discount ? '<span class="seg-off">' + esc(t("seg.off", { pct: pct(f.discount) })) + "</span>"
+                      : '<span class="seg-off seg-off-none">' + esc(t("seg.full")) + "</span>");
         b.addEventListener("click", function () { set({ frequency: f.id }); });
         el.appendChild(b);
       });
     });
   }
 
-  // Steppers: <div data-stepper="bedrooms" data-label="bed"></div>
+  // Steppers: <div data-stepper="bedrooms"></div>
   function buildSteppers() {
     $all("[data-stepper]").forEach(function (el) {
-      if (el.dataset.built) return;
-      el.dataset.built = "1";
       var key = el.dataset.stepper;
       var range = C.limits[key];
-      el.className += " stepper";
+      el.classList.add("stepper");
       el.innerHTML =
-        '<button type="button" class="stepper-btn" data-dir="-1" aria-label="Fewer ' + key + '">−</button>' +
+        '<button type="button" class="stepper-btn" data-dir="-1" aria-label="' + esc(t("stepper.fewer." + key)) + '">−</button>' +
         '<output class="stepper-value" aria-live="polite"></output>' +
-        '<button type="button" class="stepper-btn" data-dir="1" aria-label="More ' + key + '">+</button>';
+        '<button type="button" class="stepper-btn" data-dir="1" aria-label="' + esc(t("stepper.more." + key)) + '">+</button>';
       $all(".stepper-btn", el).forEach(function (b) {
         b.addEventListener("click", function () {
           var patch = {};
@@ -145,22 +141,17 @@
   }
 
   function render() {
-    // Segmented controls
     $all("[data-freq-control] .seg-btn").forEach(function (b) {
-      var on = b.dataset.freq === state.frequency;
-      b.setAttribute("aria-pressed", on ? "true" : "false");
+      b.setAttribute("aria-pressed", b.dataset.freq === state.frequency ? "true" : "false");
     });
-    // Steppers
     $all("[data-stepper]").forEach(function (el) {
       var key = el.dataset.stepper, range = C.limits[key];
       var out = el.querySelector(".stepper-value");
-      var label = el.dataset.label || key;
-      if (out) out.textContent = state[key] + (state[key] === range[1] ? "+" : "") + " " + label;
+      if (out) out.textContent = state[key] + (state[key] === range[1] ? "+" : "") + " " + I.plural("stepper." + key, state[key]);
       var minus = el.querySelector('[data-dir="-1"]'), plus = el.querySelector('[data-dir="1"]');
       if (minus) minus.disabled = state[key] <= range[0];
       if (plus) plus.disabled = state[key] >= range[1];
     });
-    // Plan pickers
     $all("[data-plan-pick]").forEach(function (el) {
       el.setAttribute("aria-pressed", el.dataset.planPick === state.plan ? "true" : "false");
     });
@@ -172,7 +163,6 @@
       var part = el.dataset.pricePart || "perVisit";
       var next;
       switch (part) {
-        case "perVisit": next = dollars(e.perVisit); break;
         case "oneTime": next = dollars(e.oneTime); break;
         case "saving": next = dollars(e.saving); break;
         case "discount": next = pct(e.discount); break;
@@ -181,26 +171,20 @@
       }
       if (el.textContent !== next) { el.textContent = next; if (part === "perVisit") pop(el); }
     });
-    // Savings pills: hidden at full price
-    $all("[data-saving-pill]").forEach(function (el) {
-      var f = frequency(state.frequency);
-      el.hidden = !f || !f.discount;
-    });
-    $all("[data-fullprice-note]").forEach(function (el) {
-      var f = frequency(state.frequency);
-      el.hidden = !!(f && f.discount);
-    });
+    var f = frequency(state.frequency), hasDiscount = !!(f && f.discount);
+    $all("[data-saving-pill]").forEach(function (el) { el.hidden = !hasDiscount; });
+    $all("[data-fullprice-note]").forEach(function (el) { el.hidden = hasDiscount; });
     // Text slots
+    var p = plan(state.plan);
+    var map = {
+      planName: p ? L(p.name) : "",
+      planTagline: p ? L(p.tagline) : "",
+      frequencyLabel: f ? L(f.label).toLowerCase() : "",
+      bedrooms: String(state.bedrooms),
+      bathrooms: String(state.bathrooms),
+      discountSentence: discountSentence(),
+    };
     $all("[data-text]").forEach(function (el) {
-      var p = plan(state.plan), f = frequency(state.frequency);
-      var map = {
-        planName: p ? p.name : "",
-        planTagline: p ? p.tagline : "",
-        frequencyLabel: f ? f.label.toLowerCase() : "",
-        bedrooms: String(state.bedrooms),
-        bathrooms: String(state.bathrooms),
-        discountSentence: discountSentence(),
-      };
       if (map[el.dataset.text] !== undefined) el.textContent = map[el.dataset.text];
     });
     // Links that carry the current choice
@@ -215,54 +199,56 @@
   function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
 
   function renderPlanCards(container) {
-    if (!container) return;
     container.innerHTML = C.plans.map(function (p) {
       return (
         '<article class="plan-card' + (p.recommended ? " is-recommended" : "") + '" data-plan-card="' + p.id + '">' +
-          (p.recommended ? '<span class="plan-tag">Fits most homes</span>' : "") +
-          '<h3 class="plan-name">' + esc(p.name) + "</h3>" +
-          '<p class="plan-tagline">' + esc(p.tagline) + "</p>" +
+          (p.recommended ? '<span class="plan-tag">' + esc(t("plans.tag")) + "</span>" : "") +
+          '<h3 class="plan-name">' + esc(L(p.name)) + "</h3>" +
+          '<p class="plan-tagline">' + esc(L(p.tagline)) + "</p>" +
           '<div class="plan-price"><span class="price-big" data-price="' + p.id + '"></span>' +
             '<span class="price-unit" data-price="' + p.id + '" data-price-part="label"></span></div>' +
           '<div class="plan-was">' +
-            '<span data-saving-pill><s data-price="' + p.id + '" data-price-part="oneTime"></s> at full price</span>' +
-            '<span class="pill" data-saving-pill>Save <span data-price="' + p.id + '" data-price-part="discount"></span></span>' +
-            '<span data-fullprice-note>Full price for a single visit</span>' +
+            '<span data-saving-pill><s data-price="' + p.id + '" data-price-part="oneTime"></s> ' + esc(t("plans.atFull")) + "</span>" +
+            '<span class="pill" data-saving-pill>' + esc(t("plans.save")) + ' <span data-price="' + p.id + '" data-price-part="discount"></span></span>' +
+            "<span data-fullprice-note>" + esc(t("plans.fullSingle")) + "</span>" +
           "</div>" +
-          '<ul class="plan-includes">' + p.includes.map(function (t) { return "<li>" + CHECK + "<span>" + esc(t) + "</span></li>"; }).join("") + "</ul>" +
-          '<p class="plan-best">Best for: ' + esc(p.bestFor) + "</p>" +
-          '<a class="btn' + (p.recommended ? "" : " btn-secondary") + ' btn-block" data-quote-link="' + p.id + '">Get a quote for ' + esc(p.name) + "</a>" +
+          '<ul class="plan-includes">' + p.includes.map(function (x) { return "<li>" + CHECK + "<span>" + esc(L(x)) + "</span></li>"; }).join("") + "</ul>" +
+          '<p class="plan-best">' + esc(t("plans.bestFor")) + " " + esc(L(p.bestFor)) + "</p>" +
+          '<a class="btn' + (p.recommended ? "" : " btn-secondary") + ' btn-block" data-quote-link="' + p.id + '">' + esc(t("plans.cta", { name: L(p.name) })) + "</a>" +
         "</article>"
       );
     }).join("");
   }
 
   function renderComparison(table) {
-    if (!table) return;
-    var marks = ['<span class="no" aria-label="Not included">—</span>', '<span class="yes" aria-label="Included">' + CHECK + "</span>", '<span class="rot">Rotation</span>'];
+    var marks = [
+      '<span class="no" aria-label="' + esc(t("compare.no")) + '">—</span>',
+      '<span class="yes" aria-label="' + esc(t("compare.yes")) + '">' + CHECK + "</span>",
+      '<span class="rot">' + esc(t("compare.rot")) + "</span>",
+    ];
+    table.setAttribute("aria-label", t("compare.aria"));
     table.innerHTML =
-      "<thead><tr><th scope=\"col\">What gets cleaned</th>" +
-      C.plans.map(function (p) { return '<th scope="col">' + esc(p.name) + "</th>"; }).join("") +
+      '<thead><tr><th scope="col">' + esc(t("compare.col")) + "</th>" +
+      C.plans.map(function (p) { return '<th scope="col">' + esc(L(p.name)) + "</th>"; }).join("") +
       "</tr></thead><tbody>" +
       C.comparison.map(function (row) {
-        return "<tr><th scope=\"row\" style=\"font-weight:500\">" + esc(row.label) + "</th>" +
+        return '<tr><th scope="row" style="font-weight:500">' + esc(L(row.label)) + "</th>" +
           row.values.map(function (v) { return "<td>" + marks[v] + "</td>"; }).join("") + "</tr>";
       }).join("") +
       "</tbody>";
   }
 
   function renderSingles(container) {
-    if (!container) return;
     container.innerHTML = C.singleCleans.map(function (s) {
-      return '<article class="single"><h3 class="heading">' + esc(s.name) + "</h3><p>" + esc(s.description) + "</p>" +
-        '<a class="btn btn-secondary btn-sm" href="quote.html?service=' + encodeURIComponent(s.id) + '">Get a quote</a></article>';
+      return '<article class="single"><h3 class="heading">' + esc(L(s.name)) + "</h3><p>" + esc(L(s.description)) + "</p>" +
+        '<a class="btn btn-secondary btn-sm" href="quote.html?service=' + encodeURIComponent(s.id) + '">' + esc(t("singles.cta")) + "</a></article>";
     }).join("");
   }
 
   function renderPlanPicks(container) {
-    if (!container) return;
+    container.setAttribute("aria-label", t("dial.plan"));
     container.innerHTML = C.plans.map(function (p) {
-      return '<button type="button" class="plan-pick" data-plan-pick="' + p.id + '">' + esc(p.name) + "</button>";
+      return '<button type="button" class="plan-pick" data-plan-pick="' + p.id + '">' + esc(L(p.name)) + "</button>";
     }).join("");
   }
 
@@ -273,23 +259,33 @@
     $all("[data-render-plan-picks]").forEach(renderPlanPicks);
   }
 
-  // ---------- chrome ----------
+  // ---------- contact details and chrome ----------
+  function telHref(v) {
+    var d = String(v).replace(/\D/g, "");
+    if (d.length === 10) d = "1" + d;
+    return "+" + d;
+  }
+  function fillBusiness() {
+    var b = C.business;
+    $all("[data-business]").forEach(function (el) {
+      var key = el.dataset.business;
+      var v = key === "sms" ? b.phone : L(b[key]);
+      if (!v) { el.hidden = true; return; }
+      el.hidden = false;
+      if (el.tagName === "A") {
+        if (key === "phone") el.setAttribute("href", "tel:" + telHref(v));
+        if (key === "sms") el.setAttribute("href", "sms:" + telHref(v));
+        if (key === "email") el.setAttribute("href", "mailto:" + v);
+      }
+      // Elements marked data-business-keep show their own text (an icon or a label).
+      if (!el.hasAttribute("data-business-keep")) el.textContent = v;
+    });
+    $all("[data-business-wrap]").forEach(function (el) { el.hidden = !L(b[el.dataset.businessWrap]); });
+  }
+
   function chrome() {
     var y = document.querySelector("[data-year]");
     if (y) y.textContent = String(new Date().getFullYear());
-
-    var b = C.business;
-    $all("[data-business]").forEach(function (el) {
-      var v = b[el.dataset.business];
-      if (!v) { el.hidden = true; return; }
-      if (el.tagName === "A" && el.dataset.business === "phone") el.setAttribute("href", "tel:" + v.replace(/[^\d+]/g, ""));
-      if (el.tagName === "A" && el.dataset.business === "email") el.setAttribute("href", "mailto:" + v);
-      el.textContent = v;
-    });
-    // Hide wrappers that only exist for a missing detail
-    $all("[data-business-wrap]").forEach(function (el) {
-      el.hidden = !b[el.dataset.businessWrap];
-    });
 
     var toggle = document.querySelector(".nav-toggle");
     var header = document.querySelector(".site-header");
@@ -307,20 +303,26 @@
     }
   }
 
-  function init() {
-    load();
+  // Everything that depends on the language, rebuilt when it changes.
+  function relocalize() {
     templates();
     buildFrequencyControls();
     buildSteppers();
     buildPlanPickers();
-    chrome();
+    fillBusiness();
     render();
   }
 
-  window.MKG.app = {
+  function init() {
+    load();
+    chrome();
+    relocalize();
+  }
+
+  C.app = {
     state: state, set: set, estimate: estimate, plan: plan, frequency: frequency,
-    dollars: dollars, pct: pct, esc: esc, onChange: function (fn) { listeners.push(fn); },
-    rebuild: function () { buildFrequencyControls(); buildSteppers(); buildPlanPickers(); render(); },
+    dollars: dollars, pct: pct, esc: esc, render: render, relocalize: relocalize, fillBusiness: fillBusiness,
+    onChange: function (fn) { listeners.push(fn); },
   };
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);

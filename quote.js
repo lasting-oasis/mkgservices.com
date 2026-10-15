@@ -5,8 +5,9 @@
 */
 (function () {
   "use strict";
-  var C = window.MKG, A = C && C.app;
-  if (!A) return;
+  var C = window.MKG, A = C && C.app, I = C && C.i18n;
+  if (!A || !I) return;
+  var t = I.t, L = I.L;
 
   var DRAFT_KEY = "mkg.quote";
   var form = document.getElementById("quote");
@@ -65,16 +66,16 @@
     var html = C.plans.map(function (p) {
       return '<label class="plan-option"><input type="radio" name="planChoice" value="plan:' + p.id + '">' +
         '<span class="plan-option-body">' +
-          '<span class="plan-option-name">' + A.esc(p.name) + "</span>" +
+          '<span class="plan-option-name">' + A.esc(L(p.name)) + "</span>" +
           '<span class="plan-option-price"><span data-price="' + p.id + '"></span><small data-price="' + p.id + '" data-price-part="label"></small></span>' +
-          '<span class="plan-option-desc">' + A.esc(p.tagline) + (p.recommended ? " Fits most homes." : "") + "</span>" +
+          '<span class="plan-option-desc">' + A.esc(L(p.tagline)) + (p.recommended ? " " + A.esc(t("q.fits")) : "") + "</span>" +
         "</span></label>";
     }).concat(C.singleCleans.map(function (s) {
       return '<label class="plan-option"><input type="radio" name="planChoice" value="single:' + s.id + '">' +
         '<span class="plan-option-body">' +
-          '<span class="plan-option-name">' + A.esc(s.name) + "</span>" +
-          '<span class="plan-option-price"><span>Custom</span><small>quoted for you</small></span>' +
-          '<span class="plan-option-desc">One visit. No schedule needed.</span>' +
+          '<span class="plan-option-name">' + A.esc(L(s.name)) + "</span>" +
+          '<span class="plan-option-price"><span>' + A.esc(t("q.custom")) + "</span><small>" + A.esc(t("q.customSub")) + "</small></span>" +
+          '<span class="plan-option-desc">' + A.esc(t("q.single.desc")) + "</span>" +
         "</span></label>";
     })).join("");
     box.innerHTML = html;
@@ -107,22 +108,22 @@
       var zip = value("zip");
       setError("zip", "");
       var note = $("[data-out-of-area]");
-      if (!validZip(zip)) { setError("zip", "Enter a 5-digit ZIP code."); note.hidden = true; return false; }
+      if (!validZip(zip)) { setError("zip", t("err.zip")); note.hidden = true; return false; }
       var served = !C.serviceZips.length || C.serviceZips.indexOf(zip) !== -1;
       draft.outOfArea = !served;
       if (!served) {
-        $("[data-out-zip]").textContent = zip;
+        $all("[data-out-zip]").forEach(function (el) { el.textContent = zip; });
         if (note.hidden) { note.hidden = false; return false; } // first click shows the note; second continues
       } else {
         note.hidden = true;
       }
     }
     if (step === 4) {
-      if (!value("name")) { setError("name", "Enter your name."); ok = false; } else setError("name", "");
-      if (!validEmail(value("email"))) { setError("email", "Enter an email address we can reply to."); ok = false; } else setError("email", "");
+      if (!value("name")) { setError("name", t("err.name")); ok = false; } else setError("name", "");
+      if (!validEmail(value("email"))) { setError("email", t("err.email")); ok = false; } else setError("email", "");
       var method = checked("contactMethod")[0];
       if ((method === "Text" || method === "Call") && value("phone").replace(/\D/g, "").length < 10) {
-        setError("phone", "Add a phone number so we can " + method.toLowerCase() + " you."); ok = false;
+        setError("phone", t("err.phone." + method)); ok = false;
       } else setError("phone", "");
     }
     return ok;
@@ -133,28 +134,30 @@
     var s = A.state;
     var pets = checked("pets")[0];
     var rows = [
-      ["Home", checked("homeType")[0] + " in " + value("zip") + (draft.outOfArea ? " (outside our current area)" : ""), 1],
-      ["Size", s.bedrooms + " bedrooms, " + s.bathrooms + " bathrooms" + (pets !== "None" ? ", " + (pets === "More than one" ? "more than one pet" : "a " + pets.toLowerCase()) : ", no pets"), 2],
+      [t("review.home"), t("review.in", { type: t("q.homeType." + checked("homeType")[0]), zip: value("zip") }) + (draft.outOfArea ? " " + t("review.outside") : ""), 1],
+      [t("review.size"), s.bedrooms + " " + I.plural("unit.bedroom", s.bedrooms) + ", " + s.bathrooms + " " + I.plural("unit.bathroom", s.bathrooms) + ", " + t("review.pets." + pets), 2],
     ];
     if (draft.service) {
-      rows.push(["Service", singleClean(draft.service).name + ", quoted after we hear about the home", 3]);
+      rows.push([t("review.service"), L(singleClean(draft.service).name) + ", " + t("review.quoted"), 3]);
     } else {
       var e = A.estimate(s.plan, s.bedrooms, s.bathrooms, s.frequency);
       var f = A.frequency(s.frequency);
-      rows.push(["Plan", A.plan(s.plan).name + ", " + f.label.toLowerCase(), 3]);
-      rows.push(["Estimate", A.dollars(e.perVisit) + " " + e.perVisitLabel + (e.saving ? " (" + A.pct(e.discount) + " off the full price of " + A.dollars(e.oneTime) + ")" : ""), 3]);
+      rows.push([t("review.plan"), L(A.plan(s.plan).name) + ", " + L(f.label).toLowerCase(), 3]);
+      rows.push([t("review.estimate"), e.saving
+        ? t("review.estimateV", { perVisit: A.dollars(e.perVisit), unit: e.perVisitLabel, pct: A.pct(e.discount), oneTime: A.dollars(e.oneTime) })
+        : A.dollars(e.perVisit) + " " + e.perVisitLabel, 3]);
     }
     var method = checked("contactMethod")[0];
-    rows.push(["Contact", value("name") + ", " + value("email") + (value("phone") ? ", " + value("phone") : "") + ". Prefers " + (method === "Call" ? "a call" : method.toLowerCase()) + ".", 4]);
+    rows.push([t("review.contact"), value("name") + ", " + value("email") + (value("phone") ? ", " + value("phone") : "") + ". " + t("review.prefers." + method), 4]);
     var days = checked("days"), tod = checked("timeOfDay")[0];
-    rows.push(["Timing", (days.length ? days.join(", ") : "Any day") + ", " + (tod === "Either" ? "morning or afternoon" : tod.toLowerCase() + "s"), 4]);
-    if (value("notes")) rows.push(["Notes", value("notes"), 2]);
+    rows.push([t("review.timing"), (days.length ? days.map(function (d) { return t("q.day." + d); }).join(", ") : t("review.anyDay")) + ", " + t("review.time." + tod), 4]);
+    if (value("notes")) rows.push([t("review.notes"), value("notes"), 2]);
     return rows;
   }
   function renderReview(target, editable) {
     target.innerHTML = summary().map(function (r) {
       return '<div class="review-row"><dt>' + A.esc(r[0]) + "</dt><dd>" + A.esc(r[1]) + "</dd>" +
-        (editable ? '<button type="button" data-goto="' + r[2] + '">Change</button>' : "") + "</div>";
+        (editable ? '<button type="button" data-goto="' + r[2] + '">' + A.esc(t("q.change")) + "</button>" : "") + "</div>";
     }).join("");
     $all("[data-goto]", target).forEach(function (b) {
       b.addEventListener("click", function () { go(Number(b.dataset.goto)); });
@@ -194,19 +197,20 @@
     var s = A.state;
     var p = {
       submittedAt: new Date().toISOString(),
+      language: I.lang,
       zip: value("zip"), outOfArea: draft.outOfArea, homeType: checked("homeType")[0],
       bedrooms: s.bedrooms, bathrooms: s.bathrooms, pets: checked("pets")[0], notes: value("notes"),
       name: value("name"), email: value("email"), phone: value("phone"),
       contactMethod: checked("contactMethod")[0], days: checked("days"), timeOfDay: checked("timeOfDay")[0],
     };
     if (draft.service) {
-      p.service = singleClean(draft.service).name;
+      p.service = singleClean(draft.service).name.en;
     } else {
       var e = A.estimate(s.plan, s.bedrooms, s.bathrooms, s.frequency);
-      p.plan = A.plan(s.plan).name; p.frequency = A.frequency(s.frequency).label;
+      p.plan = A.plan(s.plan).name.en; p.frequency = A.frequency(s.frequency).label.en;
       p.estimatePerVisit = e.perVisit; p.estimateFullPrice = e.oneTime; p.discount = e.discount;
     }
-    p._subject = "Quote request: " + (p.service || p.plan + " · " + p.frequency) + " · ZIP " + p.zip;
+    p._subject = "Quote request: " + (p.service || p.plan + ", " + p.frequency) + " (ZIP " + p.zip + ")";
     return p;
   }
 
@@ -215,7 +219,7 @@
     if (current !== 5) return;
     var btn = $("[data-submit]");
     setError("submit", "");
-    btn.disabled = true; btn.textContent = "Sending…";
+    btn.disabled = true; btn.textContent = t("q.sending");
 
     function done(demo) {
       renderReview($("[data-review-done]"), false);
@@ -224,9 +228,9 @@
       go("done");
     }
     function fail() {
-      btn.disabled = false; btn.textContent = "Send my quote request";
-      var alt = C.business.email ? " or email " + C.business.email : "";
-      setError("submit", "Couldn't send your request. Check your connection and try again" + alt + ".");
+      btn.disabled = false; btn.textContent = t("q.send");
+      var alt = C.business.email ? t("err.submitAlt", { email: C.business.email }) : "";
+      setError("submit", t("err.submit", { alt: alt }));
     }
 
     if (!C.formEndpoint) { setTimeout(function () { done(true); }, 400); return; }
@@ -244,8 +248,17 @@
     var q = new URLSearchParams(location.search);
     if (singleClean(q.get("service"))) draft.service = q.get("service");
     else if (q.get("plan")) draft.service = null;
-    A.rebuild();
+    A.render();
     A.onChange(function () { if (current === 3) syncPlanUI(); });
+    document.addEventListener("mkg:langchange", function () {
+      renderPlanOptions();
+      A.render();
+      if (current === 3) syncPlanUI();
+      if (current === 5) renderReview($("[data-review]"), true);
+      if (current === "done") renderReview($("[data-review-done]"), false);
+      var btn = $("[data-submit]");
+      if (btn && !btn.disabled) btn.textContent = t("q.send");
+    });
     go(1);
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);

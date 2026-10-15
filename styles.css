@@ -82,6 +82,21 @@ img, svg { display: block; }
 .btn-block { width: 100%; }
 .btn:disabled { opacity: 0.55; cursor: not-allowed; }
 
+/* ---------- top bar: language and contact ---------- */
+.topbar { background: var(--mist); border-bottom: 1px solid var(--line); font-size: 0.9rem; }
+.topbar-inner { display: flex; align-items: center; justify-content: space-between; min-height: 42px; gap: 12px; padding-top: 4px; padding-bottom: 4px; }
+.lang { display: inline-flex; border: 1.5px solid var(--line); border-radius: var(--r-pill); padding: 2px; background: var(--paper); }
+.lang-btn {
+  appearance: none; border: 0; background: transparent; color: var(--ink);
+  font-weight: 700; font-size: 0.78rem; letter-spacing: 0.04em; padding: 4px 10px; border-radius: var(--r-pill); cursor: pointer;
+}
+.lang-btn[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+.topbar-contact { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; justify-content: flex-end; }
+.topbar-link { display: inline-flex; align-items: center; gap: 7px; color: var(--ink); text-decoration: none; font-weight: 600; white-space: nowrap; }
+.topbar-link:hover { color: var(--pine); }
+.topbar-link svg { flex: none; }
+.topbar-link b { font-weight: 800; }
+
 /* ---------- header ---------- */
 .site-header {
   position: sticky; top: 0; z-index: 20;
@@ -278,6 +293,13 @@ img, svg { display: block; }
 .band-inner { display: flex; justify-content: space-between; align-items: center; gap: 28px; flex-wrap: wrap; }
 .band .title { max-width: 18ch; }
 .band p { color: rgba(255, 255, 255, 0.75); margin-top: 10px; }
+.band-actions { display: grid; gap: 12px; justify-items: start; }
+.band-or { font-size: 0.95rem; }
+.band-or a { color: var(--paper); font-weight: 700; }
+
+/* Quote page: talk instead */
+.quote-talk { max-width: 640px; margin: 36px auto 0; color: var(--muted); }
+.quote-talk a { font-weight: 700; }
 
 /* Footer */
 .site-footer { padding: 40px 0; border-top: 1px solid var(--line); color: var(--muted); font-size: 0.93rem; }
@@ -370,6 +392,8 @@ fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
   :root { --gutter: 16px; --text: 16.5px; }
   .site-header-inner { height: 62px; }
   .nav-toggle { display: inline-grid; place-items: center; }
+  .topbar-email { display: none; }
+  .topbar-contact { gap: 14px; }
   .site-nav {
     display: none; position: absolute; left: 0; right: 0; top: 62px;
     background: var(--paper); border-bottom: 1px solid var(--line);

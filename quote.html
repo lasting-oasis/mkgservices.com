@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Get a quote | MKG Services</title>
-  <meta name="description" content="Request a cleaning quote from MKG Services. Tell us about your home, pick a plan and schedule, and get an exact per-visit price.">
+  <title data-i18n="meta.title.quote">Get a quote | MKG Services</title>
+  <meta name="description" data-i18n-attr="content:meta.desc.quote" content="Request a cleaning quote from MKG Services. Tell us about your home, pick a plan and schedule, and get an exact per-visit price.">
   <meta name="robots" content="noindex">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -12,22 +12,42 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+  <div class="topbar">
+    <div class="container topbar-inner">
+      <div class="lang" role="group" data-i18n-attr="aria-label:top.language" aria-label="Language">
+        <button type="button" class="lang-btn" data-lang-switch="en" lang="en" data-i18n-attr="aria-label:top.en" aria-label="English">EN</button>
+        <button type="button" class="lang-btn" data-lang-switch="es" lang="es" data-i18n-attr="aria-label:top.es" aria-label="Español">ES</button>
+      </div>
+      <div class="topbar-contact" data-i18n-attr="aria-label:top.contact" aria-label="Contact">
+        <a class="topbar-link" href="#" data-business="phone" data-business-keep>
+          <svg width="15" height="15" viewBox="0 0 24 24" aria-hidden="true"><path d="M6.6 10.8a15.1 15.1 0 0 0 6.6 6.6l2.2-2.2a1 1 0 0 1 1-.25 11.4 11.4 0 0 0 3.6.57 1 1 0 0 1 1 1V20a1 1 0 0 1-1 1A17 17 0 0 1 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1c0 1.25.2 2.45.57 3.57a1 1 0 0 1-.25 1z" fill="currentColor"/></svg>
+          <span data-i18n="top.call">Call</span> <b data-business="phone"></b>
+        </a>
+        <a class="topbar-link" href="#" data-business="sms" data-business-keep>
+          <svg width="15" height="15" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H9l-5 4v-4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z" fill="currentColor"/></svg>
+          <span data-i18n="top.text">Text</span>
+        </a>
+        <a class="topbar-link topbar-email" href="#" data-business="email"></a>
+      </div>
+    </div>
+  </div>
+
   <header class="site-header">
     <div class="container site-header-inner">
-      <a class="brand" href="index.html" aria-label="MKG Services home">
+      <a class="brand" href="index.html" data-i18n-attr="aria-label:brand.home" aria-label="MKG Services home">
         <span class="brand-mark" aria-hidden="true">
           <svg width="16" height="16" viewBox="0 0 16 16"><path d="M8 0c.6 4.4 3.6 7.4 8 8-4.4.6-7.4 3.6-8 8-.6-4.4-3.6-7.4-8-8 4.4-.6 7.4-3.6 8-8z" fill="#fff"/></svg>
         </span>
         MKG Services
       </a>
-      <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav" aria-label="Menu">
+      <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav" data-i18n-attr="aria-label:nav.menu" aria-label="Menu">
         <svg width="20" height="14" viewBox="0 0 20 14" aria-hidden="true"><path d="M1 1h18M1 7h18M1 13h18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
       </button>
-      <nav class="site-nav" id="site-nav" aria-label="Main">
-        <a href="plans.html">Plans</a>
-        <a href="index.html#single-cleans">Single cleans</a>
-        <a href="index.html#faq">FAQ</a>
-        <a class="btn btn-sm" href="quote.html" aria-current="page">Get a quote</a>
+      <nav class="site-nav" id="site-nav" data-i18n-attr="aria-label:nav.main" aria-label="Main">
+        <a href="plans.html" data-i18n="nav.plans">Plans</a>
+        <a href="index.html#single-cleans" data-i18n="nav.singles">Single cleans</a>
+        <a href="index.html#faq" data-i18n="nav.faq">FAQ</a>
+        <a class="btn btn-sm" href="quote.html" aria-current="page" data-i18n="nav.quote">Get a quote</a>
       </nav>
     </div>
   </header>
@@ -35,160 +55,160 @@
   <main class="quote-wrap">
     <div class="container">
       <form class="quote-card" id="quote" novalidate>
-        <ol class="progress" aria-label="Progress">
-          <li data-step-mark="1"><span>Home</span></li>
-          <li data-step-mark="2"><span>Details</span></li>
-          <li data-step-mark="3"><span>Plan</span></li>
-          <li data-step-mark="4"><span>Contact</span></li>
-          <li data-step-mark="5"><span>Review</span></li>
+        <ol class="progress" data-i18n-attr="aria-label:q.progress" aria-label="Progress">
+          <li data-step-mark="1"><span data-i18n="q.step.1">Home</span></li>
+          <li data-step-mark="2"><span data-i18n="q.step.2">Details</span></li>
+          <li data-step-mark="3"><span data-i18n="q.step.3">Plan</span></li>
+          <li data-step-mark="4"><span data-i18n="q.step.4">Contact</span></li>
+          <li data-step-mark="5"><span data-i18n="q.step.5">Review</span></li>
         </ol>
 
         <!-- Step 1: where -->
         <section class="step" data-step="1">
-          <h1 class="title">Where's the home?</h1>
-          <p class="step-intro">We'll check your area first so you don't fill in anything for nothing.</p>
+          <h1 class="title" data-i18n="q.s1.h">Where's the home?</h1>
+          <p class="step-intro" data-i18n="q.s1.p">We'll check your area first so you don't fill in anything for nothing.</p>
           <div class="field">
-            <label for="zip">ZIP code</label>
-            <input class="input" id="zip" name="zip" inputmode="numeric" autocomplete="postal-code" maxlength="5" placeholder="e.g. 23220" style="max-width: 200px;">
+            <label for="zip" data-i18n="q.zip">ZIP code</label>
+            <input class="input" id="zip" name="zip" inputmode="numeric" autocomplete="postal-code" maxlength="5" data-i18n-attr="placeholder:q.zipPh" placeholder="e.g. 28202" style="max-width: 200px;">
             <p class="field-error" data-error="zip"></p>
-            <p class="notice" data-out-of-area hidden>We don't cover <strong data-out-zip></strong> yet. You can still send your details and we'll let you know when we do.</p>
+            <p class="notice" data-out-of-area hidden data-i18n="q.outOfArea">We don't cover {zip} yet. You can still send your details and we'll let you know when we do.</p>
           </div>
           <div class="step-actions">
             <span></span>
-            <button class="btn" type="button" data-next>Continue</button>
+            <button class="btn" type="button" data-next data-i18n="q.continue">Continue</button>
           </div>
         </section>
 
         <!-- Step 2: home -->
         <section class="step" data-step="2" hidden>
-          <h1 class="title">Tell us about it</h1>
+          <h1 class="title" data-i18n="q.s2.h">Tell us about it</h1>
           <fieldset class="field">
-            <legend>Type of home</legend>
+            <legend data-i18n="q.homeType">Type of home</legend>
             <div class="choice-row">
-              <label class="choice"><input type="radio" name="homeType" value="House" checked><span>House</span></label>
-              <label class="choice"><input type="radio" name="homeType" value="Apartment or condo"><span>Apartment or condo</span></label>
-              <label class="choice"><input type="radio" name="homeType" value="Townhome"><span>Townhome</span></label>
+              <label class="choice"><input type="radio" name="homeType" value="House" checked><span data-i18n="q.homeType.House">House</span></label>
+              <label class="choice"><input type="radio" name="homeType" value="Apartment or condo"><span data-i18n="q.homeType.Apartment or condo">Apartment or condo</span></label>
+              <label class="choice"><input type="radio" name="homeType" value="Townhome"><span data-i18n="q.homeType.Townhome">Townhome</span></label>
             </div>
           </fieldset>
           <div class="two-up">
             <div class="field">
-              <span style="font-weight:700" id="beds-label">Bedrooms</span>
-              <div data-stepper="bedrooms" data-label="bed" aria-labelledby="beds-label"></div>
+              <span style="font-weight:700" id="beds-label" data-i18n="q.bedrooms">Bedrooms</span>
+              <div data-stepper="bedrooms" aria-labelledby="beds-label"></div>
             </div>
             <div class="field">
-              <span style="font-weight:700" id="baths-label">Bathrooms</span>
-              <div data-stepper="bathrooms" data-label="bath" aria-labelledby="baths-label"></div>
-              <p class="field-hint">Count a half bath as one.</p>
+              <span style="font-weight:700" id="baths-label" data-i18n="q.bathrooms">Bathrooms</span>
+              <div data-stepper="bathrooms" aria-labelledby="baths-label"></div>
+              <p class="field-hint" data-i18n="q.halfBath">Count a half bath as one.</p>
             </div>
           </div>
           <fieldset class="field">
-            <legend>Pets at home</legend>
+            <legend data-i18n="q.pets">Pets at home</legend>
             <div class="choice-row">
-              <label class="choice"><input type="radio" name="pets" value="None" checked><span>None</span></label>
-              <label class="choice"><input type="radio" name="pets" value="Dog"><span>Dog</span></label>
-              <label class="choice"><input type="radio" name="pets" value="Cat"><span>Cat</span></label>
-              <label class="choice"><input type="radio" name="pets" value="More than one"><span>More than one</span></label>
+              <label class="choice"><input type="radio" name="pets" value="None" checked><span data-i18n="q.pets.None">None</span></label>
+              <label class="choice"><input type="radio" name="pets" value="Dog"><span data-i18n="q.pets.Dog">Dog</span></label>
+              <label class="choice"><input type="radio" name="pets" value="Cat"><span data-i18n="q.pets.Cat">Cat</span></label>
+              <label class="choice"><input type="radio" name="pets" value="More than one"><span data-i18n="q.pets.More than one">More than one</span></label>
             </div>
           </fieldset>
           <div class="field">
-            <label for="notes">Anything we should know? <span class="muted" style="font-weight:500">Optional</span></label>
-            <textarea class="textarea" id="notes" name="notes" rows="3" placeholder="Products you prefer, rooms to skip, a tricky floor, a nervous dog."></textarea>
+            <label for="notes"><span data-i18n="q.notes">Anything we should know?</span> <span class="muted" style="font-weight:500" data-i18n="q.optional">Optional</span></label>
+            <textarea class="textarea" id="notes" name="notes" rows="3" data-i18n-attr="placeholder:q.notesPh" placeholder="Products you prefer, rooms to skip, a tricky floor, a nervous dog."></textarea>
           </div>
           <div class="step-actions">
-            <button class="btn btn-secondary" type="button" data-back>Back</button>
-            <button class="btn" type="button" data-next>Continue</button>
+            <button class="btn btn-secondary" type="button" data-back data-i18n="q.back">Back</button>
+            <button class="btn" type="button" data-next data-i18n="q.continue">Continue</button>
           </div>
         </section>
 
         <!-- Step 3: plan -->
         <section class="step" data-step="3" hidden>
-          <h1 class="title">Pick your plan and schedule</h1>
-          <p class="step-intro">Prices are estimates for a <span data-text="bedrooms"></span>-bedroom, <span data-text="bathrooms"></span>-bathroom home. The exact price comes with your quote.</p>
+          <h1 class="title" data-i18n="q.s3.h">Pick your plan and schedule</h1>
+          <p class="step-intro" data-i18n="q.s3.p">Prices are estimates for a {bedrooms}-bedroom, {bathrooms}-bathroom home. The exact price comes with your quote.</p>
           <fieldset class="field">
-            <legend>Plan</legend>
+            <legend data-i18n="q.plan">Plan</legend>
             <div class="plan-options" data-plan-options></div>
           </fieldset>
           <fieldset class="field" data-freq-field>
-            <legend>How often</legend>
-            <div class="seg" data-freq-control aria-label="How often"></div>
+            <legend data-i18n="q.howOften">How often</legend>
+            <div class="seg" data-freq-control></div>
           </fieldset>
           <div class="estimate-box" data-estimate aria-live="polite">
             <div class="estimate-price">
               <span class="price-big" data-price="current"></span>
               <span class="price-unit" data-price="current" data-price-part="label"></span>
             </div>
-            <span class="pill" data-saving-pill>Save <span data-price="current" data-price-part="discount"></span></span>
-            <p><span data-saving-pill><s data-price="current" data-price-part="oneTime"></s> at full price. You keep <span data-price="current" data-price-part="saving"></span> every visit.</span><span data-fullprice-note>Full price for a single visit. A schedule brings it down.</span></p>
+            <span class="pill" data-saving-pill data-i18n="dial.save">Save {discount}</span>
+            <p><span data-saving-pill data-i18n="dial.was">{oneTimeStruck} at full price. You keep {saving} every visit.</span><span data-fullprice-note data-i18n="q.est.full">Full price for a single visit. A schedule brings it down.</span></p>
           </div>
-          <p class="notice" data-single-note hidden>Single cleans are quoted after we hear about the home. We'll reply with a price, not a range.</p>
+          <p class="notice" data-single-note hidden data-i18n="q.singleNote">Single cleans are quoted after we hear about the home. We'll reply with a price, not a range.</p>
           <div class="step-actions">
-            <button class="btn btn-secondary" type="button" data-back>Back</button>
-            <button class="btn" type="button" data-next>Continue</button>
+            <button class="btn btn-secondary" type="button" data-back data-i18n="q.back">Back</button>
+            <button class="btn" type="button" data-next data-i18n="q.continue">Continue</button>
           </div>
         </section>
 
         <!-- Step 4: contact -->
         <section class="step" data-step="4" hidden>
-          <h1 class="title">How should we reach you?</h1>
+          <h1 class="title" data-i18n="q.s4.h">How should we reach you?</h1>
           <div class="field">
-            <label for="name">Your name</label>
+            <label for="name" data-i18n="q.name">Your name</label>
             <input class="input" id="name" name="name" autocomplete="name">
             <p class="field-error" data-error="name"></p>
           </div>
           <div class="two-up">
             <div class="field">
-              <label for="email">Email</label>
+              <label for="email" data-i18n="q.email">Email</label>
               <input class="input" id="email" name="email" type="email" autocomplete="email" inputmode="email">
               <p class="field-error" data-error="email"></p>
             </div>
             <div class="field">
-              <label for="phone">Phone <span class="muted" style="font-weight:500">Optional</span></label>
+              <label for="phone"><span data-i18n="q.phone">Phone</span> <span class="muted" style="font-weight:500" data-i18n="q.optional">Optional</span></label>
               <input class="input" id="phone" name="phone" type="tel" autocomplete="tel" inputmode="tel">
               <p class="field-error" data-error="phone"></p>
             </div>
           </div>
           <fieldset class="field">
-            <legend>Best way to reach you</legend>
+            <legend data-i18n="q.method">Best way to reach you</legend>
             <div class="choice-row">
-              <label class="choice"><input type="radio" name="contactMethod" value="Text" checked><span>Text</span></label>
-              <label class="choice"><input type="radio" name="contactMethod" value="Email"><span>Email</span></label>
-              <label class="choice"><input type="radio" name="contactMethod" value="Call"><span>Call</span></label>
+              <label class="choice"><input type="radio" name="contactMethod" value="Text" checked><span data-i18n="q.method.Text">Text</span></label>
+              <label class="choice"><input type="radio" name="contactMethod" value="Email"><span data-i18n="q.method.Email">Email</span></label>
+              <label class="choice"><input type="radio" name="contactMethod" value="Call"><span data-i18n="q.method.Call">Call</span></label>
             </div>
           </fieldset>
           <fieldset class="field">
-            <legend>Days that work <span class="muted" style="font-weight:500">Pick any</span></legend>
+            <legend><span data-i18n="q.days">Days that work</span> <span class="muted" style="font-weight:500" data-i18n="q.pickAny">Pick any</span></legend>
             <div class="choice-row">
-              <label class="choice"><input type="checkbox" name="days" value="Mon"><span>Mon</span></label>
-              <label class="choice"><input type="checkbox" name="days" value="Tue"><span>Tue</span></label>
-              <label class="choice"><input type="checkbox" name="days" value="Wed"><span>Wed</span></label>
-              <label class="choice"><input type="checkbox" name="days" value="Thu"><span>Thu</span></label>
-              <label class="choice"><input type="checkbox" name="days" value="Fri"><span>Fri</span></label>
-              <label class="choice"><input type="checkbox" name="days" value="Sat"><span>Sat</span></label>
+              <label class="choice"><input type="checkbox" name="days" value="Mon"><span data-i18n="q.day.Mon">Mon</span></label>
+              <label class="choice"><input type="checkbox" name="days" value="Tue"><span data-i18n="q.day.Tue">Tue</span></label>
+              <label class="choice"><input type="checkbox" name="days" value="Wed"><span data-i18n="q.day.Wed">Wed</span></label>
+              <label class="choice"><input type="checkbox" name="days" value="Thu"><span data-i18n="q.day.Thu">Thu</span></label>
+              <label class="choice"><input type="checkbox" name="days" value="Fri"><span data-i18n="q.day.Fri">Fri</span></label>
+              <label class="choice"><input type="checkbox" name="days" value="Sat"><span data-i18n="q.day.Sat">Sat</span></label>
             </div>
           </fieldset>
           <fieldset class="field">
-            <legend>Time of day</legend>
+            <legend data-i18n="q.time">Time of day</legend>
             <div class="choice-row">
-              <label class="choice"><input type="radio" name="timeOfDay" value="Morning"><span>Morning</span></label>
-              <label class="choice"><input type="radio" name="timeOfDay" value="Afternoon"><span>Afternoon</span></label>
-              <label class="choice"><input type="radio" name="timeOfDay" value="Either" checked><span>Either</span></label>
+              <label class="choice"><input type="radio" name="timeOfDay" value="Morning"><span data-i18n="q.time.Morning">Morning</span></label>
+              <label class="choice"><input type="radio" name="timeOfDay" value="Afternoon"><span data-i18n="q.time.Afternoon">Afternoon</span></label>
+              <label class="choice"><input type="radio" name="timeOfDay" value="Either" checked><span data-i18n="q.time.Either">Either</span></label>
             </div>
           </fieldset>
           <div class="step-actions">
-            <button class="btn btn-secondary" type="button" data-back>Back</button>
-            <button class="btn" type="button" data-next>Continue</button>
+            <button class="btn btn-secondary" type="button" data-back data-i18n="q.back">Back</button>
+            <button class="btn" type="button" data-next data-i18n="q.continue">Continue</button>
           </div>
         </section>
 
         <!-- Step 5: review -->
         <section class="step" data-step="5" hidden>
-          <h1 class="title">Check and send</h1>
-          <p class="step-intro">Change anything here before it goes out.</p>
+          <h1 class="title" data-i18n="q.s5.h">Check and send</h1>
+          <p class="step-intro" data-i18n="q.s5.p">Change anything here before it goes out.</p>
           <dl class="review" data-review></dl>
           <p class="field-error" data-error="submit"></p>
           <div class="step-actions">
-            <button class="btn btn-secondary" type="button" data-back>Back</button>
-            <button class="btn" type="submit" data-submit>Send my quote request</button>
+            <button class="btn btn-secondary" type="button" data-back data-i18n="q.back">Back</button>
+            <button class="btn" type="submit" data-submit data-i18n="q.send">Send my quote request</button>
           </div>
         </section>
 
@@ -197,13 +217,15 @@
           <div class="done-mark" aria-hidden="true">
             <svg width="26" height="26" viewBox="0 0 14 14"><path d="M2 7.5l3.2 3L12 3.5" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </div>
-          <h1 class="title">Request sent</h1>
-          <p class="lead">We'll reply <span data-business="responseTime"></span> with an exact price for your home.</p>
+          <h1 class="title" data-i18n="q.done.h">Request sent</h1>
+          <p class="lead" data-i18n="q.done.p">We'll reply {responseTime} with an exact price for your home.</p>
           <dl class="review" data-review-done></dl>
-          <p class="notice" data-demo-note hidden>This form isn't connected to an inbox yet. Set <code>formEndpoint</code> in <code>plans.js</code> to start receiving requests.</p>
-          <p><a class="btn btn-secondary" href="index.html">Back to the home page</a></p>
+          <p class="notice" data-demo-note hidden data-i18n="q.demo">This form isn't connected to an inbox yet. Set formEndpoint in plans.js to start receiving requests.</p>
+          <p><a class="btn btn-secondary" href="index.html" data-i18n="q.home">Back to the home page</a></p>
         </section>
       </form>
+
+      <p class="quote-talk" data-i18n="q.talk">Rather talk it through? Call or text {phone}, or email {email}.</p>
     </div>
   </main>
 
@@ -211,21 +233,23 @@
     <div class="container footer-grid">
       <div class="footer-contact">
         <strong data-business="name">MKG Services, LLC</strong>
-        <span data-business-wrap="serviceArea">Serving <span data-business="serviceArea"></span></span>
-        <a data-business="phone" href="#"></a>
-        <a data-business="email" href="#"></a>
+        <span data-business-wrap="serviceArea" data-i18n="footer.serving">Serving {serviceArea}</span>
+        <a href="#" data-business="phone" data-business-keep><span data-i18n="footer.call">Call</span> <span data-business="phone"></span></a>
+        <a href="#" data-business="sms" data-business-keep data-i18n="footer.text">Text us</a>
+        <a href="#" data-business="email"></a>
       </div>
-      <nav class="footer-links" aria-label="Footer">
-        <a href="plans.html">Plans</a>
-        <a href="index.html#single-cleans">Single cleans</a>
-        <a href="index.html#faq">FAQ</a>
-        <a href="quote.html">Get a quote</a>
+      <nav class="footer-links" data-i18n-attr="aria-label:footer.nav" aria-label="Footer">
+        <a href="plans.html" data-i18n="nav.plans">Plans</a>
+        <a href="index.html#single-cleans" data-i18n="nav.singles">Single cleans</a>
+        <a href="index.html#faq" data-i18n="nav.faq">FAQ</a>
+        <a href="quote.html" data-i18n="nav.quote">Get a quote</a>
       </nav>
       <p>&copy; <span data-year></span> MKG Services, LLC</p>
     </div>
   </footer>
 
   <script src="plans.js"></script>
+  <script src="i18n.js"></script>
   <script src="app.js"></script>
   <script src="quote.js"></script>
 </body>

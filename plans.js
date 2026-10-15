@@ -5,18 +5,22 @@
   plan names, what each plan includes, placeholder pricing, and the
   recurring discounts. The pages read this file; no markup edits needed.
 
+  Text that visitors see is written twice, { en: "...", es: "..." }, so the
+  site can show English or Spanish. Fixed page text lives in i18n.js.
+
   PRICING IS A PLACEHOLDER. Replace base/perBedroom/perBathroom with real
   numbers before launch. Estimates are shown as "estimated" on the site and
   the final price is confirmed in the quote reply.
 */
-window.MKG = {
+window.MKG = window.MKG || {};
+Object.assign(window.MKG, {
   business: {
     name: "MKG Services, LLC",
     shortName: "MKG Services",
-    phone: "",            // e.g. "(555) 555-0123" — hidden when empty
-    email: "",            // e.g. "hello@mkgservices.com" — hidden when empty
-    serviceArea: "",      // e.g. "the greater Richmond area" — hidden when empty
-    responseTime: "within one business day",
+    phone: "(980) 319-0015",            // shown as written; call and text links are built from the digits
+    email: "mkgservices704@gmail.com",
+    serviceArea: { en: "", es: "" },    // e.g. { en: "the Charlotte area", es: "el área de Charlotte" } — hidden while empty
+    responseTime: { en: "within one business day", es: "en un día hábil" },
   },
 
   // Where quote requests are sent. Leave empty to show a demo confirmation.
@@ -29,52 +33,67 @@ window.MKG = {
 
   // "short" is what the schedule buttons show; "label" is used in sentences.
   frequencies: [
-    { id: "onetime",  label: "One-time",       short: "One-time", perVisitLabel: "per clean",  discount: 0 },
-    { id: "monthly",  label: "Monthly",        short: "Monthly",  perVisitLabel: "per visit",  discount: 0.05 },
-    { id: "biweekly", label: "Every 2 weeks",  short: "2 weeks",  perVisitLabel: "per visit",  discount: 0.10 },
-    { id: "weekly",   label: "Weekly",         short: "Weekly",   perVisitLabel: "per visit",  discount: 0.15 },
+    { id: "onetime",  discount: 0,
+      label: { en: "One-time", es: "Única" },        short: { en: "One-time", es: "Única" },
+      perVisitLabel: { en: "per clean", es: "por limpieza" } },
+    { id: "monthly",  discount: 0.05,
+      label: { en: "Monthly", es: "Mensual" },        short: { en: "Monthly", es: "Mensual" },
+      perVisitLabel: { en: "per visit", es: "por visita" } },
+    { id: "biweekly", discount: 0.10,
+      label: { en: "Every 2 weeks", es: "Cada 2 semanas" }, short: { en: "2 weeks", es: "2 semanas" },
+      perVisitLabel: { en: "per visit", es: "por visita" } },
+    { id: "weekly",   discount: 0.15,
+      label: { en: "Weekly", es: "Semanal" },         short: { en: "Weekly", es: "Semanal" },
+      perVisitLabel: { en: "per visit", es: "por visita" } },
   ],
 
   plans: [
     {
       id: "essentials",
-      name: "Essentials",
-      tagline: "The rooms that get the most use.",
-      bestFor: "Condos, apartments, and smaller homes.",
+      name: { en: "Essentials", es: "Esencial" },
+      tagline: { en: "The rooms that get the most use.", es: "Los espacios que más se usan." },
+      bestFor: { en: "Condos, apartments, and smaller homes.", es: "Condominios, apartamentos y casas pequeñas." },
       base: 89, perBedroom: 0, perBathroom: 22,
       includes: [
-        "Kitchen: counters, sink, stovetop, outside of appliances, inside microwave",
-        "Every bathroom: toilets, showers, tubs, sinks, mirrors",
-        "Main living area dusted and floors cleaned",
-        "Trash emptied and relined",
+        { en: "Kitchen: counters, sink, stovetop, outside of appliances, inside microwave",
+          es: "Cocina: encimeras, fregadero, estufa, exterior de electrodomésticos, interior del microondas" },
+        { en: "Every bathroom: toilets, showers, tubs, sinks, mirrors",
+          es: "Todos los baños: inodoros, duchas, tinas, lavamanos, espejos" },
+        { en: "Main living area dusted and floors cleaned",
+          es: "Sala principal desempolvada y pisos limpios" },
+        { en: "Trash emptied and relined",
+          es: "Basura vaciada y bolsas repuestas" },
       ],
     },
     {
       id: "family",
-      name: "Family",
-      tagline: "The whole home, every visit.",
-      bestFor: "Most households.",
+      name: { en: "Family", es: "Familiar" },
+      tagline: { en: "The whole home, every visit.", es: "Toda la casa, en cada visita." },
+      bestFor: { en: "Most households.", es: "La mayoría de los hogares." },
       recommended: true,
       base: 119, perBedroom: 18, perBathroom: 22,
       includes: [
-        "Everything in Essentials",
-        "Every bedroom dusted, floors cleaned, beds made",
-        "Dining room, hallways, and stairs",
-        "Floors vacuumed and mopped throughout",
+        { en: "Everything in Essentials", es: "Todo lo del plan Esencial" },
+        { en: "Every bedroom dusted, floors cleaned, beds made",
+          es: "Todas las habitaciones desempolvadas, pisos limpios, camas tendidas" },
+        { en: "Dining room, hallways, and stairs", es: "Comedor, pasillos y escaleras" },
+        { en: "Floors vacuumed and mopped throughout", es: "Pisos aspirados y trapeados en toda la casa" },
       ],
     },
     {
       id: "complete",
-      name: "Complete",
-      tagline: "Whole home, plus the details on rotation.",
-      bestFor: "Pets, allergies, or frequent guests.",
+      name: { en: "Complete", es: "Completo" },
+      tagline: { en: "Whole home, plus the details on rotation.", es: "Toda la casa, más los detalles en rotación." },
+      bestFor: { en: "Pets, allergies, or frequent guests.", es: "Mascotas, alergias o visitas frecuentes." },
       base: 169, perBedroom: 22, perBathroom: 26,
       includes: [
-        "Everything in Family",
-        "Baseboards, door frames, and interior windowsills",
-        "Inside the oven or fridge, alternating visits",
-        "Ceiling fans and light fixtures",
-        "Bed linens changed when left out",
+        { en: "Everything in Family", es: "Todo lo del plan Familiar" },
+        { en: "Baseboards, door frames, and interior windowsills",
+          es: "Zócalos, marcos de puertas y repisas interiores de ventanas" },
+        { en: "Inside the oven or fridge, alternating visits",
+          es: "Interior del horno o del refrigerador, en visitas alternas" },
+        { en: "Ceiling fans and light fixtures", es: "Ventiladores de techo y lámparas" },
+        { en: "Bed linens changed when left out", es: "Cambio de sábanas si las dejas listas" },
       ],
     },
   ],
@@ -82,34 +101,40 @@ window.MKG = {
   // Rows of the comparison table. Each value: 0 = not included, 1 = included,
   // 2 = included on rotation.
   comparison: [
-    { label: "Kitchen counters, sink, stovetop, appliance exteriors", values: [1, 1, 1] },
-    { label: "Inside microwave",                                       values: [1, 1, 1] },
-    { label: "Bathrooms: toilets, showers, tubs, sinks, mirrors",      values: [1, 1, 1] },
-    { label: "Main living area dusting and floors",                    values: [1, 1, 1] },
-    { label: "Trash emptied and relined",                              values: [1, 1, 1] },
-    { label: "Bedrooms dusted, floors, beds made",                     values: [0, 1, 1] },
-    { label: "Dining room, hallways, stairs",                          values: [0, 1, 1] },
-    { label: "Floors vacuumed and mopped throughout",                  values: [0, 1, 1] },
-    { label: "Baseboards, door frames, windowsills",                   values: [0, 0, 2] },
-    { label: "Inside oven or fridge",                                  values: [0, 0, 2] },
-    { label: "Ceiling fans and light fixtures",                        values: [0, 0, 2] },
-    { label: "Bed linens changed",                                     values: [0, 0, 1] },
+    { label: { en: "Kitchen counters, sink, stovetop, appliance exteriors", es: "Encimeras, fregadero, estufa, exterior de electrodomésticos" }, values: [1, 1, 1] },
+    { label: { en: "Inside microwave", es: "Interior del microondas" }, values: [1, 1, 1] },
+    { label: { en: "Bathrooms: toilets, showers, tubs, sinks, mirrors", es: "Baños: inodoros, duchas, tinas, lavamanos, espejos" }, values: [1, 1, 1] },
+    { label: { en: "Main living area dusting and floors", es: "Sala principal: polvo y pisos" }, values: [1, 1, 1] },
+    { label: { en: "Trash emptied and relined", es: "Basura vaciada y bolsas repuestas" }, values: [1, 1, 1] },
+    { label: { en: "Bedrooms dusted, floors, beds made", es: "Habitaciones: polvo, pisos, camas tendidas" }, values: [0, 1, 1] },
+    { label: { en: "Dining room, hallways, stairs", es: "Comedor, pasillos, escaleras" }, values: [0, 1, 1] },
+    { label: { en: "Floors vacuumed and mopped throughout", es: "Pisos aspirados y trapeados en toda la casa" }, values: [0, 1, 1] },
+    { label: { en: "Baseboards, door frames, windowsills", es: "Zócalos, marcos de puertas, repisas de ventanas" }, values: [0, 0, 2] },
+    { label: { en: "Inside oven or fridge", es: "Interior del horno o refrigerador" }, values: [0, 0, 2] },
+    { label: { en: "Ceiling fans and light fixtures", es: "Ventiladores de techo y lámparas" }, values: [0, 0, 2] },
+    { label: { en: "Bed linens changed", es: "Cambio de sábanas" }, values: [0, 0, 1] },
   ],
 
   // Single cleans are quoted individually; no estimate is shown.
   singleCleans: [
     {
       id: "deep",
-      name: "Deep clean",
-      description: "A top-to-bottom reset: built-up grime, inside appliances, baseboards, and the spots a regular visit skips. Also the usual first visit before starting a plan.",
+      name: { en: "Deep clean", es: "Limpieza profunda" },
+      description: {
+        en: "A top-to-bottom reset: built-up grime, inside appliances, baseboards, and the spots a regular visit skips. Also the usual first visit before starting a plan.",
+        es: "Un reinicio de arriba abajo: mugre acumulada, interior de electrodomésticos, zócalos y los rincones que una visita regular no cubre. También es la primera visita habitual antes de empezar un plan.",
+      },
     },
     {
       id: "move",
-      name: "Move-in or move-out clean",
-      description: "An empty home cleaned for its next chapter: inside cabinets and closets, appliances, fixtures, and floors.",
+      name: { en: "Move-in or move-out clean", es: "Limpieza de mudanza" },
+      description: {
+        en: "An empty home cleaned for its next chapter: inside cabinets and closets, appliances, fixtures, and floors.",
+        es: "Una casa vacía lista para su siguiente capítulo: interior de gabinetes y clósets, electrodomésticos, accesorios y pisos.",
+      },
     },
   ],
 
   defaults: { bedrooms: 3, bathrooms: 2, plan: "family", frequency: "biweekly" },
   limits: { bedrooms: [1, 7], bathrooms: [1, 6] },
-};
+});

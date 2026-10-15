@@ -3,30 +3,53 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>MKG Services | Home cleaning plans that cost less the more often you book</title>
-  <meta name="description" content="MKG Services cleans homes on a schedule that fits yours. Pick a plan, pick how often, and see your estimated price before you book. No contracts.">
+  <title data-i18n="meta.title.home">MKG Services | Home cleaning plans that cost less the more often you book</title>
+  <meta name="description" data-i18n-attr="content:meta.desc.home" content="MKG Services cleans homes on a schedule that fits yours. Pick a plan, pick how often, and see your estimated price before you book. No contracts.">
+  <link rel="alternate" hreflang="en" href="index.html?lang=en">
+  <link rel="alternate" hreflang="es" href="index.html?lang=es">
+  <link rel="alternate" hreflang="x-default" href="index.html">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+  <div class="topbar">
+    <div class="container topbar-inner">
+      <div class="lang" role="group" data-i18n-attr="aria-label:top.language" aria-label="Language">
+        <button type="button" class="lang-btn" data-lang-switch="en" lang="en" data-i18n-attr="aria-label:top.en" aria-label="English">EN</button>
+        <button type="button" class="lang-btn" data-lang-switch="es" lang="es" data-i18n-attr="aria-label:top.es" aria-label="Español">ES</button>
+      </div>
+      <div class="topbar-contact" data-i18n-attr="aria-label:top.contact" aria-label="Contact">
+        <a class="topbar-link" href="#" data-business="phone" data-business-keep>
+          <svg width="15" height="15" viewBox="0 0 24 24" aria-hidden="true"><path d="M6.6 10.8a15.1 15.1 0 0 0 6.6 6.6l2.2-2.2a1 1 0 0 1 1-.25 11.4 11.4 0 0 0 3.6.57 1 1 0 0 1 1 1V20a1 1 0 0 1-1 1A17 17 0 0 1 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1c0 1.25.2 2.45.57 3.57a1 1 0 0 1-.25 1z" fill="currentColor"/></svg>
+          <span data-i18n="top.call">Call</span> <b data-business="phone"></b>
+        </a>
+        <a class="topbar-link" href="#" data-business="sms" data-business-keep>
+          <svg width="15" height="15" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H9l-5 4v-4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z" fill="currentColor"/></svg>
+          <span data-i18n="top.text">Text</span>
+        </a>
+        <a class="topbar-link topbar-email" href="#" data-business="email"></a>
+      </div>
+    </div>
+  </div>
+
   <header class="site-header">
     <div class="container site-header-inner">
-      <a class="brand" href="index.html" aria-label="MKG Services home">
+      <a class="brand" href="index.html" data-i18n-attr="aria-label:brand.home" aria-label="MKG Services home">
         <span class="brand-mark" aria-hidden="true">
           <svg width="16" height="16" viewBox="0 0 16 16"><path d="M8 0c.6 4.4 3.6 7.4 8 8-4.4.6-7.4 3.6-8 8-.6-4.4-3.6-7.4-8-8 4.4-.6 7.4-3.6 8-8z" fill="#fff"/></svg>
         </span>
         MKG Services
       </a>
-      <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav" aria-label="Menu">
+      <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav" data-i18n-attr="aria-label:nav.menu" aria-label="Menu">
         <svg width="20" height="14" viewBox="0 0 20 14" aria-hidden="true"><path d="M1 1h18M1 7h18M1 13h18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
       </button>
-      <nav class="site-nav" id="site-nav" aria-label="Main">
-        <a href="plans.html">Plans</a>
-        <a href="#single-cleans">Single cleans</a>
-        <a href="#faq">FAQ</a>
-        <a class="btn btn-sm" href="quote.html">Get a quote</a>
+      <nav class="site-nav" id="site-nav" data-i18n-attr="aria-label:nav.main" aria-label="Main">
+        <a href="plans.html" data-i18n="nav.plans">Plans</a>
+        <a href="#single-cleans" data-i18n="nav.singles">Single cleans</a>
+        <a href="#faq" data-i18n="nav.faq">FAQ</a>
+        <a class="btn btn-sm" href="quote.html" data-i18n="nav.quote">Get a quote</a>
       </nav>
     </div>
   </header>
@@ -35,45 +58,45 @@
     <section class="hero">
       <div class="container hero-grid">
         <div class="hero-copy">
-          <h1 class="display">A clean home, on repeat.</h1>
-          <p class="lead">Pick a plan, pick how often, and watch the price come down. Skip a visit or change your plan whenever life changes.</p>
+          <h1 class="display" data-i18n="hero.h1">A clean home, on repeat.</h1>
+          <p class="lead" data-i18n="hero.lead">Pick a plan, pick how often, and watch the price come down. Skip a visit or change your plan whenever life changes.</p>
           <div class="hero-actions">
-            <a class="btn" href="quote.html">Get my quote</a>
-            <a class="btn btn-secondary" href="plans.html">Compare plans</a>
+            <a class="btn" href="quote.html" data-i18n="hero.cta">Get my quote</a>
+            <a class="btn btn-secondary" href="plans.html" data-i18n="hero.compare">Compare plans</a>
           </div>
-          <p class="hero-note">Estimates are for planning. Your exact price is confirmed in your quote, before anyone shows up.</p>
+          <p class="hero-note" data-i18n="hero.note">Estimates are for planning. Your exact price is confirmed in your quote, before anyone shows up.</p>
         </div>
 
-        <div class="dial on-dark" aria-label="Plan price estimator">
+        <div class="dial on-dark" data-i18n-attr="aria-label:dial.aria" aria-label="Plan price estimator">
           <div class="dial-top">
-            <div class="dial-plans" data-render-plan-picks role="group" aria-label="Plan"></div>
+            <div class="dial-plans" data-render-plan-picks role="group"></div>
             <div class="dial-home">
-              <div data-stepper="bedrooms" data-label="bed"></div>
-              <div data-stepper="bathrooms" data-label="bath"></div>
+              <div data-stepper="bedrooms"></div>
+              <div data-stepper="bathrooms"></div>
             </div>
           </div>
 
           <div class="dial-price" aria-live="polite">
             <span class="price-big" data-price="current"></span>
             <span class="price-unit" data-price="current" data-price-part="label"></span>
-            <span class="pill" data-saving-pill>Save <span data-price="current" data-price-part="discount"></span></span>
+            <span class="pill" data-saving-pill data-i18n="dial.save">Save {discount}</span>
           </div>
           <p class="dial-was">
-            <span data-saving-pill><s data-price="current" data-price-part="oneTime"></s> at full price. You keep <span data-price="current" data-price-part="saving"></span> every visit.</span>
-            <span data-fullprice-note>Full price. Choose a schedule below to see the discount.</span>
+            <span data-saving-pill data-i18n="dial.was">{oneTimeStruck} at full price. You keep {saving} every visit.</span>
+            <span data-fullprice-note data-i18n="dial.full">Full price. Choose a schedule below to see the discount.</span>
           </p>
 
-          <p class="dial-label" id="dial-freq-label">How often?</p>
-          <div class="seg" data-freq-control aria-labelledby="dial-freq-label"></div>
+          <p class="dial-label" data-i18n="dial.howOften">How often?</p>
+          <div class="seg" data-freq-control></div>
 
           <ul class="dial-list">
-            <li><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M2 7.5l3.2 3L12 3.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Same checklist every visit, so nothing gets missed</span></li>
-            <li><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M2 7.5l3.2 3L12 3.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Skip, pause, or switch plans with no fee</span></li>
-            <li><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M2 7.5l3.2 3L12 3.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Price confirmed before your first clean</span></li>
+            <li><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M2 7.5l3.2 3L12 3.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg><span data-i18n="dial.li1">Same checklist every visit, so nothing gets missed</span></li>
+            <li><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M2 7.5l3.2 3L12 3.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg><span data-i18n="dial.li2">Skip, pause, or switch plans with no fee</span></li>
+            <li><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M2 7.5l3.2 3L12 3.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg><span data-i18n="dial.li3">Price confirmed before your first clean</span></li>
           </ul>
 
-          <a class="btn btn-light btn-block" data-quote-link="current"><span>Get a quote for the <span data-text="planName"></span> plan</span></a>
-          <p class="dial-fine">Estimate for a <span data-text="bedrooms"></span>-bedroom, <span data-text="bathrooms"></span>-bathroom home.</p>
+          <a class="btn btn-light btn-block" data-quote-link="current"><span data-i18n="dial.cta">Get a quote for the {planName} plan</span></a>
+          <p class="dial-fine" data-i18n="dial.fine">Estimate for a {bedrooms}-bedroom, {bathrooms}-bathroom home.</p>
         </div>
       </div>
     </section>
@@ -81,20 +104,20 @@
     <section class="section section-mist" id="how">
       <div class="container">
         <div class="section-head">
-          <h2 class="title">How a plan works</h2>
+          <h2 class="title" data-i18n="how.h2">How a plan works</h2>
         </div>
         <ol class="steps">
           <li>
-            <h3 class="heading">Tell us about your home</h3>
-            <p>Bedrooms, bathrooms, pets, and anything you want handled a certain way. Two minutes, no account.</p>
+            <h3 class="heading" data-i18n="how.1.h">Tell us about your home</h3>
+            <p data-i18n="how.1.p">Bedrooms, bathrooms, pets, and anything you want handled a certain way. Two minutes, no account.</p>
           </li>
           <li>
-            <h3 class="heading">Pick a plan and a rhythm</h3>
-            <p>Choose how much of the home we cover and how often we come. Weekly saves the most; monthly still saves.</p>
+            <h3 class="heading" data-i18n="how.2.h">Pick a plan and a rhythm</h3>
+            <p data-i18n="how.2.p">Choose how much of the home we cover and how often we come. Weekly saves the most; monthly still saves.</p>
           </li>
           <li>
-            <h3 class="heading">Come home to clean</h3>
-            <p>We confirm your price, then show up on schedule. Skip a week or change plans by text whenever you need.</p>
+            <h3 class="heading" data-i18n="how.3.h">Come home to clean</h3>
+            <p data-i18n="how.3.p">We confirm your price, then show up on schedule. Skip a week or change plans by text whenever you need.</p>
           </li>
         </ol>
       </div>
@@ -103,31 +126,31 @@
     <section class="section" id="plans">
       <div class="container">
         <div class="section-head">
-          <h2 class="title">Three plans. One rule: more often costs less.</h2>
-          <p class="lead">Every plan is priced per visit. The schedule you choose sets the discount, and it applies to every visit, not just the first.</p>
+          <h2 class="title" data-i18n="plans.h2">Three plans. One rule: more often costs less.</h2>
+          <p class="lead" data-i18n="plans.lead">Every plan is priced per visit. The schedule you choose sets the discount, and it applies to every visit, not just the first.</p>
         </div>
 
         <div class="plans-toolbar">
           <div class="plans-toolbar-home">
-            <span>Your home:</span>
-            <div data-stepper="bedrooms" data-label="bed"></div>
-            <div data-stepper="bathrooms" data-label="bath"></div>
+            <span data-i18n="plans.yourHome">Your home:</span>
+            <div data-stepper="bedrooms"></div>
+            <div data-stepper="bathrooms"></div>
           </div>
-          <div class="seg" data-freq-control aria-label="How often"></div>
+          <div class="seg" data-freq-control></div>
         </div>
 
         <div class="plans-grid" data-render-plans>
-          <noscript><p>Turn on JavaScript to see plans and prices, or <a href="quote.html">request a quote</a>.</p></noscript>
+          <noscript><p>Turn on JavaScript to see plans and prices, or <a href="quote.html">request a quote</a>. / Activa JavaScript para ver planes y precios, o <a href="quote.html">pide una cotización</a>.</p></noscript>
         </div>
-        <p class="plans-note">Estimates use placeholder pricing until MKG confirms rates. Your quote reply has the exact per-visit price for your home. <a href="plans.html">See the full comparison.</a></p>
+        <p class="plans-note"><span data-i18n="plans.note.home">Estimates use placeholder pricing until MKG confirms rates. Your quote reply has the exact per-visit price for your home.</span> <a href="plans.html" data-i18n="plans.note.link">See the full comparison.</a></p>
       </div>
     </section>
 
     <section class="section section-mist" id="single-cleans">
       <div class="container">
         <div class="section-head">
-          <h2 class="title">Need one clean, not a plan?</h2>
-          <p class="lead">These are quoted individually because every home is different. Most plans start with a deep clean, so the regular visits only have to keep up.</p>
+          <h2 class="title" data-i18n="singles.h2.home">Need one clean, not a plan?</h2>
+          <p class="lead" data-i18n="singles.lead.home">These are quoted individually because every home is different. Most plans start with a deep clean, so the regular visits only have to keep up.</p>
         </div>
         <div class="singles" data-render-singles></div>
       </div>
@@ -136,20 +159,20 @@
     <section class="section" id="why">
       <div class="container">
         <div class="section-head">
-          <h2 class="title">What you can count on</h2>
+          <h2 class="title" data-i18n="why.h2">What you can count on</h2>
         </div>
         <div class="why">
           <div>
-            <h3 class="heading">The price before the visit</h3>
-            <p>You see an estimate here and an exact price in your quote. The number on the invoice is the number you agreed to.</p>
+            <h3 class="heading" data-i18n="why.1.h">The price before the visit</h3>
+            <p data-i18n="why.1.p">You see an estimate here and an exact price in your quote. The number on the invoice is the number you agreed to.</p>
           </div>
           <div>
-            <h3 class="heading">Change your mind any time</h3>
-            <p>No contracts. Skip a visit, pause for a trip, move from weekly to monthly, or stop altogether.</p>
+            <h3 class="heading" data-i18n="why.2.h">Change your mind any time</h3>
+            <p data-i18n="why.2.p">No contracts. Skip a visit, pause for a trip, move from weekly to monthly, or stop altogether.</p>
           </div>
           <div>
-            <h3 class="heading">The same checklist, every time</h3>
-            <p>Each plan has a written list of what gets done. Add a note about your home and it becomes part of the list.</p>
+            <h3 class="heading" data-i18n="why.3.h">The same checklist, every time</h3>
+            <p data-i18n="why.3.p">Each plan has a written list of what gets done. Add a note about your home and it becomes part of the list.</p>
           </div>
         </div>
       </div>
@@ -158,32 +181,32 @@
     <section class="section section-mist" id="faq">
       <div class="container narrow">
         <div class="section-head">
-          <h2 class="title">Questions people ask first</h2>
+          <h2 class="title" data-i18n="faq.h2">Questions people ask first</h2>
         </div>
         <div class="faq">
           <details>
-            <summary>How does the recurring discount work?</summary>
-            <div>Each plan has a full per-visit price based on your home's bedrooms and bathrooms. <span data-text="discountSentence">Booking monthly takes 5% off every visit, every 2 weeks takes 10% off, and weekly takes 15% off.</span> The discount stays as long as the schedule does.</div>
+            <summary data-i18n="faq.q1">How does the recurring discount work?</summary>
+            <div data-i18n="faq.a1">Each plan has a full per-visit price based on your home's bedrooms and bathrooms. {discountSentence} The discount stays as long as the schedule does.</div>
           </details>
           <details>
-            <summary>Can I skip a week or pause?</summary>
-            <div>Yes. Let us know before your visit and we'll skip it. If you pause for a while and come back, your plan and discount pick up where they left off.</div>
+            <summary data-i18n="faq.q2">Can I skip a week or pause?</summary>
+            <div data-i18n="faq.a2">Yes. Let us know before your visit and we'll skip it. If you pause for a while and come back, your plan and discount pick up where they left off.</div>
           </details>
           <details>
-            <summary>Do I need to be home?</summary>
-            <div>No. Most clients give us a way in: a lockbox, a door code, or a neighbor. We'll sort out what works for you when we confirm your first visit.</div>
+            <summary data-i18n="faq.q3">Do I need to be home?</summary>
+            <div data-i18n="faq.a3">No. Most clients give us a way in: a lockbox, a door code, or a neighbor. We'll sort out what works for you when we confirm your first visit.</div>
           </details>
           <details>
-            <summary>Do you bring supplies and equipment?</summary>
-            <div>Yes. If you'd rather we use specific products in your home, leave them out and add a note to your plan.</div>
+            <summary data-i18n="faq.q4">Do you bring supplies and equipment?</summary>
+            <div data-i18n="faq.a4">Yes. If you'd rather we use specific products in your home, leave them out and add a note to your plan.</div>
           </details>
           <details>
-            <summary>How is the price set?</summary>
-            <div>By the plan you choose and the size of your home. Bedrooms and bathrooms are the biggest factors. If the home needs a deep clean first, we'll quote that separately so the plan price stays predictable.</div>
+            <summary data-i18n="faq.q5">How is the price set?</summary>
+            <div data-i18n="faq.a5">By the plan you choose and the size of your home. Bedrooms and bathrooms are the biggest factors. If the home needs a deep clean first, we'll quote that separately so the plan price stays predictable.</div>
           </details>
           <details>
-            <summary>Where do you work?</summary>
-            <div>Enter your ZIP code in the quote form and we'll confirm whether you're in our area before anything else.</div>
+            <summary data-i18n="faq.q6">Where do you work?</summary>
+            <div data-i18n="faq.a6">Enter your ZIP code in the quote form and we'll confirm whether you're in our area before anything else. You can also call or text {phone}.</div>
           </details>
         </div>
       </div>
@@ -192,10 +215,13 @@
     <section class="band on-dark">
       <div class="container band-inner">
         <div>
-          <h2 class="title">Ready for a cleaner week?</h2>
-          <p>Two minutes to request a quote. No account, no commitment.</p>
+          <h2 class="title" data-i18n="band.h2.home">Ready for a cleaner week?</h2>
+          <p data-i18n="band.p.home">Two minutes to request a quote. No account, no commitment.</p>
         </div>
-        <a class="btn btn-light" href="quote.html">Get my quote</a>
+        <div class="band-actions">
+          <a class="btn btn-light" href="quote.html" data-i18n="band.cta.home">Get my quote</a>
+          <p class="band-or" data-i18n="band.or">Or call or text {phone}</p>
+        </div>
       </div>
     </section>
   </main>
@@ -204,21 +230,23 @@
     <div class="container footer-grid">
       <div class="footer-contact">
         <strong data-business="name">MKG Services, LLC</strong>
-        <span data-business-wrap="serviceArea">Serving <span data-business="serviceArea"></span></span>
-        <a data-business="phone" href="#"></a>
-        <a data-business="email" href="#"></a>
+        <span data-business-wrap="serviceArea" data-i18n="footer.serving">Serving {serviceArea}</span>
+        <a href="#" data-business="phone" data-business-keep><span data-i18n="footer.call">Call</span> <span data-business="phone"></span></a>
+        <a href="#" data-business="sms" data-business-keep data-i18n="footer.text">Text us</a>
+        <a href="#" data-business="email"></a>
       </div>
-      <nav class="footer-links" aria-label="Footer">
-        <a href="plans.html">Plans</a>
-        <a href="index.html#single-cleans">Single cleans</a>
-        <a href="index.html#faq">FAQ</a>
-        <a href="quote.html">Get a quote</a>
+      <nav class="footer-links" data-i18n-attr="aria-label:footer.nav" aria-label="Footer">
+        <a href="plans.html" data-i18n="nav.plans">Plans</a>
+        <a href="index.html#single-cleans" data-i18n="nav.singles">Single cleans</a>
+        <a href="index.html#faq" data-i18n="nav.faq">FAQ</a>
+        <a href="quote.html" data-i18n="nav.quote">Get a quote</a>
       </nav>
       <p>&copy; <span data-year></span> MKG Services, LLC</p>
     </div>
   </footer>
 
   <script src="plans.js"></script>
+  <script src="i18n.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
