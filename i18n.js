@@ -45,6 +45,7 @@
     "hero.lead": "Pick a plan, pick how often, and watch the price come down. Skip a visit or change your plan whenever life changes.",
     "hero.cta": "Get my quote",
     "hero.compare": "Compare plans",
+    "hero.single": "Book a single clean",
     "hero.note": "Estimates are for planning. Your exact price is confirmed in your quote, before anyone shows up.",
 
     "dial.aria": "Plan price estimator",
@@ -289,6 +290,7 @@
     "hero.lead": "Elige un plan, elige cada cuánto, y mira cómo baja el precio. Salta una visita o cambia de plan cuando la vida cambie.",
     "hero.cta": "Pedir mi cotización",
     "hero.compare": "Comparar planes",
+    "hero.single": "Una sola limpieza",
     "hero.note": "Los estimados son para orientarte. Tu precio exacto se confirma en la cotización, antes de que llegue nadie.",
 
     "dial.aria": "Estimador de precio del plan",
