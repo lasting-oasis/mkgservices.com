@@ -1,0 +1,34 @@
+# Deploys the site to Firebase Hosting every time main changes.
+# Needs one repository secret: FIREBASE_SERVICE_ACCOUNT (the JSON key from
+# Firebase > Project settings > Service accounts > Generate new private key).
+# The Firebase project ID comes from .firebaserc.
+# Until the secret exists, the run finishes early with a note instead of failing.
+name: Deploy to Firebase Hosting
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check that the Firebase secret is set
+        id: check
+        env:
+          SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          if [ -z "$SERVICE_ACCOUNT" ]; then
+            echo "FIREBASE_SERVICE_ACCOUNT is not set yet. Add it under Settings > Secrets and variables > Actions, then push again."
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/checkout@v4
+        if: steps.check.outputs.ready == 'true'
+      - uses: FirebaseExtended/action-hosting-deploy@v0
+        if: steps.check.outputs.ready == 'true'
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          channelId: live

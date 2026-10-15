@@ -29,6 +29,17 @@ The phone number and email in `plans.js` appear in the top bar (tap to call, tap
 
 Everything else (`app.js`, `quote.js`) is behaviour and should not need touching.
 
+## Deploying (Firebase Hosting, free plan)
+
+Every push to `main` deploys the site through the GitHub Action in `.github/workflows/firebase-hosting-merge.yml`. Pull requests get a temporary preview URL. One-time setup:
+
+1. Create a project at console.firebase.google.com and open **Build → Hosting → Get started** once so the site exists.
+2. Put the project ID in `.firebaserc` (replace `REPLACE_WITH_YOUR_FIREBASE_PROJECT_ID`).
+3. In Firebase, **Project settings → Service accounts → Generate new private key**. Add the downloaded JSON as a GitHub repository secret named `FIREBASE_SERVICE_ACCOUNT` (Settings → Secrets and variables → Actions). Never commit that file.
+4. Push to `main`. The site appears at `https://<project-id>.web.app`; add `mkgservices.com` under Hosting → Add custom domain when ready.
+
+The same setup can be done from a terminal with `firebase init hosting:github`, which creates the key and secret for you.
+
 ## Before launch
 
 1. **Replace the placeholder pricing** in `plans.js` (`base`, `perBedroom`, `perBathroom`) with real rates. The site labels prices as estimates until then.
