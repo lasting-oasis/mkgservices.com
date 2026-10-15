@@ -6,6 +6,7 @@
       "**/.*",
       "**/node_modules/**",
       "docs/**",
+      "brand/*.py",
       "README.md"
     ],
     "headers": [

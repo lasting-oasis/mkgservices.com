@@ -21,6 +21,20 @@ The site is in English and Spanish. Visitors switch with the EN / ES buttons in 
 
 The phone number and email in `plans.js` appear in the top bar (tap to call, tap to text), the FAQ, the closing banner, the quote page, and the footer. Links are built from the digits, so write the number however you like it displayed.
 
+## Logo
+
+`brand/` holds the logo as outlined SVG (no font needed) plus PNG exports:
+
+| File | Use |
+|---|---|
+| `logo-badge.svg` / `-1024.png` | Full circular badge (ink ring, pine centre, lemon sparkles). Footer, invoices, print, social posts. |
+| `logo-badge-mono.svg` / `-1024.png` | One-colour ink line version for stamps, embroidery, black-and-white print. |
+| `logo-badge-reverse.svg` / `-1024.png` | White version for dark backgrounds (transparent). |
+| `logo-mark.svg` / `-512.png` / `-192.png` | Compact mark (disc, sparkles, MKG). Header, favicon, social avatars, app icons. |
+| `favicon.svg`, `apple-touch-icon.png`, root `favicon.ico` | Browser and home-screen icons; already linked from every page. |
+
+The legal suffix is left off the mark on purpose: "MKG Services" is the brand, "MKG Services, LLC" stays on invoices, contracts and the footer. `brand/make-logo.py` regenerates every file from the site's typeface (Bricolage Grotesque); edit its `WORDS` block to change the ring text, e.g. to add "LLC".
+
 ## Files the owner edits
 
 - **`plans.js`** is the single source of truth: business details, plan names and what they include, pricing formula, recurring discounts, comparison table rows, service ZIPs, and the form endpoint. Pages read it; no markup edits needed for those changes.
