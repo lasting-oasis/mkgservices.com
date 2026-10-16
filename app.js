@@ -297,39 +297,9 @@
     $all("[data-business-wrap]").forEach(function (el) { el.hidden = !L(b[el.dataset.businessWrap]); });
   }
 
-  function menus() {
-    var open = null;
-    function close() {
-      if (!open) return;
-      open.btn.setAttribute("aria-expanded", "false");
-      open.panel.hidden = true;
-      open = null;
-    }
-    $all("[data-menu]").forEach(function (wrap) {
-      var btn = wrap.querySelector("button"), panel = wrap.querySelector(".menu-panel");
-      if (!btn || !panel) return;
-      btn.addEventListener("click", function (ev) {
-        ev.stopPropagation();
-        var wasOpen = open && open.btn === btn;
-        close();
-        if (!wasOpen) {
-          open = { btn: btn, panel: panel };
-          btn.setAttribute("aria-expanded", "true");
-          panel.hidden = false;
-          var first = panel.querySelector("a");
-          if (first) first.focus({ preventScroll: true });
-        }
-      });
-      panel.addEventListener("click", function (ev) { ev.stopPropagation(); });
-    });
-    document.addEventListener("click", close);
-    document.addEventListener("keydown", function (ev) { if (ev.key === "Escape") close(); });
-  }
-
   function chrome() {
     var y = document.querySelector("[data-year]");
     if (y) y.textContent = String(new Date().getFullYear());
-    menus();
 
     var toggle = document.querySelector(".nav-toggle");
     var header = document.querySelector(".site-header");

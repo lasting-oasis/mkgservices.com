@@ -4,7 +4,7 @@ Website for MKG Services, LLC, a residential cleaning service. Static site, no b
 
 ## Pages
 
-Two service lines share one engine. Residential is priced by bedrooms and bathrooms; commercial by square feet and restrooms, with a visits-per-week ladder and an approximate monthly figure. The home page's "Commercial service" button opens the three commercial actions (quote, compare, single clean) so the hero stays uncluttered; the commercial pages have the mirror "Residential service" button.
+Two service lines share one engine. Residential is priced by bedrooms and bathrooms; commercial by square feet and restrooms, with a visits-per-week ladder and an approximate monthly figure. The home page has one "Commercial service" card under the hero buttons that opens the commercial home page; the commercial pages have the mirror "Residential service" card.
 
 | File | What it is |
 |---|---|
