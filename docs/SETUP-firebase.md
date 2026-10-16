@@ -74,8 +74,18 @@ Push the change; the site sends every request to both places.
 ## What the owner can change without code
 
 - **In the admin page:** confirm, decline, or finish a request; move its date
-  or window; write a note the client sees; add a payment link; close a day;
-  block a window; add a booking taken by phone; remove one.
+  or window; change the service or plan it is for; set the final price the
+  client sees (otherwise they see the estimate); write a note the client
+  sees; add a payment link; close a day; block a window; add a booking taken
+  by phone; remove one. The "week ahead" panel lists what is scheduled in
+  the next 7 days; the search box finds a request by name, email, phone,
+  ZIP, or ID; the tab title shows how many new requests are waiting.
+- **What clients can do themselves** on the account page, while a request
+  is still new or confirmed: move it to another open day and window (the
+  old one frees up) or cancel it. Cancelled requests show in the admin
+  page's Finished list with a note that the client cancelled. A finished,
+  declined, or cancelled request has a "book this again" button that opens
+  the quote form with the same service.
 - **In `plans.js`:** how many jobs can start in the same window (`capacity`),
   working weekdays, earliest bookable day (`leadDays`), how far ahead the
   calendar opens (`horizonDays`), and the windows themselves.
@@ -84,8 +94,8 @@ Push the change; the site sends every request to both places.
 
 | Collection | One document is… | Who can read | Who can write |
 |---|---|---|---|
-| `requests` | a quote request with the customer's details, status (`new`, `confirmed`, `declined`, `done`), note to client, payment link | admins; the customer, signed in with the same email | anyone may create; admins may change |
-| `holds` | one date + window a request is holding (no personal data) | everyone (this is what the public calendar reads) | created together with its request; admins may delete |
+| `requests` | a quote request with the customer's details, status (`new`, `confirmed`, `declined`, `done`, `cancelled`), note to client, payment link, final price | admins; the customer, signed in with the same email | anyone may create; admins may change anything; the customer may only change the date/window or cancel while it is new or confirmed |
+| `holds` | one date + window a request is holding (no personal data) | everyone (this is what the public calendar reads) | created together with its request; admins and the request's customer may delete |
 | `days` | a closed day or blocked windows, keyed by `YYYY-MM-DD` | everyone | admins |
 | `admins` | one document per admin, keyed by user UID | the admin themself | nobody from the site (console only) |
 

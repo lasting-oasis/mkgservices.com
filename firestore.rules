@@ -5,7 +5,8 @@ rules_version = '2';
 //   requests/{id}   one quote request; customer details inside. Anyone can
 //                   create one; only the owner (admin) and the customer who
 //                   sent it (signed in with the same email) can read it;
-//                   only the admin can change it.
+//                   the admin can change anything, the customer can only
+//                   move or cancel it while it is new or confirmed.
 //   holds/{id}      a date + time window a request is holding. No customer
 //                   details, so anyone can read them: that is how the public
 //                   calendar shows which windows are taken.
@@ -20,6 +21,16 @@ service cloud.firestore {
     }
     function isDate(s) { return s is string && s.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$'); }
     function shortText(s, n) { return s is string && s.size() <= n; }
+    // The signed-in customer whose email is on the document being read/changed.
+    function isOwner() {
+      return signedIn() && request.auth.token.email_verified == true &&
+        resource.data.emailLower == request.auth.token.email.lower();
+    }
+    function changed() { return request.resource.data.diff(resource.data).affectedKeys(); }
+    function ownsRequest(requestId) {
+      return signedIn() && request.auth.token.email_verified == true && requestId != 'manual' &&
+        get(/databases/$(database)/documents/requests/$(requestId)).data.emailLower == request.auth.token.email.lower();
+    }
 
     match /requests/{id} {
       allow create: if
@@ -35,10 +46,17 @@ service cloud.firestore {
         shortText(request.resource.data.slot, 10) &&
         request.resource.data.segment in ['residential', 'commercial'] &&
         request.resource.data.keys().size() <= 40;
-      allow read: if isAdmin() ||
-        (signedIn() && request.auth.token.email_verified == true &&
-         resource.data.emailLower == request.auth.token.email.lower());
-      allow update, delete: if isAdmin();
+      allow read: if isAdmin() || isOwner();
+      // The customer who sent a request may, while it is still new or
+      // confirmed, move it to another day/window or cancel it. Nothing else.
+      allow update: if isAdmin() || (isOwner() && resource.data.status in ['new', 'confirmed'] && (
+        (changed().hasOnly(['date', 'slot', 'updatedAt']) &&
+          (request.resource.data.date == '' || isDate(request.resource.data.date)) &&
+          shortText(request.resource.data.slot, 10)) ||
+        (changed().hasOnly(['status', 'cancelledBy', 'updatedAt']) &&
+          request.resource.data.status == 'cancelled' && request.resource.data.cancelledBy == 'client')
+      ));
+      allow delete: if isAdmin();
     }
 
     match /holds/{id} {
@@ -54,7 +72,9 @@ service cloud.firestore {
         getAfter(/databases/$(database)/documents/requests/$(request.resource.data.requestId)).data.date == request.resource.data.date &&
         getAfter(/databases/$(database)/documents/requests/$(request.resource.data.requestId)).data.slot == request.resource.data.slot
       );
-      allow update, delete: if isAdmin();
+      allow update: if isAdmin();
+      // A customer may drop their own hold (when moving or cancelling the request).
+      allow delete: if isAdmin() || ownsRequest(resource.data.requestId);
     }
 
     match /days/{date} {

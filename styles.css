@@ -532,6 +532,17 @@ button.cal-slot:not(:disabled):hover { border-color: var(--pine); }
 .status-confirmed { background: var(--pine); color: #fff; }
 .status-declined { background: var(--mist-deep); color: var(--muted); }
 .status-done { background: var(--ink); color: #fff; }
+.status-cancelled { background: var(--mist-deep); color: var(--muted); text-decoration: line-through; }
+.acct-status-note { margin: -6px 0 0; color: var(--muted); font-size: 0.93rem; }
+.acct-cancel { color: var(--muted); margin-left: auto; }
+.acct-move { border-top: 1.5px solid var(--line); padding-top: 14px; display: grid; gap: 10px; }
+.acct-move-pick { font-weight: 700; margin: 0; }
+.admin-search { margin-bottom: 12px; }
+.admin-week { display: grid; gap: 4px; font-size: 0.93rem; }
+.admin-week-day { margin: 8px 0 2px; font-size: 0.95rem; }
+.admin-week ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
+.admin-week .status { font-size: 0.75rem; padding: 1px 8px; }
+.admin-item.is-flash { box-shadow: 0 0 0 3px var(--lemon); transition: box-shadow 0.3s; }
 .admin { padding-top: 32px; }
 .admin .quote-card { max-width: 480px; }
 .admin-grid { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 36px; align-items: start; }

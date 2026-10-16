@@ -124,6 +124,30 @@
     return db.collection("requests").where("emailLower", "==", String(email).toLowerCase()).get()
       .then(function (r) { return r.docs.map(function (d) { var x = d.data(); x.id = d.id; return x; }).sort(byNewest); });
   }
+  // Move a request to another day/window (or clear it). One batch: the
+  // request's date and slot change, its old hold goes, a new one is created.
+  // The rules let the admin and the request's own customer do this.
+  function reschedule(req, date, slot) {
+    var ref = db.collection("requests").doc(req.id);
+    return db.collection("holds").where("requestId", "==", req.id).get().then(function (r) {
+      var now = fb.firestore.FieldValue.serverTimestamp();
+      var b = db.batch();
+      b.update(ref, { date: date || "", slot: slot || "", updatedAt: now });
+      r.docs.forEach(function (d) { b.delete(d.ref); });
+      if (date && slot) b.set(db.collection("holds").doc(), { date: date, slot: slot, requestId: req.id, createdAt: now, segment: req.segment || "" });
+      return b.commit();
+    });
+  }
+  // A customer cancels their own request; its window opens up again.
+  function cancelRequest(id) {
+    var ref = db.collection("requests").doc(id);
+    return db.collection("holds").where("requestId", "==", id).get().then(function (r) {
+      var b = db.batch();
+      b.update(ref, { status: "cancelled", cancelledBy: "client", updatedAt: fb.firestore.FieldValue.serverTimestamp() });
+      r.docs.forEach(function (d) { b.delete(d.ref); });
+      return b.commit();
+    });
+  }
   function byNewest(a, b) { return (toMs(b.createdAt) - toMs(a.createdAt)); }
   function toMs(ts) { return ts && ts.toMillis ? ts.toMillis() : (ts ? new Date(ts).getTime() : 0); }
 
@@ -170,7 +194,7 @@
     dates: { ymd: ymd, parse: parse, addDays: addDays, pad: pad },
     availability: availability, submitRequest: submitRequest,
     onAuth: onAuth, signOut: signOut, signInPassword: signInPassword, sendLink: sendLink, isLink: isLink, completeLink: completeLink, isAdmin: isAdmin,
-    myRequests: myRequests, toMs: toMs,
+    myRequests: myRequests, reschedule: reschedule, cancelRequest: cancelRequest, toMs: toMs,
     watchRequests: watchRequests, updateRequest: updateRequest, releaseHolds: releaseHolds, ensureHold: ensureHold,
     addManualHold: addManualHold, deleteHold: deleteHold, setDay: setDay, watchHolds: watchHolds,
   };

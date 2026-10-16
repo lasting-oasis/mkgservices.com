@@ -11,9 +11,11 @@
   var t = I.t, L = I.L, esc = A.esc, D = B.dates;
   var $ = function (s, r) { return (r || document).querySelector(s); };
   var $all = function (s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); };
-  var user = null, items = [], filter = "new", unsub = null, cal = null, openDay = "";
+  var user = null, items = [], filter = "new", query = "", unsub = null, cal = null, openDay = "";
   var openEdits = {}, savedFlash = {}; // survive the re-render that follows every write
   var AV = C.availability;
+  var CLOSED = { done: true, declined: true, cancelled: true };
+  var baseTitle = document.title;
 
   function show(which) { $all("[data-admin]").forEach(function (s) { s.hidden = s.getAttribute("data-admin") !== which; }); }
   function locale() { return I.lang === "es" ? "es-US" : "en-US"; }
@@ -25,15 +27,50 @@
   function pill(s) { return '<span class="status status-' + esc(s) + '">' + esc(t("status." + s)) + "</span>"; }
 
   // ---------- requests ----------
+  function matches(r) {
+    if (!query) return true;
+    var hay = [r.name, r.email, r.phone, r.zip, r.company, r.id, r.service, r.plan, r.notes, r.adminNotes].join(" ").toLowerCase();
+    return query.split(/\s+/).every(function (w) { return !w || hay.indexOf(w) !== -1; });
+  }
   function visible() {
-    if (filter === "all") return items;
-    if (filter === "done") return items.filter(function (r) { return r.status === "done" || r.status === "declined"; });
-    return items.filter(function (r) { return (r.status || "new") === filter; });
+    var list = items.filter(matches);
+    if (filter === "all") return list;
+    if (filter === "done") return list.filter(function (r) { return !!CLOSED[r.status]; });
+    return list.filter(function (r) { return (r.status || "new") === filter; });
   }
   function counts() {
     var c = { new: 0, confirmed: 0, done: 0, all: items.length };
-    items.forEach(function (r) { var s = r.status || "new"; if (s === "done" || s === "declined") c.done++; else if (c[s] !== undefined) c[s]++; });
+    items.forEach(function (r) { var s = r.status || "new"; if (CLOSED[s]) c.done++; else if (c[s] !== undefined) c[s]++; });
     Object.keys(c).forEach(function (k) { var el = $('[data-count="' + k + '"]'); if (el) el.textContent = c[k]; });
+    document.title = (c.new ? "(" + c.new + ") " : "") + baseTitle;
+  }
+  // Service choices for the edit panel: this segment's single cleans, then every plan x schedule.
+  function serviceValue(r) {
+    var seg = C.segments[r.segment || "residential"];
+    if (r.service) { var s = seg.singleCleans.filter(function (x) { return x.name.en === r.service; })[0]; return s ? "single:" + s.id : ""; }
+    var p = seg.plans.filter(function (x) { return x.name.en === r.plan; })[0], f = seg.frequencies.filter(function (x) { return x.label.en === r.frequency; })[0];
+    return p ? "plan:" + p.id + ":" + (f ? f.id : "") : "";
+  }
+  function serviceOptions(r) {
+    var seg = C.segments[r.segment || "residential"], cur = serviceValue(r), out = [];
+    function opt(v, label) { out.push('<option value="' + esc(v) + '"' + (v === cur ? " selected" : "") + ">" + esc(label) + "</option>"); }
+    if (!cur) opt("", r.service || ((r.plan || "") + (r.frequency ? ", " + r.frequency : "")) || "—");
+    seg.singleCleans.forEach(function (s) { opt("single:" + s.id, L(s.name)); });
+    seg.plans.forEach(function (p) { seg.frequencies.forEach(function (f) { opt("plan:" + p.id + ":" + f.id, L(p.name) + ", " + L(f.label)); }); });
+    return out.join("");
+  }
+  // Turn a service choice back into the fields the quote form would have saved.
+  function servicePatch(r, v) {
+    var seg = C.segments[r.segment || "residential"], del = B.firebase.firestore.FieldValue.delete(), parts = v.split(":");
+    if (parts[0] === "single") {
+      var s = seg.singleCleans.filter(function (x) { return x.id === parts[1]; })[0];
+      return s ? { service: s.name.en, plan: del, frequency: del } : {};
+    }
+    if (parts[0] === "plan") {
+      var p = seg.plans.filter(function (x) { return x.id === parts[1]; })[0], f = seg.frequencies.filter(function (x) { return x.id === parts[2]; })[0];
+      return p ? { plan: p.name.en, frequency: f ? f.label.en : (r.frequency || ""), service: del } : {};
+    }
+    return {};
   }
   function sizeText(r) {
     var dims = C.segments[r.segment || "residential"].dims;
@@ -48,6 +85,7 @@
     var what = r.service || ((r.plan || "") + (r.frequency ? ", " + r.frequency : ""));
     var est = r.estimatePerVisit !== undefined ? money(r.estimatePerVisit) + " " + t("acct.perVisit") + (r.estimatePerMonth ? " · " + t("dial.perMonth", { perMonth: money(r.estimatePerMonth) }) : "")
       : r.estimateOneVisit !== undefined ? money(r.estimateOneVisit) : t("q.custom");
+    if (typeof r.quotedPrice === "number") est = money(r.quotedPrice) + (r.estimatePerVisit !== undefined ? " " + t("acct.perVisit") : "") + " · " + t("acct.priceFinal") + " (" + t("adm.wasEst", { est: est }) + ")";
     var contact = '<a href="mailto:' + esc(r.email) + '">' + esc(r.email) + "</a>" + (r.phone ? ' · <a href="tel:' + esc(r.phone.replace(/[^\d+]/g, "")) + '">' + esc(r.phone) + "</a>" : "") +
       (r.contactMethod ? " · " + esc(t("review.prefers." + r.contactMethod)) : "") + (r.language === "es" ? " · " + esc(t("adm.speaksSpanish")) : "");
     var extraField = C.segments[r.segment || "residential"].quote.extraField, extraVal = r[extraField];
@@ -61,6 +99,7 @@
     ];
     if (r.notes) details.push([t("review.notes"), esc(r.notes), true]);
     if (r.flooring) details.push([t("adm.flooring"), esc(r.flooring), true]);
+    if (r.status === "cancelled") details.push([t("status.cancelled"), esc(r.cancelledBy === "client" ? t("adm.cancelledByClient") : t("adm.cancelledByYou")) + (r.updatedAt ? " · " + esc(fmtTs(r.updatedAt)) : ""), true]);
     var slotOpts = '<option value="">' + esc(t("cal.anyWindow")) + "</option>" + AV.slots.map(function (s) {
       return '<option value="' + esc(s.id) + '"' + (s.id === r.slot ? " selected" : "") + ">" + esc(L(s.label) + " " + (s.time || "")) + "</option>";
     }).join("");
@@ -71,12 +110,14 @@
       '<div class="admin-actions">' +
         (s !== "confirmed" ? '<button type="button" class="btn btn-sm" data-act="confirmed">' + esc(t("adm.confirm")) + "</button>" : "") +
         (s !== "done" ? '<button type="button" class="btn btn-sm btn-secondary" data-act="done">' + esc(t("adm.markDone")) + "</button>" : "") +
-        (s !== "declined" ? '<button type="button" class="btn btn-sm btn-secondary" data-act="declined">' + esc(t("adm.decline")) + "</button>" : "") +
-        (s === "declined" || s === "done" ? '<button type="button" class="btn btn-sm btn-secondary" data-act="new">' + esc(t("adm.reopen")) + "</button>" : "") +
+        (s !== "declined" && !CLOSED[s] ? '<button type="button" class="btn btn-sm btn-secondary" data-act="declined">' + esc(t("adm.decline")) + "</button>" : "") +
+        (CLOSED[s] ? '<button type="button" class="btn btn-sm btn-secondary" data-act="new">' + esc(t("adm.reopen")) + "</button>" : "") +
       "</div>" +
       '<details class="admin-edit"' + (openEdits[r.id] ? " open" : "") + "><summary>" + esc(t("adm.edit")) + "</summary>" +
         '<div class="two-up"><div class="field"><label>' + esc(t("adm.date")) + '</label><input class="input" type="date" data-f="date" value="' + esc(r.date || "") + '"></div>' +
         '<div class="field"><label>' + esc(t("adm.window")) + '</label><select class="select" data-f="slot">' + slotOpts + "</select></div></div>" +
+        '<div class="two-up"><div class="field"><label>' + esc(t("adm.service")) + '</label><select class="select" data-f="serviceChoice">' + serviceOptions(r) + "</select></div>" +
+        '<div class="field"><label>' + esc(t("adm.finalPrice")) + '</label><input class="input" type="number" min="0" step="1" inputmode="decimal" data-f="quotedPrice" value="' + (typeof r.quotedPrice === "number" ? r.quotedPrice : "") + '" placeholder="' + esc(t("adm.finalPriceHint")) + '"></div></div>' +
         '<div class="field"><label>' + esc(t("adm.note")) + '</label><textarea class="textarea" rows="2" data-f="replyNote">' + esc(r.replyNote || "") + "</textarea></div>" +
         '<div class="field"><label>' + esc(t("adm.payLink")) + '</label><input class="input" type="url" data-f="payLink" value="' + esc(r.payLink || "") + '" placeholder="https://buy.stripe.com/..."></div>' +
         '<div class="field"><label>' + esc(t("adm.private")) + '</label><textarea class="textarea" rows="2" data-f="adminNotes">' + esc(r.adminNotes || "") + "</textarea></div>" +
@@ -88,6 +129,7 @@
     $("[data-admin-empty]").hidden = list.length > 0;
     box.innerHTML = list.map(card).join("");
     counts();
+    renderUpcoming();
     $all(".admin-edit", box).forEach(function (d) {
       d.addEventListener("toggle", function () { openEdits[d.closest("[data-id]").getAttribute("data-id")] = d.open; });
     });
@@ -99,12 +141,18 @@
         b.disabled = true;
         var p;
         if (act === "save") {
-          var patch = {};
-          $all("[data-f]", art).forEach(function (f) { patch[f.getAttribute("data-f")] = f.value.trim(); });
+          var patch = {}, date = "", slot = "";
+          $all("[data-f]", art).forEach(function (f) {
+            var k = f.getAttribute("data-f"), v = f.value.trim();
+            if (k === "date") date = v;
+            else if (k === "slot") slot = v;
+            else if (k === "serviceChoice") { if (v && v !== serviceValue(r)) Object.assign(patch, servicePatch(r, v)); }
+            else if (k === "quotedPrice") patch.quotedPrice = v === "" ? B.firebase.firestore.FieldValue.delete() : Number(v);
+            else patch[k] = v;
+          });
+          var moved = date !== (r.date || "") || slot !== (r.slot || "");
           p = B.updateRequest(id, patch).then(function () {
-            var moved = patch.date !== (r.date || "") || patch.slot !== (r.slot || "");
-            if (!moved) return null;
-            return B.releaseHolds(id).then(function () { return B.ensureHold({ id: id, date: patch.date, slot: patch.slot, segment: r.segment }); });
+            return moved ? B.reschedule(r, date, slot) : null;
           }).then(function () {
             savedFlash[id] = true; var m = $('[data-id="' + id + '"] [data-saved]'); if (m) m.textContent = t("adm.saved");
             setTimeout(function () { delete savedFlash[id]; var m2 = $('[data-id="' + id + '"] [data-saved]'); if (m2) m2.textContent = ""; }, 2500);
@@ -128,6 +176,33 @@
       renderList();
     });
   });
+  $("[data-admin-search]").addEventListener("input", function (ev) { query = ev.target.value.trim().toLowerCase(); renderList(); });
+
+  // ---------- the week ahead ----------
+  // Every open request with a date in the next 7 days, soonest first.
+  function renderUpcoming() {
+    var box = $("[data-admin-upcoming]");
+    var today = D.ymd(new Date()), end = D.ymd(D.addDays(new Date(), 7));
+    var list = items.filter(function (r) { return !CLOSED[r.status] && r.date && r.date >= today && r.date <= end; })
+      .sort(function (a, b) { return (a.date + (a.slot || "zzzz")) < (b.date + (b.slot || "zzzz")) ? -1 : 1; });
+    if (!list.length) { box.innerHTML = '<p class="muted">' + esc(t("adm.weekEmpty")) + "</p>"; return; }
+    var h = "", lastDay = "";
+    list.forEach(function (r) {
+      if (r.date !== lastDay) { h += (lastDay ? "</ul>" : "") + '<h4 class="admin-week-day"><button type="button" class="link-btn" data-week-day="' + esc(r.date) + '">' + esc(r.date === today ? t("adm.today") : Cal.fmtDate(r.date, { weekday: "short", month: "short", day: "numeric" })) + "</button></h4><ul>"; lastDay = r.date; }
+      h += '<li><button type="button" class="link-btn" data-week-req="' + esc(r.id) + '">' + esc(r.name || "?") + "</button> · " + esc(r.slot ? slotName(r.slot) : t("cal.anyWindow")) + " · " + pill(r.status || "new") + "</li>";
+    });
+    box.innerHTML = h + "</ul>";
+    $all("[data-week-day]", box).forEach(function (b) { b.addEventListener("click", function () { openDay = b.getAttribute("data-week-day"); renderDay(); }); });
+    $all("[data-week-req]", box).forEach(function (b) {
+      b.addEventListener("click", function () {
+        var id = b.getAttribute("data-week-req");
+        filter = "all"; $all("[data-filter]").forEach(function (x) { x.setAttribute("aria-pressed", String(x.getAttribute("data-filter") === "all")); });
+        query = ""; $("[data-admin-search]").value = "";
+        renderList();
+        var art = $('[data-id="' + id + '"]'); if (art && art.scrollIntoView) { art.scrollIntoView({ block: "start", behavior: "smooth" }); art.classList.add("is-flash"); setTimeout(function () { art.classList.remove("is-flash"); }, 1600); }
+      });
+    });
+  }
 
   // ---------- calendar ----------
   function nameFor(hold) {
@@ -204,7 +279,7 @@
     $('[data-error="login"]').textContent = "";
     B.signInPassword(email, pass).catch(function (e) { $('[data-error="login"]').textContent = t("adm.badLogin"); if (window.console) console.warn(e); });
   });
-  $("[data-admin-signout]").addEventListener("click", function () { if (unsub) { unsub(); unsub = null; } B.signOut().then(function () { show("login"); }); });
+  $("[data-admin-signout]").addEventListener("click", function () { if (unsub) { unsub(); unsub = null; } document.title = baseTitle; B.signOut().then(function () { show("login"); }); });
   document.addEventListener("mkg:langchange", function () { if (user) { renderList(); renderDay(); } });
 
   B.ready.then(function (live) {

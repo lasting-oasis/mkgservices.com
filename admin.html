@@ -14,7 +14,7 @@
   <link rel="shortcut icon" href="favicon.ico">
   <link rel="apple-touch-icon" href="brand/apple-touch-icon.png">
   <meta name="theme-color" content="#176b61">
-  <link rel="stylesheet" href="styles.css?v=13">
+  <link rel="stylesheet" href="styles.css?v=14">
 </head>
 <body>
   <div class="topbar">
@@ -91,6 +91,10 @@
 
         <div class="admin-grid">
           <div>
+            <div class="field admin-search">
+              <label for="adm-search" class="visually-hidden" data-i18n="adm.search">Search requests</label>
+              <input class="input" id="adm-search" type="search" data-admin-search data-i18n-attr="placeholder:adm.searchHint" placeholder="Search by name, email, phone, ZIP, or #ID" autocomplete="off">
+            </div>
             <div class="seg admin-filter" role="group">
               <button type="button" class="seg-btn" data-filter="new" aria-pressed="true"><span class="seg-label" data-i18n="status.new">New</span><span class="seg-off" data-count="new">0</span></button>
               <button type="button" class="seg-btn" data-filter="confirmed" aria-pressed="false"><span class="seg-label" data-i18n="status.confirmed">Confirmed</span><span class="seg-off" data-count="confirmed">0</span></button>
@@ -101,6 +105,8 @@
             <p class="muted" data-admin-empty hidden data-i18n="adm.empty">Nothing here.</p>
           </div>
           <aside class="admin-cal">
+            <h2 class="title" style="font-size:1.3rem" data-i18n="adm.weekH">The week ahead</h2>
+            <div class="admin-week" data-admin-upcoming></div>
             <h2 class="title" style="font-size:1.3rem" data-i18n="adm.calH">Calendar</h2>
             <p class="field-hint" data-i18n="adm.calHint">Click a day to close it, block a window, or add a booking you took by phone.</p>
             <div data-calendar></div>
@@ -135,11 +141,11 @@
     </div>
   </footer>
 
-  <script src="plans.js?v=13"></script>
-  <script src="i18n.js?v=13"></script>
-  <script src="app.js?v=13"></script>
-  <script src="backend.js?v=13"></script>
-  <script src="calendar.js?v=13"></script>
-  <script src="admin.js?v=13"></script>
+  <script src="plans.js?v=14"></script>
+  <script src="i18n.js?v=14"></script>
+  <script src="app.js?v=14"></script>
+  <script src="backend.js?v=14"></script>
+  <script src="calendar.js?v=14"></script>
+  <script src="admin.js?v=14"></script>
 </body>
 </html>
