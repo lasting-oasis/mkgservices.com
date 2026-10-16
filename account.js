@@ -150,6 +150,10 @@
       .catch(function (e) { err("email", t("acct.linkFailed")); if (window.console) console.warn(e); })
       .then(function () { btn.disabled = false; });
   });
+  $("[data-google-signin]").addEventListener("click", function () {
+    var b = this; b.disabled = true; err("google", "");
+    B.signInGoogle().catch(function (e) { err("google", t("acct.googleFailed")); if (window.console) console.warn(e); }).then(function () { b.disabled = false; });
+  });
   $("[data-acct-confirm]").addEventListener("submit", function (ev) {
     ev.preventDefault();
     var email = $("#acct-email2").value.trim();
@@ -160,7 +164,7 @@
   document.addEventListener("mkg:langchange", function () { if (user) renderList(); });
 
   B.ready.then(function (live) {
-    if (!live) { show("signin"); $("[data-acct-offline]").hidden = false; $("[data-acct-form] button").disabled = true; return; }
+    if (!live) { show("signin"); $("[data-acct-offline]").hidden = false; $("[data-acct-form] button").disabled = true; $("[data-google-signin]").disabled = true; return; }
     if (B.isLink()) {
       B.completeLink().catch(function (e) {
         if (e && e.message === "need-email") show("confirm");

@@ -279,11 +279,15 @@
     $('[data-error="login"]').textContent = "";
     B.signInPassword(email, pass).catch(function (e) { $('[data-error="login"]').textContent = t("adm.badLogin"); if (window.console) console.warn(e); });
   });
+  $("[data-google-signin]").addEventListener("click", function () {
+    var b = this; b.disabled = true; $('[data-error="google"]').textContent = "";
+    B.signInGoogle().catch(function (e) { $('[data-error="google"]').textContent = t("acct.googleFailed"); if (window.console) console.warn(e); }).then(function () { b.disabled = false; });
+  });
   $("[data-admin-signout]").addEventListener("click", function () { if (unsub) { unsub(); unsub = null; } document.title = baseTitle; B.signOut().then(function () { show("login"); }); });
   document.addEventListener("mkg:langchange", function () { if (user) { renderList(); renderDay(); } });
 
   B.ready.then(function (live) {
-    if (!live) { $("[data-admin-offline]").hidden = false; $("[data-admin-form] button").disabled = true; return; }
+    if (!live) { $("[data-admin-offline]").hidden = false; $("[data-admin-form] button").disabled = true; $("[data-google-signin]").disabled = true; return; }
     B.onAuth(function (u) {
       if (!u) { show("login"); return; }
       B.isAdmin(u).then(function (ok) {

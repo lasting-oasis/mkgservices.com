@@ -34,7 +34,8 @@ not deploy it automatically).
 3. **Settings** tab → **Authorized domains**: make sure `mkgservices.com` and
    `www.mkgservices.com` are listed. Add them if not.
 
-Clients use the email link (no password). The admin uses a password.
+Clients sign in with Google or the email link (no password). The admin uses a
+password or Google (the Google provider is on by default in this project).
 
 ## 4. Create the admin account
 

@@ -538,6 +538,11 @@ button.cal-slot:not(:disabled):hover { border-color: var(--pine); }
 .acct-move { border-top: 1.5px solid var(--line); padding-top: 14px; display: grid; gap: 10px; }
 .acct-move-pick { font-weight: 700; margin: 0; }
 .admin-search { margin-bottom: 12px; }
+.btn-google { background: #fff; color: var(--ink); border: 1.5px solid var(--line); display: inline-flex; align-items: center; gap: 10px; }
+.btn-google:hover { background: #fafcfb; border-color: var(--pine); }
+.or-line { display: flex; align-items: center; gap: 12px; color: var(--muted); font-size: 0.9rem; margin: 16px 0; }
+.or-line::before, .or-line::after { content: ""; flex: 1; border-top: 1.5px solid var(--line); }
+.nav-signin { opacity: 0.85; }
 .admin-week { display: grid; gap: 4px; font-size: 0.93rem; }
 .admin-week-day { margin: 8px 0 2px; font-size: 0.95rem; }
 .admin-week ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; }

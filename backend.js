@@ -97,6 +97,17 @@
   function onAuth(cb) { ready.then(function (ok) { if (ok) auth.onAuthStateChanged(cb); else cb(null); }); }
   function signOut() { return ready.then(function (ok) { return ok ? auth.signOut() : null; }); }
   function signInPassword(email, password) { return auth.signInWithEmailAndPassword(email, password); }
+  // One-tap sign-in with a Google account. A popup where the browser allows
+  // it; otherwise the page redirects to Google and comes back signed in.
+  function signInGoogle() {
+    var provider = new fb.auth.GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: "select_account" });
+    return auth.signInWithPopup(provider).catch(function (e) {
+      var code = e && e.code;
+      if (code === "auth/popup-blocked" || code === "auth/operation-not-supported-in-this-environment" || code === "auth/cancelled-popup-request") return auth.signInWithRedirect(provider);
+      throw e;
+    });
+  }
   // Passwordless sign-in for clients: a link is emailed; opening it signs them in.
   var LINK_KEY = "mkg.signInEmail";
   function sendLink(email, returnTo) {
@@ -193,7 +204,7 @@
     get db() { return db; }, get auth() { return auth; }, get firebase() { return fb; },
     dates: { ymd: ymd, parse: parse, addDays: addDays, pad: pad },
     availability: availability, submitRequest: submitRequest,
-    onAuth: onAuth, signOut: signOut, signInPassword: signInPassword, sendLink: sendLink, isLink: isLink, completeLink: completeLink, isAdmin: isAdmin,
+    onAuth: onAuth, signOut: signOut, signInPassword: signInPassword, signInGoogle: signInGoogle, sendLink: sendLink, isLink: isLink, completeLink: completeLink, isAdmin: isAdmin,
     myRequests: myRequests, reschedule: reschedule, cancelRequest: cancelRequest, toMs: toMs,
     watchRequests: watchRequests, updateRequest: updateRequest, releaseHolds: releaseHolds, ensureHold: ensureHold,
     addManualHold: addManualHold, deleteHold: deleteHold, setDay: setDay, watchHolds: watchHolds,
