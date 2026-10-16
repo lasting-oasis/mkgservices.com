@@ -9,7 +9,8 @@
   if (!A || !I) return;
   var t = I.t, L = I.L;
 
-  var DRAFT_KEY = "mkg.quote";
+  var DRAFT_KEY = "mkg.quote" + (C.segment === "residential" ? "" : "." + C.segment);
+  var Q = C.quote || { typeField: "homeType", extraField: "pets", company: false };
   var form = document.getElementById("quote");
   var steps = Array.prototype.slice.call(form.querySelectorAll("[data-step]"));
   var marks = Array.prototype.slice.call(form.querySelectorAll("[data-step-mark]"));
@@ -32,19 +33,21 @@
   // ---------- draft persistence ----------
   function saveDraft() {
     var d = {
-      zip: value("zip"), homeType: checked("homeType")[0], pets: checked("pets")[0], notes: value("notes"),
+      zip: value("zip"), notes: value("notes"), company: value("company"),
       name: value("name"), email: value("email"), phone: value("phone"),
       contactMethod: checked("contactMethod")[0], days: checked("days"), timeOfDay: checked("timeOfDay")[0],
       service: draft.service, recency: draft.recency, outOfArea: draft.outOfArea, step: current,
     };
+    d[Q.typeField] = checked(Q.typeField)[0];
+    d[Q.extraField] = checked(Q.extraField)[0];
     try { localStorage.setItem(DRAFT_KEY, JSON.stringify(d)); } catch (e) { /* ignore */ }
   }
   function loadDraft() {
     var d = null;
     try { d = JSON.parse(localStorage.getItem(DRAFT_KEY) || "null"); } catch (e) { /* ignore */ }
     if (!d) return;
-    ["zip", "notes", "name", "email", "phone"].forEach(function (k) { if (d[k] && form.elements[k]) form.elements[k].value = d[k]; });
-    ["homeType", "pets", "contactMethod", "timeOfDay"].forEach(function (k) {
+    ["zip", "notes", "name", "email", "phone", "company"].forEach(function (k) { if (d[k] && form.elements[k]) form.elements[k].value = d[k]; });
+    [Q.typeField, Q.extraField, "contactMethod", "timeOfDay"].forEach(function (k) {
       var el = $('input[name="' + k + '"][value="' + (d[k] || "") + '"]');
       if (el) el.checked = true;
     });
@@ -98,8 +101,19 @@
     return null;
   }
   function fuEstimate(id) {
-    var tier = fuTier(id), s = A.state;
-    return tier ? A.estimate(C.followUp.basePlan, s.bedrooms, s.bathrooms, tier.uses) : null;
+    var tier = fuTier(id);
+    if (!tier) return null;
+    return A.estimate(C.followUp.basePlan, A.state, tier.uses !== undefined ? tier.uses : tier.discount);
+  }
+  function tierDiscount(tier) {
+    if (tier.uses !== undefined) { var f = A.frequency(tier.uses); return f ? f.discount : 0; }
+    return tier.discount || 0;
+  }
+  // {bedrooms: "3", bathrooms: "2"} or {sqft: "3,000", restrooms: "2"} for sentences.
+  function dimVars() {
+    var v = {};
+    C.dims.forEach(function (d) { v[d.id] = A.num(A.state[d.id]); });
+    return v;
   }
   function renderFollowUp() {
     var on = draft.service === "followup";
@@ -109,21 +123,21 @@
     var seg = $("[data-fu-control]");
     seg.setAttribute("role", "group");
     seg.innerHTML = C.followUp.tiers.map(function (tier) {
-      var f = A.frequency(tier.uses);
+      var disc = tierDiscount(tier);
       return '<button type="button" class="seg-btn" data-fu="' + tier.id + '" aria-pressed="' + (draft.recency === tier.id) + '">' +
         '<span class="seg-label">' + A.esc(L(tier.label)) + "</span>" +
-        (f.discount ? '<span class="seg-off">' + A.esc(t("seg.off", { pct: A.pct(f.discount) })) + "</span>"
+        (disc ? '<span class="seg-off">' + A.esc(t("seg.off", { pct: A.pct(disc) })) + "</span>"
                     : '<span class="seg-off seg-off-none">' + A.esc(t("seg.full")) + "</span>") + "</button>";
     }).join("");
     $all("[data-fu]", seg).forEach(function (b) {
       b.addEventListener("click", function () { draft.recency = b.getAttribute("data-fu"); renderFollowUp(); saveDraft(); });
     });
-    var e = fuEstimate(draft.recency), s = A.state;
+    var e = fuEstimate(draft.recency);
     $("[data-fu-estimate]").innerHTML =
       '<div class="estimate-price"><span class="price-big">' + A.esc(A.dollars(e.perVisit)) + '</span><span class="price-unit">' + A.esc(t("q.fu.unit")) + "</span></div>" +
       (e.saving ? '<span class="pill">' + A.esc(t("dial.save", { discount: A.pct(e.discount) })) + "</span>" : "") +
       "<p>" + A.esc(e.saving ? t("q.fu.was", { oneTime: A.dollars(e.oneTime), saving: A.dollars(e.saving) }) : t("q.fu.full", { oneTime: A.dollars(e.oneTime) })) + " " +
-      A.esc(t("q.fu.note", { bedrooms: s.bedrooms, bathrooms: s.bathrooms })) + "</p>";
+      A.esc(t("q.fu.note", dimVars())) + "</p>";
   }
 
   // Tabs above "Where's the home?" for the deep-clean visits: a first deep clean, or a follow-up after a recent one.
@@ -177,6 +191,9 @@
       }
     }
     if (step === 4) {
+      if (form.elements.company) {
+        if (!value("company")) { setError("company", t("err.company")); ok = false; } else setError("company", "");
+      }
       if (!value("name")) { setError("name", t("err.name")); ok = false; } else setError("name", "");
       if (!validEmail(value("email"))) { setError("email", t("err.email")); ok = false; } else setError("email", "");
       var method = checked("contactMethod")[0];
@@ -188,13 +205,16 @@
   }
 
   // ---------- review ----------
+  function unitKey(dimId) { return dimId === "bedrooms" ? "bedroom" : dimId === "bathrooms" ? "bathroom" : dimId; }
   function summary() {
     var s = A.state;
-    var pets = checked("pets")[0];
+    var extra = checked(Q.extraField)[0];
+    var size = C.dims.map(function (d) { return A.num(s[d.id]) + " " + I.plural("unit." + unitKey(d.id), s[d.id]); }).join(", ");
     var rows = [
-      [t("review.home"), t("review.in", { type: t("q.homeType." + checked("homeType")[0]), zip: value("zip") }) + (draft.outOfArea ? " " + t("review.outside") : ""), 1],
-      [t("review.size"), s.bedrooms + " " + I.plural("unit.bedroom", s.bedrooms) + ", " + s.bathrooms + " " + I.plural("unit.bathroom", s.bathrooms) + ", " + t("review.pets." + pets), 2],
+      [t("review.home"), t("review.in", { type: t("q." + Q.typeField + "." + checked(Q.typeField)[0]), zip: value("zip") }) + (draft.outOfArea ? " " + t("review.outside") : ""), 1],
+      [t("review.size"), size + (extra ? ", " + t("review." + Q.extraField + "." + extra) : ""), 2],
     ];
+    if (form.elements.company) rows.push([t("review.company"), value("company"), 4]);
     if (draft.service) {
       if (draft.service === "followup") {
         var fu = fuEstimate(draft.recency);
@@ -207,11 +227,11 @@
         rows.push([t("review.service"), L(singleClean(draft.service).name) + ", " + t("review.quoted"), 3]);
       }
     } else {
-      var e = A.estimate(s.plan, s.bedrooms, s.bathrooms, s.frequency);
+      var e = A.estimate(s.plan, s, s.frequency);
       var f = A.frequency(s.frequency);
       rows.push([t("review.plan"), L(A.plan(s.plan).name) + ", " + L(f.label).toLowerCase(), 3]);
       rows.push([t("review.estimate"), e.saving
-        ? t("review.estimateV", { perVisit: A.dollars(e.perVisit), unit: e.perVisitLabel, pct: A.pct(e.discount), oneTime: A.dollars(e.oneTime) })
+        ? t("review.estimateV", { perVisit: A.dollars(e.perVisit), unit: e.perVisitLabel, pct: A.pct(e.discount), oneTime: A.dollars(e.oneTime), perMonth: e.perMonth === null ? "" : A.dollars(e.perMonth) })
         : A.dollars(e.perVisit) + " " + e.perVisitLabel, 3]);
     }
     var method = checked("contactMethod")[0];
@@ -265,11 +285,15 @@
     var p = {
       submittedAt: new Date().toISOString(),
       language: I.lang,
-      zip: value("zip"), outOfArea: draft.outOfArea, homeType: checked("homeType")[0],
-      bedrooms: s.bedrooms, bathrooms: s.bathrooms, pets: checked("pets")[0], notes: value("notes"),
+      segment: C.segment,
+      zip: value("zip"), outOfArea: draft.outOfArea, notes: value("notes"),
       name: value("name"), email: value("email"), phone: value("phone"),
       contactMethod: checked("contactMethod")[0], days: checked("days"), timeOfDay: checked("timeOfDay")[0],
     };
+    p[Q.typeField] = checked(Q.typeField)[0];
+    p[Q.extraField] = checked(Q.extraField)[0];
+    if (form.elements.company) p.company = value("company");
+    C.dims.forEach(function (d) { p[d.id] = s[d.id]; });
     if (draft.service) {
       p.service = singleClean(draft.service).name.en;
       if (draft.service === "followup") {
@@ -278,11 +302,12 @@
         p.estimateOneVisit = fu.perVisit; p.estimateFullPrice = fu.oneTime; p.discount = fu.discount;
       }
     } else {
-      var e = A.estimate(s.plan, s.bedrooms, s.bathrooms, s.frequency);
+      var e = A.estimate(s.plan, s, s.frequency);
       p.plan = A.plan(s.plan).name.en; p.frequency = A.frequency(s.frequency).label.en;
       p.estimatePerVisit = e.perVisit; p.estimateFullPrice = e.oneTime; p.discount = e.discount;
+      if (e.perMonth !== null) p.estimatePerMonth = e.perMonth;
     }
-    p._subject = "Quote request: " + (p.service || p.plan + ", " + p.frequency) + " (ZIP " + p.zip + ")";
+    p._subject = (C.segment === "commercial" ? "Commercial quote request: " : "Quote request: ") + (p.company ? p.company + ", " : "") + (p.service || p.plan + ", " + p.frequency) + " (ZIP " + p.zip + ")";
     return p;
   }
 

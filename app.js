@@ -9,7 +9,7 @@
   if (!C || !C.i18n) return;
   var I = C.i18n, t = I.t, L = I.L;
 
-  var STORAGE_KEY = "mkg.state";
+  var STORAGE_KEY = "mkg.state" + (C.segment === "residential" ? "" : "." + C.segment);
 
   // ---------- pricing ----------
   function plan(id) {
@@ -20,20 +20,33 @@
     for (var i = 0; i < C.frequencies.length; i++) if (C.frequencies[i].id === id) return C.frequencies[i];
     return null;
   }
-  function estimate(planId, bedrooms, bathrooms, freqId) {
-    var p = plan(planId), f = frequency(freqId);
-    if (!p || !f) return null;
-    var oneTime = p.base + p.perBedroom * bedrooms + p.perBathroom * bathrooms;
-    var perVisit = Math.round(oneTime * (1 - f.discount));
+  function dim(id) {
+    for (var i = 0; i < C.dims.length; i++) if (C.dims[i].id === id) return C.dims[i];
+    return null;
+  }
+  // size: an object of dim values (the shared state works). freq: a frequency id,
+  // or a plain discount number for one-off pricing such as the follow-up tiers.
+  function estimate(planId, size, freq) {
+    var p = plan(planId);
+    var f = typeof freq === "number" ? null : frequency(freq);
+    if (!p || (f === null && typeof freq !== "number")) return null;
+    var discount = f ? f.discount : freq;
+    var oneTime = p.base;
+    C.dims.forEach(function (d) { oneTime += (p.per[d.id] || 0) * (size[d.id] || 0); });
+    var perVisit = Math.round(oneTime * (1 - discount));
+    var vpm = f && f.visitsPerMonth;
     return {
       oneTime: Math.round(oneTime),
       perVisit: perVisit,
       saving: Math.round(oneTime) - perVisit,
-      discount: f.discount,
-      perVisitLabel: L(f.perVisitLabel),
+      discount: discount,
+      perVisitLabel: L((f || frequency("onetime") || C.frequencies[0]).perVisitLabel),
+      perMonth: vpm ? Math.round(perVisit * vpm) : null,
+      visitsPerMonth: vpm || null,
     };
   }
   function dollars(n) { return "$" + n.toLocaleString("en-US"); }
+  function num(n) { return Number(n).toLocaleString("en-US"); }
   function pct(d) { return Math.round(d * 100) + "%"; }
   // "Monthly: 5% off every visit. Every 2 weeks: 10% off. Weekly: 15% off."
   function discountSentence() {
@@ -43,19 +56,14 @@
   }
 
   // ---------- state ----------
-  var state = {
-    bedrooms: C.defaults.bedrooms,
-    bathrooms: C.defaults.bathrooms,
-    plan: C.defaults.plan,
-    frequency: C.defaults.frequency,
-  };
-  function clamp(n, range) { return Math.min(range[1], Math.max(range[0], n)); }
+  var state = { plan: C.defaults.plan, frequency: C.defaults.frequency };
+  C.dims.forEach(function (d) { state[d.id] = d.default; });
+  function clamp(n, d) { return Math.min(d.max, Math.max(d.min, n)); }
   function load() {
     try {
       var saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
       if (saved) {
-        if (typeof saved.bedrooms === "number") state.bedrooms = clamp(saved.bedrooms, C.limits.bedrooms);
-        if (typeof saved.bathrooms === "number") state.bathrooms = clamp(saved.bathrooms, C.limits.bathrooms);
+        C.dims.forEach(function (d) { if (typeof saved[d.id] === "number") state[d.id] = clamp(saved[d.id], d); });
         if (plan(saved.plan)) state.plan = saved.plan;
         if (frequency(saved.frequency)) state.frequency = saved.frequency;
       }
@@ -108,7 +116,8 @@
   function buildSteppers() {
     $all("[data-stepper]").forEach(function (el) {
       var key = el.dataset.stepper;
-      var range = C.limits[key];
+      var d = dim(key);
+      if (!d) return;
       el.classList.add("stepper");
       el.innerHTML =
         '<button type="button" class="stepper-btn" data-dir="-1" aria-label="' + esc(t("stepper.fewer." + key)) + '">−</button>' +
@@ -117,7 +126,7 @@
       $all(".stepper-btn", el).forEach(function (b) {
         b.addEventListener("click", function () {
           var patch = {};
-          patch[key] = clamp(state[key] + Number(b.dataset.dir), range);
+          patch[key] = clamp(state[key] + Number(b.dataset.dir) * d.step, d);
           set(patch);
         });
       });
@@ -145,12 +154,13 @@
       b.setAttribute("aria-pressed", b.dataset.freq === state.frequency ? "true" : "false");
     });
     $all("[data-stepper]").forEach(function (el) {
-      var key = el.dataset.stepper, range = C.limits[key];
+      var key = el.dataset.stepper, d = dim(key);
+      if (!d) return;
       var out = el.querySelector(".stepper-value");
-      if (out) out.textContent = state[key] + (state[key] === range[1] ? "+" : "") + " " + I.plural("stepper." + key, state[key]);
+      if (out) out.textContent = num(state[key]) + (state[key] === d.max ? "+" : "") + " " + I.plural("stepper." + key, state[key]);
       var minus = el.querySelector('[data-dir="-1"]'), plus = el.querySelector('[data-dir="1"]');
-      if (minus) minus.disabled = state[key] <= range[0];
-      if (plus) plus.disabled = state[key] >= range[1];
+      if (minus) minus.disabled = state[key] <= d.min;
+      if (plus) plus.disabled = state[key] >= d.max;
     });
     $all("[data-plan-pick]").forEach(function (el) {
       el.setAttribute("aria-pressed", el.dataset.planPick === state.plan ? "true" : "false");
@@ -158,7 +168,7 @@
     // Prices: [data-price="planId|current"] with optional [data-price-part]
     $all("[data-price]").forEach(function (el) {
       var id = el.dataset.price === "current" ? state.plan : el.dataset.price;
-      var e = estimate(id, state.bedrooms, state.bathrooms, state.frequency);
+      var e = estimate(id, state, state.frequency);
       if (!e) return;
       var part = el.dataset.pricePart || "perVisit";
       var next;
@@ -167,6 +177,7 @@
         case "saving": next = dollars(e.saving); break;
         case "discount": next = pct(e.discount); break;
         case "label": next = e.perVisitLabel; break;
+        case "perMonth": next = e.perMonth === null ? "" : dollars(e.perMonth); break;
         default: next = dollars(e.perVisit);
       }
       if (el.textContent !== next) { el.textContent = next; if (part === "perVisit") pop(el); }
@@ -174,23 +185,25 @@
     var f = frequency(state.frequency), hasDiscount = !!(f && f.discount);
     $all("[data-saving-pill]").forEach(function (el) { el.hidden = !hasDiscount; });
     $all("[data-fullprice-note]").forEach(function (el) { el.hidden = hasDiscount; });
+    // Monthly figures only exist where the frequency says how many visits a month it is.
+    var monthly = !!(f && f.visitsPerMonth);
+    $all("[data-monthly]").forEach(function (el) { el.hidden = !monthly; });
     // Text slots
     var p = plan(state.plan);
     var map = {
       planName: p ? L(p.name) : "",
       planTagline: p ? L(p.tagline) : "",
       frequencyLabel: f ? L(f.label).toLowerCase() : "",
-      bedrooms: String(state.bedrooms),
-      bathrooms: String(state.bathrooms),
       discountSentence: discountSentence(),
     };
+    C.dims.forEach(function (d) { map[d.id] = num(state[d.id]); });
     $all("[data-text]").forEach(function (el) {
       if (map[el.dataset.text] !== undefined) el.textContent = map[el.dataset.text];
     });
     // Links that carry the current choice
     $all("[data-quote-link]").forEach(function (a) {
       var id = a.dataset.quoteLink === "current" ? state.plan : a.dataset.quoteLink;
-      a.setAttribute("href", "quote.html?plan=" + encodeURIComponent(id) + "&freq=" + encodeURIComponent(state.frequency));
+      a.setAttribute("href", C.pages.quote + "?plan=" + encodeURIComponent(id) + "&freq=" + encodeURIComponent(state.frequency));
     });
   }
 
@@ -207,6 +220,7 @@
           '<p class="plan-tagline">' + esc(L(p.tagline)) + "</p>" +
           '<div class="plan-price"><span class="price-big" data-price="' + p.id + '"></span>' +
             '<span class="price-unit" data-price="' + p.id + '" data-price-part="label"></span></div>' +
+          '<p class="plan-monthly" data-monthly hidden>' + esc(t("plans.monthly")) + ' <span data-price="' + p.id + '" data-price-part="perMonth"></span></p>' +
           '<div class="plan-was">' +
             '<span data-saving-pill><s data-price="' + p.id + '" data-price-part="oneTime"></s> ' + esc(t("plans.atFull")) + "</span>" +
             '<span class="pill" data-saving-pill>' + esc(t("plans.save")) + ' <span data-price="' + p.id + '" data-price-part="discount"></span></span>' +
@@ -241,7 +255,7 @@
   function renderSingles(container) {
     container.innerHTML = C.singleCleans.map(function (s) {
       return '<article class="single"><h3 class="heading">' + esc(L(s.name)) + "</h3><p>" + esc(L(s.description)) + "</p>" +
-        '<a class="btn btn-secondary btn-sm" href="quote.html?service=' + encodeURIComponent(s.id) + '">' + esc(t("singles.cta")) + "</a></article>";
+        '<a class="btn btn-secondary btn-sm" href="' + C.pages.quote + '?service=' + encodeURIComponent(s.id) + '">' + esc(t("singles.cta")) + "</a></article>";
     }).join("");
   }
 
@@ -283,9 +297,39 @@
     $all("[data-business-wrap]").forEach(function (el) { el.hidden = !L(b[el.dataset.businessWrap]); });
   }
 
+  function menus() {
+    var open = null;
+    function close() {
+      if (!open) return;
+      open.btn.setAttribute("aria-expanded", "false");
+      open.panel.hidden = true;
+      open = null;
+    }
+    $all("[data-menu]").forEach(function (wrap) {
+      var btn = wrap.querySelector("button"), panel = wrap.querySelector(".menu-panel");
+      if (!btn || !panel) return;
+      btn.addEventListener("click", function (ev) {
+        ev.stopPropagation();
+        var wasOpen = open && open.btn === btn;
+        close();
+        if (!wasOpen) {
+          open = { btn: btn, panel: panel };
+          btn.setAttribute("aria-expanded", "true");
+          panel.hidden = false;
+          var first = panel.querySelector("a");
+          if (first) first.focus({ preventScroll: true });
+        }
+      });
+      panel.addEventListener("click", function (ev) { ev.stopPropagation(); });
+    });
+    document.addEventListener("click", close);
+    document.addEventListener("keydown", function (ev) { if (ev.key === "Escape") close(); });
+  }
+
   function chrome() {
     var y = document.querySelector("[data-year]");
     if (y) y.textContent = String(new Date().getFullYear());
+    menus();
 
     var toggle = document.querySelector(".nav-toggle");
     var header = document.querySelector(".site-header");
@@ -320,8 +364,8 @@
   }
 
   C.app = {
-    state: state, set: set, estimate: estimate, plan: plan, frequency: frequency,
-    dollars: dollars, pct: pct, esc: esc, render: render, relocalize: relocalize, fillBusiness: fillBusiness,
+    state: state, set: set, estimate: estimate, plan: plan, frequency: frequency, dim: dim,
+    dollars: dollars, num: num, pct: pct, esc: esc, render: render, relocalize: relocalize, fillBusiness: fillBusiness,
     onChange: function (fn) { listeners.push(fn); },
   };
 

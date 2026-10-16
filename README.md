@@ -4,17 +4,24 @@ Website for MKG Services, LLC, a residential cleaning service. Static site, no b
 
 ## Pages
 
+Two service lines share one engine. Residential is priced by bedrooms and bathrooms; commercial by square feet and restrooms, with a visits-per-week ladder and an approximate monthly figure. The home page's "Commercial service" button opens the three commercial actions (quote, compare, single clean) so the hero stays uncluttered; the commercial pages have the mirror "Residential service" button.
+
 | File | What it is |
 |---|---|
-| `index.html` | Home: hero with the live plan dial, how a plan works, plans, single cleans, FAQ |
-| `plans.html` | Plans with the estimator, full comparison table, pricing notes |
-| `quote.html` | Five-step quote request (ZIP, home, plan and schedule, contact, review) |
+| `index.html` | Residential home: hero with the live plan dial, how a plan works, plans, single cleans, FAQ |
+| `plans.html` | Residential plans with the estimator, full comparison table, pricing notes |
+| `quote.html` | Residential five-step quote request (ZIP, home, plan and schedule, contact, review) |
+| `commercial.html` | Commercial home, same structure, priced by floor space and restrooms |
+| `commercial-plans.html` | Commercial plans, comparison, and pricing notes |
+| `commercial-quote.html` | Commercial quote: building ZIP, type of space, floor space, restrooms, flooring, business name, when to clean |
+
+A page picks its line with `<script>window.MKG_SEGMENT = "commercial"</script>` before `plans.js`; pages without it are residential.
 
 ## Languages
 
 The site is in English and Spanish. Visitors switch with the EN / ES buttons in the top bar; the choice is remembered, and `?lang=es` on any page URL opens it in Spanish (useful for sharing a Spanish link, e.g. `index.html?lang=es`). The browser's language picks the default on a first visit.
 
-- Fixed page text lives in **`i18n.js`** under keys, once per language.
+- Fixed page text lives in **`i18n.js`** under keys, once per language. Commercial pages read `commercial:<key>` first and fall back to the shared key, so only copy that differs is written twice.
 - Owner-edited content in `plans.js` (plan names, what's included, single cleans, response time) is written as `{ en: "...", es: "..." }`.
 
 ## Contact
@@ -38,7 +45,7 @@ The legal suffix is left off the mark on purpose: "MKG Services" is the brand, "
 
 ## Files the owner edits
 
-- **`plans.js`** is the single source of truth: business details, plan names and what they include, pricing formula, recurring discounts, comparison table rows, service ZIPs, and the form endpoint. Pages read it; no markup edits needed for those changes.
+- **`plans.js`** is the single source of truth: business details, then one block per service line (`segments.residential`, `segments.commercial`) with its size inputs (`dims`), plans and per-unit prices, schedule discounts, comparison rows, single cleans, and follow-up tiers. Pages read it; no markup edits needed for those changes.
 - **`i18n.js`** for any fixed sentence on the pages, in both languages.
 - `styles.css` holds the colors and type at the top in `:root`.
 
@@ -61,7 +68,7 @@ The site is live at https://mkgservices.com (domain bought at Cloudflare Registr
 
 ## Before launch
 
-1. **Replace the placeholder pricing** in `plans.js` (`base`, `perBedroom`, `perBathroom`) with real rates. The site labels prices as estimates until then.
+1. **Replace the placeholder pricing** in `plans.js` (`base` and `per` amounts for both residential and commercial plans; the commercial visit-ladder discounts too). The site labels prices as estimates until then.
 2. **Connect the quote form.** Set `formEndpoint` in `plans.js` to a Formspree/Basin/serverless endpoint that accepts a JSON POST. Until it's set, the form shows a demo confirmation and sends nothing.
 3. **Add the service area** (`serviceArea`, in both languages) in `plans.js` if you want it shown in the footer. Phone and email are already in.
 4. **Set `serviceZips`** if you want the ZIP step to check coverage. Empty means every ZIP is accepted and coverage is confirmed by reply.

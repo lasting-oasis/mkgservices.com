@@ -430,3 +430,22 @@ fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
 .service-tabs .seg { display: flex; flex-wrap: wrap; }
 .service-tabs .seg-btn { flex: 1 1 160px; }
 .service-tabs .step-intro { margin-top: 12px; }
+
+/* ---------- hero menu button (Commercial / Residential service) ---------- */
+.menu { position: relative; }
+.menu .caret { margin-left: 6px; transition: transform 0.15s ease; }
+.menu button[aria-expanded="true"] .caret { transform: rotate(180deg); }
+.menu-panel {
+  position: absolute; top: calc(100% + 8px); left: 0; z-index: 30; min-width: 280px;
+  background: var(--paper); border: 1.5px solid var(--line); border-radius: 14px; padding: 6px;
+  box-shadow: 0 14px 40px rgba(15, 46, 44, 0.16); display: grid; gap: 2px;
+}
+.menu-panel a { display: block; padding: 11px 14px; border-radius: 10px; color: var(--ink); text-decoration: none; font-weight: 600; }
+.menu-panel a:hover, .menu-panel a:focus-visible { background: var(--mist); outline: none; }
+.dial-monthly { margin-top: 6px; font-weight: 700; color: var(--lemon); }
+.plan-monthly { margin-top: 2px; font-size: 0.95rem; font-weight: 600; color: var(--pine); }
+@media (max-width: 720px) {
+  .menu { width: 100%; }
+  .menu > button { width: 100%; }
+  .menu-panel { left: 0; right: 0; min-width: 0; }
+}
