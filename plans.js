@@ -31,13 +31,37 @@
       responseTime: { en: "within one business day", es: "en un día hábil" },
     },
 
-    // Where quote requests are sent. Leave empty to show a demo confirmation.
-    // Works with Formspree, Basin, Netlify Functions, or any endpoint that
-    // accepts a JSON POST. Example: "https://formspree.io/f/abcd1234"
+    // Quote requests are saved to the site's Firebase database (see
+    // docs/SETUP-firebase.md) and show up on admin.html. To ALSO get an email
+    // for each one, paste a form-service URL here (Formspree, Basin, or any
+    // endpoint that accepts a JSON POST). Example: "https://formspree.io/f/abcd1234"
     formEndpoint: "",
 
     // ZIP codes served. Leave empty to accept any ZIP and confirm coverage later.
     serviceZips: [],
+
+    // The booking calendar. A "slot" is a time window a crew can start in;
+    // `capacity` is how many jobs can start in the same window on one day
+    // (roughly, how many crews you run). Visitors see a window as full once
+    // that many requests hold it. Days off and blocked windows are set on
+    // admin.html, not here.
+    availability: {
+      capacity: 2,
+      weekdays: [1, 2, 3, 4, 5, 6],   // 0 = Sunday ... 6 = Saturday
+      leadDays: 2,                    // earliest bookable day is this many days out
+      horizonDays: 60,                // how far ahead the calendar opens
+      slots: [
+        { id: "0800", label: { en: "Morning", es: "Mañana" },         time: "8:00–11:00",  segments: ["residential", "commercial"] },
+        { id: "1130", label: { en: "Midday", es: "Mediodía" },        time: "11:30–2:30",  segments: ["residential", "commercial"] },
+        { id: "1500", label: { en: "Afternoon", es: "Tarde" },        time: "3:00–6:00",   segments: ["residential", "commercial"] },
+        { id: "1830", label: { en: "After hours", es: "Fuera de horario" }, time: "6:30–9:30 pm", segments: ["commercial"] },
+      ],
+    },
+
+    // Online payment. Create a Payment Link in Stripe (no code needed) and paste
+    // it here to show a "Pay online" button to signed-in clients; a link pasted
+    // on a single request in admin.html overrides it for that client.
+    payments: { link: "" },
   };
 
   var segments = {};

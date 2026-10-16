@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title data-i18n="meta.title.account">Your account | MKG Services</title>
+  <meta name="description" data-i18n-attr="content:meta.title.account.desc" content="Sign in with your email to see the status of your cleaning requests from MKG Services.">
+  <meta name="robots" content="noindex">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&display=swap" rel="stylesheet">
+  <link rel="icon" href="brand/favicon-32.png" type="image/png" sizes="32x32">
+  <link rel="icon" href="brand/favicon-192.png" type="image/png" sizes="192x192">
+  <link rel="shortcut icon" href="favicon.ico">
+  <link rel="apple-touch-icon" href="brand/apple-touch-icon.png">
+  <meta name="theme-color" content="#176b61">
+  <link rel="stylesheet" href="styles.css?v=13">
+</head>
+<body>
+  <div class="topbar">
+    <div class="container topbar-inner">
+      <div class="lang" role="group" data-i18n-attr="aria-label:top.language" aria-label="Language">
+        <button type="button" class="lang-btn" data-lang-switch="en" lang="en" data-i18n-attr="aria-label:top.en" aria-label="English">EN</button>
+        <button type="button" class="lang-btn" data-lang-switch="es" lang="es" data-i18n-attr="aria-label:top.es" aria-label="Español">ES</button>
+      </div>
+      <div class="topbar-contact" data-i18n-attr="aria-label:top.contact" aria-label="Contact">
+        <a class="topbar-link" href="#" data-business="phone" data-business-keep>
+          <svg width="15" height="15" viewBox="0 0 24 24" aria-hidden="true"><path d="M6.6 10.8a15.1 15.1 0 0 0 6.6 6.6l2.2-2.2a1 1 0 0 1 1-.25 11.4 11.4 0 0 0 3.6.57 1 1 0 0 1 1 1V20a1 1 0 0 1-1 1A17 17 0 0 1 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1c0 1.25.2 2.45.57 3.57a1 1 0 0 1-.25 1z" fill="currentColor"/></svg>
+          <span data-i18n="top.call">Call</span> <b data-business="phone"></b>
+        </a>
+        <a class="topbar-link" href="#" data-business="sms" data-business-keep>
+          <svg width="15" height="15" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H9l-5 4v-4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z" fill="currentColor"/></svg>
+          <span data-i18n="top.text">Text</span>
+        </a>
+        <a class="topbar-link topbar-email" href="#" data-business="email"></a>
+      </div>
+    </div>
+  </div>
+
+  <header class="site-header">
+    <div class="container site-header-inner">
+      <a class="brand" href="index.html" data-i18n-attr="aria-label:brand.home" aria-label="MKG Services home">
+        <span class="brand-mark" aria-hidden="true"><picture><source srcset="brand/logo-full-112.webp" type="image/webp"><img src="brand/logo-full-112.png" alt="" width="56" height="56"></picture></span>
+        MKG Services
+      </a>
+      <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav" data-i18n-attr="aria-label:nav.menu" aria-label="Menu">
+        <svg width="20" height="14" viewBox="0 0 20 14" aria-hidden="true"><path d="M1 1h18M1 7h18M1 13h18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      </button>
+      <nav class="site-nav" id="site-nav" data-i18n-attr="aria-label:nav.main" aria-label="Main">
+        <a href="plans.html" data-i18n="nav.plans">Plans</a>
+        <a href="index.html#single-cleans" data-i18n="nav.singles">Single cleans</a>
+        <a href="index.html#faq" data-i18n="nav.faq">FAQ</a>
+        <a href="availability.html" data-i18n="nav.availability">Availability</a>
+        <a href="commercial.html" data-i18n="nav.commercial">Commercial</a>
+        <a class="btn btn-sm" href="quote.html" data-i18n="nav.quote">Get a quote</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="quote-wrap">
+    <div class="container">
+      <div class="quote-card">
+        <section class="step" data-acct="loading">
+          <h1 class="title" data-i18n="acct.h1">Your requests</h1>
+          <p class="muted" data-i18n="acct.loading">One moment…</p>
+        </section>
+
+        <section class="step" data-acct="signin" hidden>
+          <h1 class="title" data-i18n="acct.h1">Your requests</h1>
+          <p class="step-intro" data-i18n="acct.lead">No password to remember. Enter the email you used on your quote request and we'll send you a sign-in link.</p>
+          <form data-acct-form novalidate>
+            <div class="field">
+              <label for="acct-email" data-i18n="q.email">Email</label>
+              <input class="input" id="acct-email" name="email" type="email" autocomplete="email" inputmode="email">
+              <p class="field-error" data-error="email"></p>
+            </div>
+            <div class="step-actions" style="justify-content:flex-start">
+              <button class="btn" type="submit" data-i18n="acct.sendLink">Email me a sign-in link</button>
+            </div>
+          </form>
+          <p class="notice" data-acct-sent hidden data-i18n="acct.sent">Check your inbox. The link signs you in on this device; it's good for a short while.</p>
+          <p class="notice" data-acct-offline hidden data-i18n="acct.offline">Sign-in isn't available on this copy of the site.</p>
+        </section>
+
+        <section class="step" data-acct="confirm" hidden>
+          <h1 class="title" data-i18n="acct.confirmH">Confirm your email</h1>
+          <p class="step-intro" data-i18n="acct.confirmP">You opened the sign-in link on a different device. Enter the same email to finish.</p>
+          <form data-acct-confirm novalidate>
+            <div class="field">
+              <label for="acct-email2" data-i18n="q.email">Email</label>
+              <input class="input" id="acct-email2" name="email" type="email" autocomplete="email" inputmode="email">
+              <p class="field-error" data-error="email2"></p>
+            </div>
+            <div class="step-actions" style="justify-content:flex-start">
+              <button class="btn" type="submit" data-i18n="acct.finish">Sign in</button>
+            </div>
+          </form>
+        </section>
+
+        <section class="step" data-acct="list" hidden>
+          <div class="acct-bar">
+            <div>
+              <h1 class="title" data-i18n="acct.h1">Your requests</h1>
+              <p class="muted"><span data-i18n="acct.signedInAs">Signed in as</span> <b data-acct-email></b></p>
+            </div>
+            <button type="button" class="btn btn-secondary btn-sm" data-acct-signout data-i18n="acct.signOut">Sign out</button>
+          </div>
+          <div class="acct-list" data-acct-list></div>
+          <p class="notice" data-acct-empty hidden data-i18n="acct.empty">Nothing under this email yet. {quoteLink}</p>
+          <p class="field-hint" data-i18n="acct.help">Questions about a request? Call or text {phone}, or email {email}.</p>
+        </section>
+      </div>
+    </div>
+  </main>
+  <footer class="site-footer">
+    <div class="container footer-grid">
+      <div class="footer-contact">
+        <picture><source srcset="brand/logo-full-320.webp" type="image/webp"><img class="footer-badge" src="brand/logo-full-320.png" alt="MKG Services, Charlotte, North Carolina, established 2014" width="132" height="132" loading="lazy"></picture>
+        <strong data-business="name">MKG Services, LLC</strong>
+        <span data-business-wrap="serviceArea" data-i18n="footer.serving">Serving {serviceArea}</span>
+        <a href="#" data-business="phone" data-business-keep><span data-i18n="footer.call">Call</span> <span data-business="phone"></span></a>
+        <a href="#" data-business="sms" data-business-keep data-i18n="footer.text">Text us</a>
+        <a href="#" data-business="email"></a>
+      </div>
+      <nav class="footer-links" data-i18n-attr="aria-label:footer.nav" aria-label="Footer">
+        <a href="plans.html" data-i18n="nav.plans">Plans</a>
+        <a href="index.html#single-cleans" data-i18n="nav.singles">Single cleans</a>
+        <a href="index.html#faq" data-i18n="nav.faq">FAQ</a>
+        <a href="quote.html" data-i18n="nav.quote">Get a quote</a>
+        <a href="commercial.html" data-i18n="nav.commercial">Commercial</a>
+        <a href="availability.html" data-i18n="nav.availability">Availability</a>
+        <a href="account.html" data-i18n="nav.account">Client sign-in</a>
+        <a href="privacy.html" data-i18n="nav.privacy">Privacy</a>
+        <a href="terms.html" data-i18n="nav.terms">Terms</a>
+      </nav>
+      <p>&copy; <span data-year></span> MKG Services, LLC</p>
+    </div>
+  </footer>
+
+  <script src="plans.js?v=13"></script>
+  <script src="i18n.js?v=13"></script>
+  <script src="app.js?v=13"></script>
+  <script src="backend.js?v=13"></script>
+  <script src="calendar.js?v=13"></script>
+  <script src="account.js?v=13"></script>
+</body>
+</html>

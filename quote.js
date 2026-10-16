@@ -1,5 +1,7 @@
 /*
-  Quote flow: five short steps, a review, and a send.
+  Quote flow: five short steps (including a date picker), a review, and a send.
+  Requests are saved to Firebase through backend.js; when a date and time
+  window were picked the request also holds that window on the calendar.
   Plan, schedule, bedrooms, and bathrooms come from the shared state in app.js,
   so whatever the visitor chose on the home or plans page is already filled in.
 */
@@ -15,7 +17,9 @@
   var steps = Array.prototype.slice.call(form.querySelectorAll("[data-step]"));
   var marks = Array.prototype.slice.call(form.querySelectorAll("[data-step-mark]"));
   var current = 1;
-  var draft = { service: null, outOfArea: false, recency: (C.followUp || {}).defaultTier };
+  var draft = { service: null, outOfArea: false, recency: (C.followUp || {}).defaultTier, date: "", slot: "" };
+  var B = C.backend, cal = null;
+  var REVIEW = 6;
 
   function $(sel, root) { return (root || form).querySelector(sel); }
   function $all(sel, root) { return Array.prototype.slice.call((root || form).querySelectorAll(sel)); }
@@ -37,14 +41,15 @@
       name: value("name"), email: value("email"), phone: value("phone"),
       contactMethod: checked("contactMethod")[0], days: checked("days"), timeOfDay: checked("timeOfDay")[0],
       service: draft.service, recency: draft.recency, outOfArea: draft.outOfArea, step: current,
+      date: draft.date, slot: draft.slot,
     };
     d[Q.typeField] = checked(Q.typeField)[0];
     d[Q.extraField] = checked(Q.extraField)[0];
-    try { localStorage.setItem(DRAFT_KEY, JSON.stringify(d)); } catch (e) { /* ignore */ }
+    try { sessionStorage.setItem(DRAFT_KEY, JSON.stringify(d)); } catch (e) { /* ignore */ }
   }
   function loadDraft() {
     var d = null;
-    try { d = JSON.parse(localStorage.getItem(DRAFT_KEY) || "null"); } catch (e) { /* ignore */ }
+    try { d = JSON.parse(sessionStorage.getItem(DRAFT_KEY) || "null"); } catch (e) { /* ignore */ }
     if (!d) return;
     ["zip", "notes", "name", "email", "phone", "company"].forEach(function (k) { if (d[k] && form.elements[k]) form.elements[k].value = d[k]; });
     [Q.typeField, Q.extraField, "contactMethod", "timeOfDay"].forEach(function (k) {
@@ -57,8 +62,35 @@
     draft.service = d.service || null;
     if (fuTier(d.recency)) draft.recency = d.recency;
     draft.outOfArea = !!d.outOfArea;
+    draft.date = d.date || ""; draft.slot = d.slot || "";
   }
-  function clearDraft() { try { localStorage.removeItem(DRAFT_KEY); } catch (e) { /* ignore */ } }
+  function clearDraft() { try { sessionStorage.removeItem(DRAFT_KEY); } catch (e) { /* ignore */ } }
+
+  // ---------- date and time window (step 5) ----------
+  function renderWhen() {
+    var box = $("[data-calendar]");
+    if (!box || !C.calendar) return;
+    if (!cal) {
+      cal = C.calendar.mount(box, {
+        segment: C.segment, pickable: true, value: { date: draft.date, slot: draft.slot },
+        onChange: function (v) { draft.date = v.date; draft.slot = v.slot; renderWhenSummary(); saveDraft(); },
+      });
+    }
+    renderWhenSummary();
+  }
+  function whenText() {
+    if (!draft.date) return t("review.flexible");
+    return C.calendar.fmtDate(draft.date) + ", " + (draft.slot ? C.calendar.slotLabel(draft.slot) : t("cal.anyWindow").toLowerCase());
+  }
+  function renderWhenSummary() {
+    var el = $("[data-when-summary]");
+    if (!el) return;
+    el.textContent = draft.date ? t("q.when.picked", { when: whenText() }) : t("q.when.none");
+    var clear = $("[data-when-clear]");
+    if (clear) clear.hidden = !draft.date;
+    var prefs = $("[data-when-prefs]");
+    if (prefs) prefs.hidden = !!draft.date;
+  }
 
   // ---------- plan options (step 3) ----------
   function singleClean(id) {
@@ -237,7 +269,8 @@
     var method = checked("contactMethod")[0];
     rows.push([t("review.contact"), value("name") + ", " + value("email") + (value("phone") ? ", " + value("phone") : "") + ". " + t("review.prefers." + method), 4]);
     var days = checked("days"), tod = checked("timeOfDay")[0];
-    rows.push([t("review.timing"), (days.length ? days.map(function (d) { return t("q.day." + d); }).join(", ") : t("review.anyDay")) + ", " + t("review.time." + tod), 4]);
+    rows.push([t("review.timing"), draft.date ? whenText()
+      : (days.length ? days.map(function (d) { return t("q.day." + d); }).join(", ") : t("review.anyDay")) + ", " + t("review.time." + tod), 5]);
     if (value("notes")) rows.push([t("review.notes"), value("notes"), 2]);
     return rows;
   }
@@ -262,7 +295,8 @@
     });
     $(".progress").hidden = n === "done";
     if (n === 3) syncPlanUI();
-    if (n === 5) renderReview($("[data-review]"), true);
+    if (n === 5) renderWhen();
+    if (n === REVIEW) renderReview($("[data-review]"), true);
     saveDraft();
     var heading = $('[data-step="' + n + '"] .title');
     if (heading) { heading.setAttribute("tabindex", "-1"); heading.focus({ preventScroll: true }); }
@@ -294,6 +328,8 @@
     p[Q.extraField] = checked(Q.extraField)[0];
     if (form.elements.company) p.company = value("company");
     C.dims.forEach(function (d) { p[d.id] = s[d.id]; });
+    p.date = draft.date || ""; p.slot = draft.slot || "";
+    if (draft.date) p.requestedTime = whenText();
     if (draft.service) {
       p.service = singleClean(draft.service).name.en;
       if (draft.service === "followup") {
@@ -313,7 +349,7 @@
 
   form.addEventListener("submit", function (ev) {
     ev.preventDefault();
-    if (current !== 5) return;
+    if (current !== REVIEW) return;
     var btn = $("[data-submit]");
     setError("submit", "");
     btn.disabled = true; btn.textContent = t("q.sending");
@@ -330,12 +366,29 @@
       setError("submit", t("err.submit", { alt: alt }));
     }
 
-    if (!C.formEndpoint) { setTimeout(function () { done(true); }, 400); return; }
-    fetch(C.formEndpoint, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Accept: "application/json" },
-      body: JSON.stringify(payload()),
-    }).then(function (r) { if (r.ok) done(false); else fail(); }).catch(fail);
+    var data = payload();
+    // Optional copy to an email form service, on top of the database.
+    function mailCopy() {
+      if (!C.formEndpoint) return Promise.resolve(true);
+      return fetch(C.formEndpoint, {
+        method: "POST", headers: { "Content-Type": "application/json", Accept: "application/json" }, body: JSON.stringify(data),
+      }).then(function (r) { return r.ok; }).catch(function () { return false; });
+    }
+    B.ready.then(function (live) {
+      if (!live) {
+        if (!C.formEndpoint) { setTimeout(function () { done(true); }, 400); return; }
+        return mailCopy().then(function (ok) { ok ? done(false) : fail(); });
+      }
+      return B.submitRequest(data).then(function (id) {
+        $all("[data-request-id]").forEach(function (el) { el.textContent = id.slice(0, 6).toUpperCase(); });
+        return mailCopy().then(function () { done(false); });
+      }).catch(function (err) {
+        if (window.console) console.warn("request not saved", err);
+        // Firebase refused (rules not deployed yet, offline): still try the email copy.
+        if (C.formEndpoint) return mailCopy().then(function (ok) { ok ? done(false) : fail(); });
+        fail();
+      });
+    });
   });
 
   // ---------- start ----------
@@ -346,6 +399,9 @@
     if (singleClean(q.get("service"))) draft.service = q.get("service");
     else if (q.get("single")) draft.service = "deep"; // older links: ?single=1
     else if (q.get("plan")) draft.service = null;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(q.get("date") || "")) { draft.date = q.get("date"); draft.slot = q.get("slot") || ""; }
+    var clearBtn = $("[data-when-clear]");
+    if (clearBtn) clearBtn.addEventListener("click", function () { draft.date = ""; draft.slot = ""; if (cal) cal.set(draft); renderWhenSummary(); saveDraft(); });
     A.render();
     renderTabs();
     A.onChange(function () { if (current === 3) syncPlanUI(); });
@@ -355,7 +411,8 @@
       renderTabs();
       renderFollowUp();
       if (current === 3) syncPlanUI();
-      if (current === 5) renderReview($("[data-review]"), true);
+      if (current === 5) renderWhenSummary();
+      if (current === REVIEW) renderReview($("[data-review]"), true);
       if (current === "done") renderReview($("[data-review-done]"), false);
       var btn = $("[data-submit]");
       if (btn && !btn.disabled) btn.textContent = t("q.send");

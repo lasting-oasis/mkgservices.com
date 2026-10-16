@@ -1,0 +1,70 @@
+rules_version = '2';
+
+// Who can read and write what. Deployed with the site (see docs/SETUP-firebase.md).
+//
+//   requests/{id}   one quote request; customer details inside. Anyone can
+//                   create one; only the owner (admin) and the customer who
+//                   sent it (signed in with the same email) can read it;
+//                   only the admin can change it.
+//   holds/{id}      a date + time window a request is holding. No customer
+//                   details, so anyone can read them: that is how the public
+//                   calendar shows which windows are taken.
+//   days/{date}     days off and blocked windows, set by the admin.
+//   admins/{uid}    one document per admin account (created once, by hand).
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+    function isAdmin() {
+      return signedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+    function isDate(s) { return s is string && s.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$'); }
+    function shortText(s, n) { return s is string && s.size() <= n; }
+
+    match /requests/{id} {
+      allow create: if
+        request.resource.data.status == 'new' &&
+        request.resource.data.createdAt == request.time &&
+        shortText(request.resource.data.name, 120) && request.resource.data.name.size() > 0 &&
+        shortText(request.resource.data.email, 200) && request.resource.data.email.size() > 3 &&
+        request.resource.data.emailLower == request.resource.data.email.lower() &&
+        shortText(request.resource.data.phone, 40) &&
+        shortText(request.resource.data.notes, 2000) &&
+        shortText(request.resource.data.zip, 10) &&
+        (request.resource.data.date == '' || isDate(request.resource.data.date)) &&
+        shortText(request.resource.data.slot, 10) &&
+        request.resource.data.segment in ['residential', 'commercial'] &&
+        request.resource.data.keys().size() <= 40;
+      allow read: if isAdmin() ||
+        (signedIn() && request.auth.token.email_verified == true &&
+         resource.data.emailLower == request.auth.token.email.lower());
+      allow update, delete: if isAdmin();
+    }
+
+    match /holds/{id} {
+      allow read: if true;
+      // A visitor may hold a window only together with the request it belongs
+      // to (same batch), and the request must name the same date and window.
+      allow create: if isAdmin() || (
+        isDate(request.resource.data.date) &&
+        shortText(request.resource.data.slot, 10) && request.resource.data.slot.size() > 0 &&
+        request.resource.data.createdAt == request.time &&
+        request.resource.data.requestId is string &&
+        request.resource.data.keys().hasOnly(['date', 'slot', 'requestId', 'createdAt', 'segment']) &&
+        getAfter(/databases/$(database)/documents/requests/$(request.resource.data.requestId)).data.date == request.resource.data.date &&
+        getAfter(/databases/$(database)/documents/requests/$(request.resource.data.requestId)).data.slot == request.resource.data.slot
+      );
+      allow update, delete: if isAdmin();
+    }
+
+    match /days/{date} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /admins/{uid} {
+      allow read: if signedIn() && request.auth.uid == uid;
+      allow write: if false; // added in the Firebase console, never from the site
+    }
+  }
+}

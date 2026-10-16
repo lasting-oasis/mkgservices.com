@@ -1,6 +1,6 @@
 # mkgservices.com
 
-Website for MKG Services, LLC, a residential cleaning service. Static site, no build step: open `index.html` in a browser, or serve the folder with any static host (GitHub Pages, Netlify, Cloudflare Pages).
+Website for MKG Services, LLC, a Charlotte cleaning company. Static pages (no build step) plus Firebase for the parts that need a database: quote requests, the live booking calendar, the admin page, and client sign-in. Opened from a plain file server the pages still work, in a "not connected" mode.
 
 ## Pages
 
@@ -10,10 +10,16 @@ Two service lines share one engine. Residential is priced by bedrooms and bathro
 |---|---|
 | `index.html` | Residential home: hero with the live plan dial, how a plan works, plans, single cleans, FAQ |
 | `plans.html` | Residential plans with the estimator, full comparison table, pricing notes |
-| `quote.html` | Residential five-step quote request (ZIP, home, plan and schedule, contact, review) |
+| `quote.html` | Residential six-step quote request (ZIP, home, plan and schedule, contact, when, review) |
 | `commercial.html` | Commercial home, same structure, priced by floor space and restrooms |
 | `commercial-plans.html` | Commercial plans, comparison, and pricing notes |
 | `commercial-quote.html` | Commercial quote: building ZIP, type of space, floor space, restrooms, flooring, business name, when to clean |
+| `availability.html` | Public calendar: which days and start windows are still open, for homes or businesses; a pick carries into the quote |
+| `account.html` | Client sign-in by emailed link; shows that email's requests, status, notes from the owner, and a Pay online button when a link is set |
+| `admin.html` | Owner's page (password): every request with confirm/decline/done, note to client, payment link, date changes; the calendar with close-day, block-window, and phone bookings |
+| `privacy.html`, `terms.html` | Plain-language privacy policy and terms (bilingual) |
+
+The quote flows have six steps: ZIP, the space, plan and schedule, contact, **when** (the calendar), review. Requests are saved to Firestore by `backend.js`; `calendar.js` draws the month grid everywhere it appears. Setup for all of this is in **`docs/SETUP-firebase.md`**.
 
 A page picks its line with `<script>window.MKG_SEGMENT = "commercial"</script>` before `plans.js`; pages without it are residential.
 
@@ -49,7 +55,10 @@ The legal suffix is left off the mark on purpose: "MKG Services" is the brand, "
 - **`i18n.js`** for any fixed sentence on the pages, in both languages.
 - `styles.css` holds the colors and type at the top in `:root`.
 
-Everything else (`app.js`, `quote.js`) is behaviour and should not need touching.
+- `plans.js` also holds the calendar settings (`availability`: windows, capacity per window, weekdays, lead time, horizon), the optional email copy of each request (`formEndpoint`), and the optional Stripe payment link (`payments.link`). Days off and blocked windows are set on `admin.html`, not in code.
+- `firestore.rules` decides who can read and write the database; paste it into the Firebase console whenever it changes (see `docs/SETUP-firebase.md`).
+
+Everything else (`app.js`, `quote.js`, `backend.js`, `calendar.js`, `admin.js`, `account.js`, `availability.js`) is behaviour and should not need touching. `docs/make-pages.py` regenerates the availability, account, admin, privacy, and terms pages from the shared header and footer in `quote.html`.
 
 ## Deploying (Firebase Hosting, free plan)
 
@@ -69,10 +78,10 @@ The site is live at https://mkgservices.com (domain bought at Cloudflare Registr
 ## Before launch
 
 1. **Replace the placeholder pricing** in `plans.js` (`base` and `per` amounts for both residential and commercial plans; the commercial visit-ladder discounts too). The site labels prices as estimates until then.
-2. **Connect the quote form.** Set `formEndpoint` in `plans.js` to a Formspree/Basin/serverless endpoint that accepts a JSON POST. Until it's set, the form shows a demo confirmation and sends nothing.
+2. **Do the Firebase setup** in `docs/SETUP-firebase.md` (database, rules, sign-in, admin account). Until then the quote form can't save and tells visitors to email instead. Optionally also set `formEndpoint` for an email per request.
 3. **Add the service area** (`serviceArea`, in both languages) in `plans.js` if you want it shown in the footer. Phone and email are already in.
 4. **Set `serviceZips`** if you want the ZIP step to check coverage. Empty means every ZIP is accepted and coverage is confirmed by reply.
-5. **Confirm the policies in the copy**: no contracts, skip/pause without a fee, supplies included, price confirmed before the first visit, reply time (`responseTime`).
+5. **Confirm the policies in the copy and in `terms.html`**: no contracts, skip/pause without a fee, supplies included, price confirmed before the first visit, reply time (`responseTime`), 24-hour change/cancel notice and the late-cancel charge, the come-back-and-fix promise, insurance. Change the wording in `i18n.js` (`terms.*`) if any of it isn't how you work.
 6. Add a logo if you have one (the header uses a simple mark), real photos if wanted, and customer reviews once there are real ones. The site deliberately has no invented reviews, ratings, or guarantees.
 
 See `docs/PLAN.md` for the competitor research and the phased roadmap (accounts, recurring billing, admin view).

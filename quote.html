@@ -24,7 +24,7 @@
   <meta property="og:image:width" content="1024">
   <meta property="og:image:height" content="1024">
   <meta name="twitter:card" content="summary">
-  <link rel="stylesheet" href="styles.css?v=12">
+  <link rel="stylesheet" href="styles.css?v=13">
 </head>
 <body>
   <div class="topbar">
@@ -60,6 +60,7 @@
         <a href="plans.html" data-i18n="nav.plans">Plans</a>
         <a href="index.html#single-cleans" data-i18n="nav.singles">Single cleans</a>
         <a href="index.html#faq" data-i18n="nav.faq">FAQ</a>
+        <a href="availability.html" data-i18n="nav.availability">Availability</a>
         <a href="commercial.html" data-i18n="nav.commercial">Commercial</a>
         <a class="btn btn-sm" href="quote.html" aria-current="page" data-i18n="nav.quote">Get a quote</a>
       </nav>
@@ -74,7 +75,8 @@
           <li data-step-mark="2"><span data-i18n="q.step.2">Details</span></li>
           <li data-step-mark="3"><span data-i18n="q.step.3">Plan</span></li>
           <li data-step-mark="4"><span data-i18n="q.step.4">Contact</span></li>
-          <li data-step-mark="5"><span data-i18n="q.step.5">Review</span></li>
+          <li data-step-mark="5"><span data-i18n="q.step.5">When</span></li>
+          <li data-step-mark="6"><span data-i18n="q.step.6">Review</span></li>
         </ol>
 
         <!-- Step 1: where -->
@@ -196,6 +198,21 @@
               <label class="choice"><input type="radio" name="contactMethod" value="Call"><span data-i18n="q.method.Call">Call</span></label>
             </div>
           </fieldset>
+          <div class="step-actions">
+            <button class="btn btn-secondary" type="button" data-back data-i18n="q.back">Back</button>
+            <button class="btn" type="button" data-next data-i18n="q.continue">Continue</button>
+          </div>
+        </section>
+
+        <!-- Step 5: when -->
+        <section class="step" data-step="5" hidden>
+          <h1 class="title" data-i18n="q.s5.h">When would you like us?</h1>
+          <p class="step-intro" data-i18n="q.s5.p">Pick a day and a start window that's still open. It's a request, not a booking yet: we confirm it when we reply.</p>
+          <div data-calendar></div>
+          <p class="when-summary" data-when-summary aria-live="polite"></p>
+          <p><button type="button" class="link-btn" data-when-clear hidden data-i18n="q.when.clear">Clear the date</button></p>
+          <div class="when-prefs" data-when-prefs>
+            <p class="field-hint" data-i18n="q.when.orPrefs">No date in mind? Tell us what usually works and we'll suggest one.</p>
           <fieldset class="field">
             <legend><span data-i18n="q.days">Days that work</span> <span class="muted" style="font-weight:500" data-i18n="q.pickAny">Pick any</span></legend>
             <div class="choice-row">
@@ -215,16 +232,17 @@
               <label class="choice"><input type="radio" name="timeOfDay" value="Either" checked><span data-i18n="q.time.Either">Either</span></label>
             </div>
           </fieldset>
+          </div>
           <div class="step-actions">
             <button class="btn btn-secondary" type="button" data-back data-i18n="q.back">Back</button>
             <button class="btn" type="button" data-next data-i18n="q.continue">Continue</button>
           </div>
         </section>
 
-        <!-- Step 5: review -->
-        <section class="step" data-step="5" hidden>
-          <h1 class="title" data-i18n="q.s5.h">Check and send</h1>
-          <p class="step-intro" data-i18n="q.s5.p">Change anything here before it goes out.</p>
+        <!-- Step 6: review -->
+        <section class="step" data-step="6" hidden>
+          <h1 class="title" data-i18n="q.s6.h">Check and send</h1>
+          <p class="step-intro" data-i18n="q.s6.p">Change anything here before it goes out.</p>
           <dl class="review" data-review></dl>
           <p class="field-error" data-error="submit"></p>
           <div class="step-actions">
@@ -241,7 +259,8 @@
           <h1 class="title" data-i18n="q.done.h">Request sent</h1>
           <p class="lead" data-i18n="q.done.p">We'll reply {responseTime} with an exact price for your home.</p>
           <dl class="review" data-review-done></dl>
-          <p class="notice" data-demo-note hidden data-i18n="q.demo">This form isn't connected to an inbox yet. Set formEndpoint in plans.js to start receiving requests.</p>
+          <p class="notice" data-demo-note hidden data-i18n="q.demo">This copy of the site isn't connected to its database, so nothing was sent. On mkgservices.com the request is saved and we're notified.</p>
+          <p class="done-track" data-i18n="q.done.track">Want to check on it later? {accountLink}</p>
           <p><a class="btn btn-secondary" href="index.html" data-i18n="q.home">Back to the home page</a></p>
         </section>
       </form>
@@ -266,14 +285,20 @@
         <a href="index.html#faq" data-i18n="nav.faq">FAQ</a>
         <a href="quote.html" data-i18n="nav.quote">Get a quote</a>
         <a href="commercial.html" data-i18n="nav.commercial">Commercial</a>
+        <a href="availability.html" data-i18n="nav.availability">Availability</a>
+        <a href="account.html" data-i18n="nav.account">Client sign-in</a>
+        <a href="privacy.html" data-i18n="nav.privacy">Privacy</a>
+        <a href="terms.html" data-i18n="nav.terms">Terms</a>
       </nav>
       <p>&copy; <span data-year></span> MKG Services, LLC</p>
     </div>
   </footer>
 
-  <script src="plans.js?v=12"></script>
-  <script src="i18n.js?v=12"></script>
-  <script src="app.js?v=12"></script>
-  <script src="quote.js?v=12"></script>
+  <script src="plans.js?v=13"></script>
+  <script src="i18n.js?v=13"></script>
+  <script src="app.js?v=13"></script>
+  <script src="backend.js?v=13"></script>
+  <script src="calendar.js?v=13"></script>
+  <script src="quote.js?v=13"></script>
 </body>
 </html>
