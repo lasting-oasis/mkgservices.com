@@ -31,8 +31,8 @@ The phone number and email in `plans.js` appear in the top bar (tap to call, tap
 | `logo-badge-mono.svg` / `-1024.png` | One-colour ink line version for stamps, embroidery, black-and-white print. |
 | `logo-badge-reverse.svg` / `-1024.png` | White version for dark backgrounds (transparent). |
 | `logo-mark.svg` / `-512.png` / `-192.png` | Compact mark (disc, sparkles, MKG). Header, favicon, social avatars, app icons. |
-| `logo-full-1024.png` / `-640` / `-320` (+ `.webp`) | The detailed illustrated badge (skyline, house, cleaning tools). Used in the footer and the "Charlotte's own" section of the home page. Too detailed for small sizes, so the header and favicon use the compact mark above. The 3000 px original is in `brand/source/` (not deployed). |
-| `favicon.svg`, `apple-touch-icon.png`, root `favicon.ico` | Browser and home-screen icons; already linked from every page. |
+| `logo-full-1024.png` / `-640` / `-320` (+ `.webp`) | The detailed illustrated badge (skyline, house, cleaning tools). Used in the header, footer, favicon, home-screen icon and the "Charlotte's own" section of the home page. The 3000 px original is in `brand/source/` (not deployed). |
+| `favicon-*.png`, `apple-touch-icon.png`, root `favicon.ico` | Browser and home-screen icons made from the illustrated logo; linked from every page. |
 
 The legal suffix is left off the mark on purpose: "MKG Services" is the brand, "MKG Services, LLC" stays on invoices, contracts and the footer. `brand/make-logo.py` regenerates every file from the site's typeface (Bricolage Grotesque); edit its `WORDS` block to change the ring text, e.g. to add "LLC".
 

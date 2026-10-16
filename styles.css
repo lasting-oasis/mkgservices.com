@@ -106,8 +106,8 @@ img, svg { display: block; }
 }
 .site-header-inner { display: flex; align-items: center; justify-content: space-between; height: 68px; gap: 16px; }
 .brand { display: inline-flex; align-items: center; gap: 10px; color: var(--ink); text-decoration: none; font-weight: 800; font-size: 1.15rem; letter-spacing: -0.01em; }
-.brand-mark { width: 34px; height: 34px; display: grid; place-items: center; }
-.brand-mark img { width: 34px; height: 34px; display: block; }
+.brand-mark { width: 56px; height: 56px; display: grid; place-items: center; }
+.brand-mark img { width: 56px; height: 56px; display: block; }
 .site-nav { display: flex; align-items: center; gap: 28px; }
 .site-nav a { color: var(--ink); text-decoration: none; font-weight: 600; }
 .site-nav a:hover { color: var(--pine); }
