@@ -105,6 +105,8 @@
     "singles.lead.plans": "Quoted individually, because a first deep clean or an empty house for move-out is a different job from keeping a home tidy.",
     "singles.cta": "Get a quote",
 
+    "local.h2": "Charlotte's own, since 2014",
+    "local.p": "MKG Services, LLC has been cleaning homes in Charlotte, North Carolina since 2014. Here is what you can count on when you book with us.",
     "why.h2": "What you can count on",
     "why.1.h": "The price before the visit",
     "why.1.p": "You see an estimate here and an exact price in your quote. The number on the invoice is the number you agreed to.",
@@ -361,6 +363,8 @@
     "singles.lead.plans": "Se cotizan por separado, porque una primera limpieza profunda o una casa vacía por mudanza es un trabajo distinto a mantener una casa en orden.",
     "singles.cta": "Pedir cotización",
 
+    "local.h2": "De Charlotte, desde 2014",
+    "local.p": "MKG Services, LLC limpia casas en Charlotte, Carolina del Norte, desde 2014. Esto es lo que puedes esperar cuando reservas con nosotros.",
     "why.h2": "Con lo que puedes contar",
     "why.1.h": "El precio antes de la visita",
     "why.1.p": "Aquí ves un estimado y en tu cotización el precio exacto. El número en la factura es el que acordaste.",
