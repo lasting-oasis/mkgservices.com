@@ -55,6 +55,10 @@ Every push to `main` deploys the site through the GitHub Action in `.github/work
 
 The same setup can be done from a terminal with `firebase init hosting:github`, which creates the key and secret for you.
 
+## Live address
+
+The site is live at https://mkgservices.com (domain bought at Cloudflare Registrar, DNS only, pointing at Firebase Hosting). Keep every DNS record on "DNS only" (grey cloud) or Firebase cannot renew the HTTPS certificate. Share previews and canonical links in each page's `<head>` use this address.
+
 ## Before launch
 
 1. **Replace the placeholder pricing** in `plans.js` (`base`, `perBedroom`, `perBathroom`) with real rates. The site labels prices as estimates until then.
