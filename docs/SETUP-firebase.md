@@ -104,6 +104,28 @@ Push the change; the site sends every request to both places.
   working weekdays, earliest bookable day (`leadDays`), how far ahead the
   calendar opens (`horizonDays`), and the windows themselves.
 
+## Customer accounts
+
+Customers sign in on account.html (the nav's "Sign in", which reads "My
+account" once they have). Three ways in: **Google**, **email + password**
+(Create account), or a **one-time link** by email. Whichever they use, they
+see every request sent with that email address, whether it was sent before
+or after the account existed; nothing has to be linked by hand.
+
+- A new email + password account must **confirm its email** (Firebase sends
+  the link) before any requests show. That's enforced in firestore.rules, so
+  nobody can sign up with someone else's address and read their bookings.
+- Signed in, the quote form fills in their name, email (locked to the
+  account's, so the request lands in it) and last phone number.
+- After sending a quote while signed out, they're offered an account with
+  the same email.
+- "Forgot your password?" is on the account page and the Staff page.
+- Links in Firebase's emails (confirm email, reset password, sign-in link)
+  are handled by account.html. In the console, Authentication > Templates >
+  (any template) > edit > **Customize action URL** should be
+  `https://mkgservices.com/account.html`, so those links point at the site
+  instead of firebaseapp.com.
+
 ## How the data is laid out (for whoever maintains this)
 
 | Collection | One document is… | Who can read | Who can write |

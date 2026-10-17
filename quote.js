@@ -373,6 +373,7 @@
       $("[data-demo-note]").hidden = !demo;
       clearDraft();
       go("done");
+      renderTrack();
     }
     function fail() {
       btn.disabled = false; btn.textContent = t("q.send");
@@ -405,6 +406,54 @@
     });
   });
 
+  // ---------- accounts ----------
+  // Signed in: fill in who they are, and keep the email to the account's, so
+  // the request shows up in their account. Signing out from here frees it.
+  var acctUser = null;
+  function renderAccountNote() {
+    var note = $("[data-quote-account]");
+    if (!note) return;
+    note.hidden = !acctUser;
+    if (!acctUser) { note.innerHTML = ""; return; }
+    note.innerHTML = A.esc(t("q.signedIn", { addr: acctUser.email })) + ' <button type="button" class="link-btn" data-quote-signout>' + A.esc(t("q.notYou")) + "</button>";
+    note.querySelector("[data-quote-signout]").addEventListener("click", function () { B.signOut(); });
+  }
+  function watchAccount() {
+    if (!B || !B.onAuth) return;
+    B.onAuth(function (u) {
+      var email = form.elements.email, name = form.elements.name, phone = form.elements.phone;
+      if (!email) return;
+      if (!u || !u.email) {
+        if (acctUser) { email.readOnly = false; email.value = ""; }
+        acctUser = null; renderAccountNote(); saveDraft();
+        return;
+      }
+      acctUser = u;
+      email.value = u.email; email.readOnly = true;
+      if (name && !name.value && u.displayName) name.value = u.displayName;
+      renderAccountNote();
+      // The phone number from their last request, if there is one.
+      if (phone && !phone.value && u.emailVerified) {
+        B.myRequests(u.email).then(function (list) {
+          var last = list.filter(function (r) { return r.phone; })[0];
+          if (last && !phone.value) { phone.value = last.phone; saveDraft(); }
+        }).catch(function () { /* nothing to prefill */ });
+      }
+      saveDraft();
+    });
+  }
+  // After sending: point to the account (signed in) or offer one with the same email.
+  function renderTrack() {
+    var el = document.querySelector("[data-done-track]");
+    if (!el) return;
+    if (acctUser) { el.innerHTML = A.esc(t("q.done.inAccount")) + ' <a href="account.html">' + A.esc(t("q.done.openAccount")) + "</a>"; return; }
+    var email = value("email");
+    el.innerHTML = A.esc(t("q.done.makeAccount")) + ' <a href="account.html?signup=1" data-done-signup>' + A.esc(t("q.done.createAccount")) + "</a>";
+    el.querySelector("[data-done-signup]").addEventListener("click", function () {
+      try { sessionStorage.setItem("mkg.prefillEmail", email); } catch (e) { /* the account page just won't prefill */ }
+    });
+  }
+
   // ---------- start ----------
   function init() {
     loadDraft();
@@ -429,11 +478,13 @@
       if (current === 3) syncPlanUI();
       if (current === 5) renderWhenSummary();
       if (current === REVIEW) renderReview($("[data-review]"), true);
-      if (current === "done") renderReview($("[data-review-done]"), false);
+      if (current === "done") { renderReview($("[data-review-done]"), false); renderTrack(); }
+      renderAccountNote();
       var btn = $("[data-submit]");
       if (btn && !btn.disabled) btn.textContent = t("q.send");
     });
     go(1);
+    watchAccount();
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
   else init();

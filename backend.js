@@ -152,6 +152,64 @@
       throw e;
     });
   }
+  // ---------- accounts with a password ----------
+  // Links in Firebase's emails (confirm email, reset password, sign-in link)
+  // come back to the account page, which handles them on mkgservices.com.
+  function actionUrl() { return location.origin + "/account.html"; }
+  // New account: create it, save the name, and send the "confirm your email"
+  // link. Until the email is confirmed the account can't see any requests
+  // (firestore.rules), so nobody can sign up with someone else's address and
+  // read their bookings.
+  function signUpPassword(name, email, password) {
+    auth.languageCode = lang();
+    return auth.createUserWithEmailAndPassword(email, password).then(function (cred) {
+      var u = cred.user;
+      return (name ? u.updateProfile({ displayName: name }) : Promise.resolve())
+        .then(function () { return u.sendEmailVerification({ url: actionUrl() }).catch(function () { /* they can resend */ }); })
+        .then(function () { return u; });
+    });
+  }
+  function sendVerification() {
+    var u = auth.currentUser;
+    if (!u) return Promise.reject(new Error("no-user"));
+    auth.languageCode = lang();
+    return u.sendEmailVerification({ url: actionUrl() });
+  }
+  // After the email is confirmed (maybe in another tab): reload the account
+  // and refresh its sign-in token so the database sees the confirmation.
+  function refreshUser() {
+    var u = auth && auth.currentUser;
+    if (!u) return Promise.resolve(null);
+    return u.reload().then(function () { return auth.currentUser.getIdToken(true); }).then(function () { return auth.currentUser; });
+  }
+  function sendReset(email) { auth.languageCode = lang(); return auth.sendPasswordResetEmail(email, { url: actionUrl() }); }
+  // A link from one of those emails, opened on this page: { mode, code } or null.
+  function actionInfo() {
+    try {
+      var q = new URLSearchParams(location.search), mode = q.get("mode"), code = q.get("oobCode");
+      return mode && code && mode !== "signIn" ? { mode: mode, code: code } : null;
+    } catch (e) { return null; }
+  }
+  function clearActionParams() {
+    try { var u = new URL(location.href); ["apiKey", "oobCode", "mode", "lang", "continueUrl", "tenantId"].forEach(function (k) { u.searchParams.delete(k); }); history.replaceState(null, "", u.toString()); } catch (e) { /* ignore */ }
+  }
+  function applyCode(code) { return auth.applyActionCode(code); }
+  function checkReset(code) { return auth.verifyPasswordResetCode(code); }      // resolves with the account's email
+  function confirmReset(code, password) { return auth.confirmPasswordReset(code, password); }
+  function currentUser() { return auth ? auth.currentUser : null; }
+  // Which ways in this account has: "password", "google.com".
+  function providers(u) { return ((u && u.providerData) || []).map(function (p) { return p.providerId; }); }
+
+  // Remember on this browser that someone is signed in, so every page's nav
+  // can say "My account" without loading Firebase.
+  ready.then(function (ok) {
+    if (!ok) return;
+    auth.onAuthStateChanged(function (u) {
+      try { if (u) localStorage.setItem("mkg.account", "1"); else localStorage.removeItem("mkg.account"); } catch (e) { /* private mode */ }
+      if (C.app && C.app.accountNav) C.app.accountNav();
+    });
+  });
+
   // Passwordless sign-in for clients: a link is emailed; opening it signs them in.
   var LINK_KEY = "mkg.signInEmail";
   function sendLink(email, returnTo) {
@@ -348,6 +406,9 @@
     dates: { ymd: ymd, parse: parse, addDays: addDays, pad: pad },
     availability: availability, submitRequest: submitRequest,
     onAuth: onAuth, signOut: signOut, signInPassword: signInPassword, signInGoogle: signInGoogle, sendLink: sendLink, isLink: isLink, completeLink: completeLink,
+    signUpPassword: signUpPassword, sendVerification: sendVerification, refreshUser: refreshUser, sendReset: sendReset,
+    actionInfo: actionInfo, clearActionParams: clearActionParams, applyCode: applyCode, checkReset: checkReset, confirmReset: confirmReset,
+    currentUser: currentUser, providers: providers,
     isAdmin: isAdmin, stillAdmin: stillAdmin, watchTeam: watchTeam, inviteAdmin: inviteAdmin, removeAdmin: removeAdmin,
     watchMyShifts: watchMyShifts, watchShiftsSince: watchShiftsSince, clockIn: clockIn, clockOut: clockOut, updateShift: updateShift, deleteShift: deleteShift, tsFromDate: tsFromDate,
     myRequests: myRequests, reschedule: reschedule, cancelRequest: cancelRequest, toMs: toMs,

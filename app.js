@@ -327,15 +327,27 @@
     render();
   }
 
+  // The nav's "Sign in" link reads "My account" once someone is signed in on
+  // this browser (backend.js keeps the note current on pages that load Firebase).
+  function accountNav() {
+    var signed = false;
+    try { signed = localStorage.getItem("mkg.account") === "1"; } catch (e) { /* private mode */ }
+    Array.prototype.forEach.call(document.querySelectorAll(".nav-signin"), function (a) {
+      var k = signed ? "nav.myAccount" : "nav.signin";
+      a.setAttribute("data-i18n", k); a.textContent = t(k);
+    });
+  }
+
   function init() {
     load();
     chrome();
     relocalize();
+    accountNav();
   }
 
   C.app = {
     state: state, set: set, estimate: estimate, plan: plan, frequency: frequency, dim: dim,
-    dollars: dollars, num: num, pct: pct, esc: esc, render: render, relocalize: relocalize, fillBusiness: fillBusiness,
+    dollars: dollars, num: num, pct: pct, esc: esc, render: render, relocalize: relocalize, fillBusiness: fillBusiness, accountNav: accountNav,
     onChange: function (fn) { listeners.push(fn); },
   };
 

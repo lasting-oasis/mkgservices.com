@@ -1,8 +1,13 @@
 /*
-  account.html: clients sign in with an emailed link (no password) and see the
-  requests made with that email, their status, and a payment link when one
-  is set. While a request is still new or confirmed they can move it to
-  another day or window, or cancel it. Finished ones can be booked again.
+  account.html: sign in or create an account, then see every request sent
+  with that email (before or after the account existed), follow its status,
+  pay when a link is set, and, while a request is new or confirmed, move it
+  to another day or window or cancel it. Finished ones can be booked again.
+
+  Ways in: Google; email + password (new accounts confirm their email before
+  any requests show, see firestore.rules); or a one-time link by email.
+  Links in Firebase's emails (confirm email, reset password, sign-in link)
+  also land on this page and are handled here.
 */
 (function () {
   "use strict";
@@ -11,9 +16,10 @@
   var t = I.t, esc = A.esc;
   var $ = function (s, r) { return (r || document).querySelector(s); };
   var $all = function (s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); };
-  var user = null, items = [];
+  var user = null, items = [], tab = "signin", view = "loading", flashNext = "", resetCode = "";
   var editing = {}; // request id -> { date, slot } while its calendar is open
   var OPEN = { new: true, confirmed: true };
+  var MIN_PASSWORD = 8;
   // terms.html: a confirmed visit can be changed or cancelled free with this much notice.
   var NOTICE_HOURS = (C.policy && C.policy.changeNoticeHours) || 24;
 
@@ -29,12 +35,29 @@
   function safeLink(u) { return /^https:\/\/\S+$/i.test(u || "") ? u : ""; }
 
   function show(which) {
+    view = which;
     $all("[data-acct]").forEach(function (s) { s.hidden = s.getAttribute("data-acct") !== which; });
   }
   function validEmail(e) { return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(e); }
   function err(key, msg) { var el = $('[data-error="' + key + '"]'); if (el) el.textContent = msg || ""; }
+  function clearErrors() { ["google", "email", "pass", "email2", "newpass"].forEach(function (k) { err(k, ""); }); }
+  function notice(msg) { var n = $("[data-acct-notice]"); n.textContent = msg || ""; n.hidden = !msg; }
+  function flash(msg) { var n = $("[data-acct-flash]"); n.textContent = msg || ""; n.hidden = !msg; }
   function locale() { return I.lang === "es" ? "es-US" : "en-US"; }
+  // Firebase's error codes, in words a customer can act on.
+  function authMessage(e) {
+    var c = (e && e.code) || "";
+    if (/invalid-credential|wrong-password|user-not-found|invalid-login-credentials/.test(c)) return t("acct.err.wrong");
+    if (/email-already-in-use/.test(c)) return t("acct.err.exists");
+    if (/weak-password/.test(c)) return t("acct.err.weak", { n: MIN_PASSWORD });
+    if (/too-many-requests/.test(c)) return t("acct.err.tooMany");
+    if (/invalid-email/.test(c)) return t("err.email");
+    if (/expired-action-code|invalid-action-code/.test(c)) return t("acct.linkExpired");
+    if (/popup-closed-by-user|cancelled-popup-request/.test(c)) return "";
+    return t("acct.err.generic");
+  }
 
+  // ---------- requests ----------
   function statusPill(s) {
     return '<span class="status status-' + esc(s) + '">' + esc(t("status." + s)) + "</span>";
   }
@@ -74,7 +97,6 @@
       return B.toMs(b.createdAt) - B.toMs(a.createdAt);
     });
   }
-
   function card(r) {
     var s = r.status || "new", open = !!OPEN[s];
     var created = r.createdAt ? new Date(B.toMs(r.createdAt)).toLocaleDateString(locale(), { month: "short", day: "numeric", year: "numeric" }) : "";
@@ -111,10 +133,10 @@
     return html + "</article>";
   }
   function renderList() {
-    var box = $("[data-acct-list]");
-    $("[data-acct-empty]").hidden = items.length > 0;
+    var box = $("[data-acct-list]"), verified = !!(user && user.emailVerified);
+    $("[data-acct-empty]").hidden = !verified || items.length > 0;
     var hint = $("[data-acct-wrongemail]");
-    if (hint) { hint.hidden = items.length > 0; hint.textContent = user ? t("acct.wrongEmail", { addr: user.email }) : ""; }
+    hint.hidden = !verified; hint.textContent = user ? t("acct.wrongEmail", { addr: user.email }) : "";
     box.innerHTML = sorted().map(card).join("");
     $all("[data-acct-cal]", box).forEach(function (el) {
       var art = el.closest("[data-id]"), id = art.getAttribute("data-id");
@@ -150,27 +172,117 @@
       });
     });
   }
-  function load() {
-    $("[data-acct-email]").textContent = user.email;
-    show("list");
+  function loadRequests() {
     B.myRequests(user.email).then(function (list) { items = list; renderList(); })
       .catch(function (e) { items = []; renderList(); if (window.console) console.warn(e); });
   }
 
-  // Sign-in form
-  $("[data-acct-form]").addEventListener("submit", function (ev) {
+  // ---------- signed in ----------
+  function showAccount() {
+    show("list");
+    $("[data-acct-email]").textContent = user.email || "";
+    $("[data-acct-name]").textContent = user.displayName ? user.displayName + " ·" : "";
+    // Accounts that can use a password (made with one, or by email link) can set or change it.
+    $("[data-acct-pwrow]").hidden = B.providers(user).indexOf("password") === -1;
+    $("[data-acct-pwmsg]").textContent = "";
+    if (flashNext) { flash(flashNext); flashNext = ""; } else flash("");
+    if (user.emailVerified) { $("[data-acct-verify]").hidden = true; loadRequests(); return; }
+    // Not confirmed yet: maybe it was confirmed in another tab since this page loaded.
+    showUnverified();
+    B.refreshUser().then(function (fresh) { if (fresh && fresh.emailVerified) { user = fresh; $("[data-acct-verify]").hidden = true; loadRequests(); } }).catch(function () { /* stay on the banner */ });
+  }
+  function showUnverified() {
+    items = []; renderList();
+    var v = $("[data-acct-verify]");
+    v.hidden = false;
+    $("[data-acct-verify-text]").textContent = t("acct.verifyText", { addr: user.email });
+    $("[data-acct-verify-msg]").textContent = "";
+  }
+  $("[data-acct-recheck]").addEventListener("click", function () {
+    var b = this; b.disabled = true;
+    B.refreshUser().then(function (fresh) {
+      if (fresh && fresh.emailVerified) { user = fresh; $("[data-acct-verify]").hidden = true; flash(t("acct.verified")); loadRequests(); }
+      else $("[data-acct-verify-msg]").textContent = t("acct.stillUnverified");
+    }).catch(function () { $("[data-acct-verify-msg]").textContent = t("acct.err.generic"); }).then(function () { b.disabled = false; });
+  });
+  $("[data-acct-resend]").addEventListener("click", function () {
+    var b = this; b.disabled = true;
+    B.sendVerification().then(function () { $("[data-acct-verify-msg]").textContent = t("acct.resent"); })
+      .catch(function (e) { $("[data-acct-verify-msg]").textContent = authMessage(e); }).then(function () { b.disabled = false; });
+  });
+  $("[data-acct-changepw]").addEventListener("click", function () {
+    var b = this; b.disabled = true;
+    B.sendReset(user.email).then(function () { $("[data-acct-pwmsg]").textContent = t("acct.changePwSent", { addr: user.email }); })
+      .catch(function (e) { $("[data-acct-pwmsg]").textContent = authMessage(e); }).then(function () { b.disabled = false; });
+  });
+  $("[data-acct-signout]").addEventListener("click", function () { B.signOut().then(function () { items = []; editing = {}; showSignin(); }); });
+
+  // ---------- signing in / signing up ----------
+  // keepNotice: the page is (re)showing the form, so a message already on it
+  // ("email confirmed", "link expired") stays; switching tabs by hand clears it.
+  function setTab(which, keepNotice) {
+    tab = which;
+    $all("[data-acct-tab]").forEach(function (b) { b.setAttribute("aria-selected", String(b.getAttribute("data-acct-tab") === which)); b.setAttribute("aria-pressed", String(b.getAttribute("data-acct-tab") === which)); });
+    $all("[data-signup-only]").forEach(function (el) { el.hidden = which !== "signup"; });
+    $all("[data-signin-only]").forEach(function (el) { el.hidden = which !== "signin"; });
+    var title = $("[data-acct-title]"), sub = $("[data-acct-submit]"), g = $("[data-acct-google-label]");
+    title.setAttribute("data-i18n", which === "signup" ? "acct.signupH" : "acct.signinH"); title.textContent = t(title.getAttribute("data-i18n"));
+    sub.setAttribute("data-i18n", which === "signup" ? "acct.signupBtn" : "acct.signinBtn"); sub.textContent = t(sub.getAttribute("data-i18n"));
+    g.setAttribute("data-i18n", which === "signup" ? "acct.googleUp" : "acct.google"); g.textContent = t(g.getAttribute("data-i18n"));
+    $("#acct-pass").setAttribute("autocomplete", which === "signup" ? "new-password" : "current-password");
+    if (!keepNotice) { clearErrors(); notice(""); }
+  }
+  function showSignin() { show("signin"); setTab(tab, true); }
+  $all("[data-acct-tab]").forEach(function (b) { b.addEventListener("click", function () { setTab(b.getAttribute("data-acct-tab")); }); });
+  $all("[data-pw-toggle]").forEach(function (b) {
+    b.addEventListener("click", function () {
+      var input = document.getElementById(b.getAttribute("data-pw-toggle")), showing = input.type === "text";
+      input.type = showing ? "password" : "text";
+      b.setAttribute("aria-pressed", String(!showing));
+      b.setAttribute("data-i18n", showing ? "acct.show" : "acct.hide"); b.textContent = t(b.getAttribute("data-i18n"));
+    });
+  });
+  $("[data-acct-pw]").addEventListener("submit", function (ev) {
     ev.preventDefault();
+    clearErrors(); notice("");
+    var name = $("#acct-name").value.trim(), email = $("#acct-email").value.trim(), pass = $("#acct-pass").value;
+    var bad = false;
+    if (!validEmail(email)) { err("email", t("err.email")); bad = true; }
+    if (tab === "signup" && pass.length < MIN_PASSWORD) { err("pass", t("acct.err.weak", { n: MIN_PASSWORD })); bad = true; }
+    if (tab === "signin" && !pass) { err("pass", t("acct.err.noPass")); bad = true; }
+    if (bad) return;
+    var btn = $("[data-acct-submit]"); btn.disabled = true;
+    var p = tab === "signup"
+      ? B.signUpPassword(name, email, pass).then(function () { flashNext = t("acct.created", { addr: email }); })
+      : B.signInPassword(email, pass);
+    p.catch(function (e) {
+      var code = (e && e.code) || "";
+      // Password problems show under the password; everything else under the email.
+      err(/invalid-credential|wrong-password|user-not-found|invalid-login-credentials|weak-password/.test(code) ? "pass" : "email", authMessage(e));
+      if (window.console) console.warn(e);
+    }).then(function () { btn.disabled = false; });
+  });
+  $("[data-acct-forgot]").addEventListener("click", function () {
+    clearErrors();
     var email = $("#acct-email").value.trim();
-    if (!validEmail(email)) { err("email", t("err.email")); return; }
-    err("email", "");
-    var btn = ev.target.querySelector("button"); btn.disabled = true;
-    B.sendLink(email, location.origin + location.pathname).then(function () { $("[data-acct-sent]").hidden = false; })
-      .catch(function (e) { err("email", t("acct.linkFailed")); if (window.console) console.warn(e); })
-      .then(function () { btn.disabled = false; });
+    if (!validEmail(email)) { err("email", t("acct.needEmail")); $("#acct-email").focus(); return; }
+    // The same message whether or not there's an account, so the page never reveals which emails have one.
+    B.sendReset(email).then(function () { notice(t("acct.resetSent", { addr: email })); })
+      .catch(function (e) {
+        var code = (e && e.code) || "";
+        if (/user-not-found|invalid-credential/.test(code)) notice(t("acct.resetSent", { addr: email })); else err("email", authMessage(e));
+      });
+  });
+  $("[data-acct-linkmode]").addEventListener("click", function () {
+    clearErrors();
+    var email = $("#acct-email").value.trim();
+    if (!validEmail(email)) { err("email", t("acct.needEmail")); $("#acct-email").focus(); return; }
+    B.sendLink(email, location.origin + location.pathname).then(function () { notice(t("acct.sent")); })
+      .catch(function (e) { err("email", t("acct.linkFailed")); if (window.console) console.warn(e); });
   });
   $("[data-google-signin]").addEventListener("click", function () {
     var b = this; b.disabled = true; err("google", "");
-    B.signInGoogle().catch(function (e) { err("google", t("acct.googleFailed")); if (window.console) console.warn(e); }).then(function () { b.disabled = false; });
+    B.signInGoogle().catch(function (e) { err("google", authMessage(e) && t("acct.googleFailed")); if (window.console) console.warn(e); }).then(function () { b.disabled = false; });
   });
   $("[data-acct-confirm]").addEventListener("submit", function (ev) {
     ev.preventDefault();
@@ -178,20 +290,72 @@
     if (!validEmail(email)) { err("email2", t("err.email")); return; }
     B.completeLink(email).catch(function () { err("email2", t("acct.linkBad")); });
   });
-  $("[data-acct-signout]").addEventListener("click", function () { B.signOut().then(function () { items = []; editing = {}; show("signin"); }); });
-  document.addEventListener("mkg:langchange", function () { if (user) renderList(); });
+
+  // ---------- links from our emails ----------
+  function showReset(email) {
+    show("reset");
+    $("[data-acct-reset-for]").textContent = t("acct.resetFor", { addr: email });
+    $("[data-acct-reset]").setAttribute("data-email", email);
+  }
+  $("[data-acct-reset]").addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    err("newpass", "");
+    var pass = $("#acct-newpass").value, email = ev.target.getAttribute("data-email");
+    if (pass.length < MIN_PASSWORD) { err("newpass", t("acct.err.weak", { n: MIN_PASSWORD })); return; }
+    var btn = ev.target.querySelector("button[type=submit]"); btn.disabled = true;
+    B.confirmReset(resetCode, pass).then(function () {
+      flashNext = t("acct.resetDone"); resetCode = "";
+      return B.signInPassword(email, pass);
+    }).catch(function (e) {
+      if (resetCode) { err("newpass", authMessage(e)); btn.disabled = false; }   // the reset itself failed
+      else { show("signin"); setTab("signin"); $("#acct-email").value = email; notice(t("acct.resetDoneSignIn")); } // reset worked, sign-in didn't
+    });
+  });
+
+  // ---------- start ----------
+  function onUser(u) {
+    user = u;
+    if (view === "reset" && !u) return;
+    if (u) { showAccount(); return; }
+    if (!B.isLink()) showSignin();
+  }
+  document.addEventListener("mkg:langchange", function () {
+    if (view === "list") { renderList(); if (!user.emailVerified) $("[data-acct-verify-text]").textContent = t("acct.verifyText", { addr: user.email }); }
+    if (view === "signin") setTab(tab);
+    if (view === "reset") $("[data-acct-reset-for]").textContent = t("acct.resetFor", { addr: $("[data-acct-reset]").getAttribute("data-email") || "" });
+  });
+
+  // Arriving from the quote page ("create an account with the same email") or a ?signup=1 link.
+  (function () {
+    var pre = "";
+    try { pre = sessionStorage.getItem("mkg.prefillEmail") || ""; sessionStorage.removeItem("mkg.prefillEmail"); } catch (e) { /* ignore */ }
+    if (pre && validEmail(pre)) $("#acct-email").value = pre;
+    if (pre || /[?&]signup=1/.test(location.search)) tab = "signup";
+  })();
 
   B.ready.then(function (live) {
-    if (!live) { show("signin"); $("[data-acct-offline]").hidden = false; $("[data-acct-form] button").disabled = true; $("[data-google-signin]").disabled = true; return; }
-    if (B.isLink()) {
+    if (!live) {
+      showSignin(); $("[data-acct-offline]").hidden = false;
+      $all("[data-acct-pw] button, [data-google-signin]").forEach(function (b) { b.disabled = true; });
+      return;
+    }
+    var act = B.actionInfo();
+    if (act && act.mode === "resetPassword") {
+      resetCode = act.code; B.clearActionParams();
+      B.checkReset(act.code).then(function (email) { showReset(email); })
+        .catch(function () { resetCode = ""; showSignin(); notice(t("acct.linkExpired")); });
+    } else if (act && (act.mode === "verifyEmail" || act.mode === "recoverEmail")) {
+      B.clearActionParams();
+      B.applyCode(act.code).then(function () {
+        flashNext = t("acct.verified");
+        return B.refreshUser().then(function (fresh) { if (fresh) onUser(fresh); else { setTab("signin"); showSignin(); notice(t("acct.verifiedSignIn")); flashNext = ""; } });
+      }).catch(function () { if (!user) { showSignin(); notice(t("acct.linkExpired")); } });
+    } else if (B.isLink()) {
       B.completeLink().catch(function (e) {
         if (e && e.message === "need-email") show("confirm");
-        else { show("signin"); err("email", t("acct.linkBad")); }
+        else { showSignin(); notice(t("acct.linkBad")); }
       });
     }
-    B.onAuth(function (u) {
-      user = u;
-      if (u) load(); else if (!B.isLink()) show("signin");
-    });
+    B.onAuth(onUser);
   });
 })();

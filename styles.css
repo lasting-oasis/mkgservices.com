@@ -627,3 +627,16 @@ button.cal-slot:not(:disabled):hover { border-color: var(--pine); }
 .tc-flag { display: inline-block; font-size: 0.75rem; padding: 1px 8px; border-radius: var(--r-pill); background: #fdecea; color: #b3261e; font-weight: 700; }
 .tc-status.is-long { color: #b3261e; }
 .acct-late { font-size: 0.93rem; }
+.acct-tabs { margin: 6px 0 18px; }
+.acct-card .btn-google { width: 100%; justify-content: center; }
+.pw-wrap { position: relative; display: flex; align-items: center; }
+.pw-wrap .input { flex: 1; padding-right: 76px; }
+.pw-toggle { position: absolute; right: 14px; font-size: 0.9rem; }
+.acct-alt { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 10px 0 0; font-size: 0.93rem; }
+.acct-bar-btns { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.acct-verify { display: grid; gap: 8px; }
+.acct-verify p { margin: 0; }
+.acct-verify-btns { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+.acct-sub { font-size: 1.15rem; margin: 22px 0 10px; }
+.quote-account { margin-top: 6px; }
+[data-acct-pw] .field, [data-acct-reset] .field { margin-bottom: 14px; }

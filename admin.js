@@ -408,6 +408,13 @@
     $('[data-error="login"]').textContent = "";
     B.signInPassword(email, pass).catch(function (e) { $('[data-error="login"]').textContent = t("adm.badLogin"); if (window.console) console.warn(e); });
   });
+  $("[data-admin-forgot]").addEventListener("click", function () {
+    var email = $("#adm-email").value.trim(), msg = $("[data-admin-forgot-msg]");
+    msg.hidden = false;
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) { msg.textContent = t("acct.needEmail"); $("#adm-email").focus(); return; }
+    // Same message either way, so the page never reveals which emails have accounts.
+    B.sendReset(email).catch(function (e) { if (window.console) console.warn(e); }).then(function () { msg.textContent = t("acct.resetSent", { addr: email }); });
+  });
   $("[data-google-signin]").addEventListener("click", function () {
     var b = this; b.disabled = true; $('[data-error="google"]').textContent = "";
     B.signInGoogle().catch(function (e) { $('[data-error="google"]').textContent = t("acct.googleFailed"); if (window.console) console.warn(e); }).then(function () { b.disabled = false; });
