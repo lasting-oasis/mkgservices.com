@@ -24,9 +24,9 @@
   <meta property="og:image:width" content="1024">
   <meta property="og:image:height" content="1024">
   <meta name="twitter:card" content="summary">
-  <link rel="stylesheet" href="styles.css?v=13">
+  <link rel="stylesheet" href="styles.css?v=14">
 </head>
-<body>
+<body data-ref-banner>
   <div class="topbar">
     <div class="container topbar-inner">
       <div class="lang" role="group" data-i18n-attr="aria-label:top.language" aria-label="Language">
@@ -206,6 +206,11 @@
               <label class="choice"><input type="radio" name="contactMethod" value="Call"><span data-i18n="q.method.Call">Call</span></label>
             </div>
           </fieldset>
+          <div class="field" data-ref-field>
+            <label for="ref"><span data-i18n="q.ref.label">A friend's invite code</span> <span class="muted" style="font-weight:500" data-i18n="q.optional">Optional</span></label>
+            <input class="input" id="ref" name="ref" maxlength="6" autocomplete="off" autocapitalize="characters" spellcheck="false" data-i18n-attr="placeholder:q.ref.ph" placeholder="e.g. K7M2QX" style="max-width: 200px; text-transform: uppercase; letter-spacing: 0.12em;">
+            <p class="field-hint" data-ref-status aria-live="polite" data-i18n="q.ref.hint">Optional. Gets you a welcome credit on your first visit.</p>
+          </div>
           <div class="step-actions">
             <button class="btn btn-secondary" type="button" data-back data-i18n="q.back">Back</button>
             <button class="btn" type="button" data-next data-i18n="q.continue">Continue</button>
@@ -299,17 +304,19 @@
         <a href="account.html" data-i18n="nav.account">Client sign-in</a>
         <a href="privacy.html" data-i18n="nav.privacy">Privacy</a>
         <a href="terms.html" data-i18n="nav.terms">Terms</a>
+        <a href="refer.html" data-i18n="nav.refer">Refer a friend</a>
       </nav>
       <p>&copy; <span data-year></span> MKG Services, LLC</p>
     </div>
   </footer>
 
   <script>window.MKG_SEGMENT = "commercial";</script>
-  <script src="plans.js?v=13"></script>
-  <script src="i18n.js?v=13"></script>
-  <script src="app.js?v=13"></script>
-  <script src="backend.js?v=13"></script>
-  <script src="calendar.js?v=13"></script>
-  <script src="quote.js?v=13"></script>
+  <script src="plans.js?v=14"></script>
+  <script src="i18n.js?v=14"></script>
+  <script src="app.js?v=14"></script>
+  <script src="referral.js?v=14"></script>
+  <script src="backend.js?v=14"></script>
+  <script src="calendar.js?v=14"></script>
+  <script src="quote.js?v=14"></script>
 </body>
 </html>

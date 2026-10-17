@@ -164,6 +164,65 @@
     });
   }
 
+  // ---------- referrals ----------
+  var CODE_RE = /^[A-Z2-9]{6}$/;
+  var ALPHA = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no 0/O/1/I so codes read aloud cleanly
+  function newCode() {
+    var out = "", buf = new Uint32Array(6);
+    (window.crypto || window.msCrypto).getRandomValues(buf);
+    for (var i = 0; i < 6; i++) out += ALPHA.charAt(buf[i] % ALPHA.length);
+    return out;
+  }
+  // true / false when Firebase answers, null when it can't be asked (offline copy).
+  function checkReferral(code) {
+    code = String(code || "").toUpperCase();
+    if (!CODE_RE.test(code)) return Promise.resolve(false);
+    return ready.then(function (ok) {
+      if (!ok) return null;
+      return db.collection("referrers").doc(code).get().then(function (d) { return d.exists; }).catch(function () { return null; });
+    });
+  }
+  function myCode(user) {
+    return db.collection("users").doc(user.uid).get().then(function (d) { return d.exists ? d.data().code : null; });
+  }
+  // One code per client. Written as one batch so the rules can check both halves.
+  function createCode(user, tries) {
+    tries = tries || 0;
+    var code = newCode(), now = fb.firestore.FieldValue.serverTimestamp(), batch = db.batch();
+    batch.set(db.collection("users").doc(user.uid), { code: code, emailLower: String(user.email).toLowerCase(), createdAt: now });
+    batch.set(db.collection("referrers").doc(code), { uid: user.uid, createdAt: now });
+    return batch.commit().then(function () { return code; }).catch(function (e) {
+      if (tries < 5) return myCode(user).then(function (existing) { return existing || createCode(user, tries + 1); });
+      throw e;
+    });
+  }
+  function ensureCode(user) { return myCode(user).then(function (c) { return c || createCode(user); }); }
+  function credits(email) {
+    return db.collection("credits").where("emailLower", "==", String(email).toLowerCase()).get()
+      .then(function (r) { return r.docs.map(function (d) { var x = d.data(); x.id = d.id; return x; }).sort(byNewest); });
+  }
+  function balance(list) { return list.reduce(function (n, c) { return n + (Number(c.amount) || 0); }, 0); }
+  // admin: who owns a code (a users/{uid} document)
+  function ownerOfCode(code) {
+    return db.collection("users").where("code", "==", code).limit(1).get().then(function (r) {
+      if (!r.docs.length) return null; var x = r.docs[0].data(); x.uid = r.docs[0].id; return x;
+    });
+  }
+  function watchCredits(cb) {
+    return db.collection("credits").orderBy("createdAt", "desc").limit(1000).onSnapshot(function (r) {
+      cb(r.docs.map(function (d) { var x = d.data(); x.id = d.id; return x; }));
+    }, function (err) { cb(null, err); });
+  }
+  // Writes a ledger entry. With an `id` it writes once (a second call with the same id is a no-op).
+  function addCredit(entry) {
+    var ref = entry.id ? db.collection("credits").doc(entry.id) : db.collection("credits").doc();
+    var data = { emailLower: String(entry.email).toLowerCase(), amount: Number(entry.amount), type: entry.type || "adjust", note: entry.note || "",
+      requestId: entry.requestId || "", code: entry.code || "", createdAt: fb.firestore.FieldValue.serverTimestamp() };
+    if (!entry.id) return ref.set(data).then(function () { return true; });
+    return ref.get().then(function (d) { if (d.exists) return false; return ref.set(data).then(function () { return true; }); });
+  }
+  function removeCredit(id) { return db.collection("credits").doc(id).delete(); }
+
   C.backend = {
     ready: ready,
     get db() { return db; }, get auth() { return auth; }, get firebase() { return fb; },
@@ -172,6 +231,8 @@
     onAuth: onAuth, signOut: signOut, signInPassword: signInPassword, sendLink: sendLink, isLink: isLink, completeLink: completeLink, isAdmin: isAdmin,
     myRequests: myRequests, toMs: toMs,
     watchRequests: watchRequests, updateRequest: updateRequest, releaseHolds: releaseHolds, ensureHold: ensureHold,
+    checkReferral: checkReferral, ensureCode: ensureCode, myCredits: credits, creditsFor: credits, creditBalance: balance, ownerOfCode: ownerOfCode,
+    watchCredits: watchCredits, addCredit: addCredit, removeCredit: removeCredit, newCode: newCode,
     addManualHold: addManualHold, deleteHold: deleteHold, setDay: setDay, watchHolds: watchHolds,
   };
 })();

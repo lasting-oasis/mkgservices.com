@@ -71,6 +71,23 @@ Push the change; the site sends every request to both places.
    admin page ("Date, note to client, payment link"); that one wins for that
    client.
 
+## Referral program (nothing extra to turn on)
+
+It uses the same database and sign-in. After any update to `firestore.rules`,
+**re-paste the file into Firebase console > Firestore > Rules and Publish**
+(the referral collections are in it).
+
+- A signed-in client gets a 6-character code, an invite link (`/?ref=CODE`), and a QR code on `account.html`.
+- A friend who arrives by that link sees a banner and the code is filled in on the quote form.
+- Credits are granted from the admin page: the friend's welcome credit when you
+  Confirm or mark Done, the referrer's credit when the friend's visit is marked Done.
+  Repeat customers (same email or phone as an earlier confirmed/done request) get no automatic credit.
+- Credits stack and do not expire. In a request card, "Apply credit" subtracts
+  up to the client's balance (never more than the visit price). Undo is there too.
+- The **Credits** tab shows every balance and ledger line; add an adjustment or
+  delete an entry to revoke it.
+- Amounts are in `plans.js` under `referral` (`rewards`, `maxPercentOfVisit`); set `enabled: false` to hide the program.
+
 ## What the owner can change without code
 
 - **In the admin page:** confirm, decline, or finish a request; move its date
@@ -87,6 +104,9 @@ Push the change; the site sends every request to both places.
 | `requests` | a quote request with the customer's details, status (`new`, `confirmed`, `declined`, `done`), note to client, payment link | admins; the customer, signed in with the same email | anyone may create; admins may change |
 | `holds` | one date + window a request is holding (no personal data) | everyone (this is what the public calendar reads) | created together with its request; admins may delete |
 | `days` | a closed day or blocked windows, keyed by `YYYY-MM-DD` | everyone | admins |
+| `users` | a client's private record: their referral code | admins; that client | that client, once (created with its `referrers` entry) |
+| `referrers` | code to user id (no email); a visitor can check one code, nobody can list them | single lookups only | the signed-in client, once |
+| `credits` | one ledger line: welcome, referral, used, or adjustment (signed amount) | admins; the client with that email | admins only |
 | `admins` | one document per admin, keyed by user UID | the admin themself | nobody from the site (console only) |
 
 Pages load Firebase from Hosting's reserved URLs (`/__/firebase/...`), so there

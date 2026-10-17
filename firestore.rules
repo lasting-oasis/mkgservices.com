@@ -11,12 +11,24 @@ rules_version = '2';
 //                   calendar shows which windows are taken.
 //   days/{date}     days off and blocked windows, set by the admin.
 //   admins/{uid}    one document per admin account (created once, by hand).
+//   users/{uid}     a signed-in client's private record: their referral code.
+//   referrers/{code} lets anyone check that a code exists (no personal data in it).
+//   credits/{id}    the referral credit ledger. Only the owner (admin) writes it;
+//                   a client can read the entries under their own email.
 service cloud.firestore {
   match /databases/{database}/documents {
 
     function signedIn() { return request.auth != null; }
     function isAdmin() {
       return signedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+    function verified() { return signedIn() && request.auth.token.email_verified == true; }
+    function refOk(d) {
+      return !('ref' in d) || d.ref == '' || (
+        d.ref.matches('^[A-Z2-9]{6}$') &&
+        exists(/databases/$(database)/documents/referrers/$(d.ref)) &&
+        get(/databases/$(database)/documents/users/$(get(/databases/$(database)/documents/referrers/$(d.ref)).data.uid)).data.emailLower != d.emailLower
+      );
     }
     function isDate(s) { return s is string && s.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$'); }
     function shortText(s, n) { return s is string && s.size() <= n; }
@@ -34,7 +46,8 @@ service cloud.firestore {
         (request.resource.data.date == '' || isDate(request.resource.data.date)) &&
         shortText(request.resource.data.slot, 10) &&
         request.resource.data.segment in ['residential', 'commercial'] &&
-        request.resource.data.keys().size() <= 40;
+        refOk(request.resource.data) &&
+        request.resource.data.keys().size() <= 45;
       allow read: if isAdmin() ||
         (signedIn() && request.auth.token.email_verified == true &&
          resource.data.emailLower == request.auth.token.email.lower());
@@ -59,6 +72,38 @@ service cloud.firestore {
 
     match /days/{date} {
       allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /users/{uid} {
+      allow read: if isAdmin() || (signedIn() && request.auth.uid == uid);
+      allow create: if verified() && request.auth.uid == uid &&
+        request.resource.data.keys().hasOnly(['code', 'emailLower', 'createdAt']) &&
+        request.resource.data.keys().hasAll(['code', 'emailLower', 'createdAt']) &&
+        request.resource.data.code.matches('^[A-Z2-9]{6}$') &&
+        request.resource.data.emailLower == request.auth.token.email.lower() &&
+        request.resource.data.createdAt == request.time &&
+        getAfter(/databases/$(database)/documents/referrers/$(request.resource.data.code)).data.uid == uid;
+      allow update: if false;
+      allow delete: if isAdmin();
+    }
+
+    match /referrers/{code} {
+      allow get: if true;       // a visitor can check one code; nobody can list them
+      allow list: if false;
+      allow create: if verified() && code.matches('^[A-Z2-9]{6}$') &&
+        request.resource.data.keys().hasOnly(['uid', 'createdAt']) &&
+        request.resource.data.keys().hasAll(['uid', 'createdAt']) &&
+        request.resource.data.uid == request.auth.uid &&
+        request.resource.data.createdAt == request.time &&
+        getAfter(/databases/$(database)/documents/users/$(request.auth.uid)).data.code == code;
+      allow update: if false;
+      allow delete: if isAdmin();
+    }
+
+    match /credits/{id} {
+      allow read: if isAdmin() ||
+        (verified() && resource.data.emailLower == request.auth.token.email.lower());
       allow write: if isAdmin();
     }
 

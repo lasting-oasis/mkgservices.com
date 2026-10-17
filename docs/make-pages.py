@@ -18,21 +18,24 @@ header = base[base.index("  <header"): base.index("  <main")]
 footer = base[base.index("  <footer"): base.index("  <script")]
 
 # Footer: add the new links everywhere later (index etc. are patched separately); here just build.
-footer = footer.replace(
+if 'href="privacy.html"' not in footer:
+  footer = footer.replace(
     '        <a href="commercial.html" data-i18n="nav.commercial">Commercial</a>\n      </nav>',
     '        <a href="commercial.html" data-i18n="nav.commercial">Commercial</a>\n'
     '        <a href="availability.html" data-i18n="nav.availability">Availability</a>\n'
+    '        <a href="refer.html" data-i18n="nav.refer">Refer a friend</a>\n'
     '        <a href="account.html" data-i18n="nav.account">Client sign-in</a>\n'
     '        <a href="privacy.html" data-i18n="nav.privacy">Privacy</a>\n'
     '        <a href="terms.html" data-i18n="nav.terms">Terms</a>\n      </nav>')
 header = header.replace(' aria-current="page"', "")
-header = header.replace(
-    '        <a href="commercial.html" data-i18n="nav.commercial">Commercial</a>\n',
-    '        <a href="availability.html" data-i18n="nav.availability">Availability</a>\n'
-    '        <a href="commercial.html" data-i18n="nav.commercial">Commercial</a>\n')
+if 'href="availability.html"' not in header:   # quote.html already has it once the link was added
+    header = header.replace(
+        '        <a href="commercial.html" data-i18n="nav.commercial">Commercial</a>\n',
+        '        <a href="availability.html" data-i18n="nav.availability">Availability</a>\n'
+        '        <a href="commercial.html" data-i18n="nav.commercial">Commercial</a>\n')
 
 
-def page(name, title_key, title, desc, body, scripts, noindex=False, extra_head=""):
+def page(name, title_key, title, desc, body, scripts, noindex=False, extra_head="", body_attrs=""):
     canon = "" if noindex else f'  <link rel="canonical" href="https://mkgservices.com/{name}">\n'
     robots = '  <meta name="robots" content="noindex">\n' if noindex else ""
     html = f'''<!doctype html>
@@ -42,9 +45,9 @@ def page(name, title_key, title, desc, body, scripts, noindex=False, extra_head=
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title data-i18n="{title_key}">{title} | MKG Services</title>
   <meta name="description" data-i18n-attr="content:{title_key}.desc" content="{desc}">
-{robots}{head}{canon}{extra_head}  <link rel="stylesheet" href="styles.css?v=13">
+{robots}{head}{canon}{extra_head}  <link rel="stylesheet" href="styles.css?v=14">
 </head>
-<body>
+<body{body_attrs}>
 {topbar}{header}{body}
 {footer}{scripts}</body>
 </html>
@@ -53,11 +56,12 @@ def page(name, title_key, title, desc, body, scripts, noindex=False, extra_head=
     print("wrote", name)
 
 
-SCRIPTS = '''  <script src="plans.js?v=13"></script>
-  <script src="i18n.js?v=13"></script>
-  <script src="app.js?v=13"></script>
-  <script src="backend.js?v=13"></script>
-  <script src="calendar.js?v=13"></script>
+SCRIPTS = '''  <script src="plans.js?v=14"></script>
+  <script src="i18n.js?v=14"></script>
+  <script src="app.js?v=14"></script>
+  <script src="backend.js?v=14"></script>
+  <script src="calendar.js?v=14"></script>
+  <script src="referral.js?v=14"></script>
 '''
 
 # ---------------------------------------------------------------- availability
@@ -90,7 +94,7 @@ page("availability.html", "meta.title.availability", "Availability",
       </div>
     </section>
   </main>''',
-     SCRIPTS + '  <script src="availability.js?v=13"></script>\n')
+     SCRIPTS + '  <script src="availability.js?v=14"></script>\n', body_attrs=" data-ref-banner")
 
 # ---------------------------------------------------------------- account
 page("account.html", "meta.title.account", "Your account",
@@ -143,6 +147,31 @@ page("account.html", "meta.title.account", "Your account",
             </div>
             <button type="button" class="btn btn-secondary btn-sm" data-acct-signout data-i18n="acct.signOut">Sign out</button>
           </div>
+          <section class="ref-panel" data-ref-panel hidden>
+            <div class="ref-balance">
+              <div>
+                <p class="ref-label" data-i18n="ref.balanceH">Your credit</p>
+                <p class="ref-amount" data-ref-balance>$0</p>
+                <p class="ref-stat" data-ref-friends></p>
+              </div>
+              <p class="muted" data-i18n="ref.balanceP">It comes off the price of your next visit, and it stacks: every friend adds more.</p>
+            </div>
+            <div class="ref-invite">
+              <h2 class="title" data-i18n="acct.refH">Invite a friend, earn credit</h2>
+              <p class="step-intro" data-i18n="acct.refP">Share your link or QR code. Your friend gets money off their first visit, and you earn credit when it's done. Credit stacks: every friend adds more.</p>
+              <ul class="ref-rewards">
+                <li data-i18n="ref.rewardsHome">Homes: your friend gets {homeFriend} off, you earn {homeReferrer}.</li>
+                <li data-i18n="ref.rewardsBiz">Businesses: your friend gets {bizFriend} off, you earn {bizReferrer}.</li>
+              </ul>
+              <div class="ref-share" data-ref-share-box><p class="muted" data-i18n="ref.creating">Setting up your code…</p></div>
+              <p class="field-error" data-ref-error></p>
+            </div>
+            <div class="ref-history">
+              <h3 data-i18n="ref.history">Credit history</h3>
+              <ul class="ref-ledger" data-ref-ledger></ul>
+            </div>
+          </section>
+          <h2 class="title ref-reqs-h" data-i18n="acct.h1">Your requests</h2>
           <div class="acct-list" data-acct-list></div>
           <p class="notice" data-acct-empty hidden data-i18n="acct.empty">Nothing under this email yet. {quoteLink}</p>
           <p class="field-hint" data-i18n="acct.help">Questions about a request? Call or text {phone}, or email {email}.</p>
@@ -150,7 +179,7 @@ page("account.html", "meta.title.account", "Your account",
       </div>
     </div>
   </main>''',
-     SCRIPTS + '  <script src="account.js?v=13"></script>\n', noindex=True)
+     SCRIPTS + '  <script src="vendor/qrcode.js?v=14"></script>\n  <script src="account.js?v=14"></script>\n', noindex=True)
 
 # ---------------------------------------------------------------- admin
 page("admin.html", "meta.title.admin", "Admin",
@@ -187,7 +216,37 @@ page("admin.html", "meta.title.admin", "Admin",
           <button type="button" class="btn btn-secondary btn-sm" data-admin-signout data-i18n="acct.signOut">Sign out</button>
         </div>
 
-        <div class="admin-grid">
+        <div class="seg admin-tabs" role="group">
+          <button type="button" class="seg-btn" data-view-tab="requests" aria-pressed="true"><span class="seg-label" data-i18n="adm.tab.requests">Requests</span></button>
+          <button type="button" class="seg-btn" data-view-tab="credits" aria-pressed="false"><span class="seg-label" data-i18n="adm.tab.credits">Credits</span><span class="seg-off" data-credit-total></span></button>
+        </div>
+
+        <div class="admin-credits" data-view="credits" hidden>
+          <div>
+            <div class="field">
+              <label for="credit-search" data-i18n="adm.credit.search">Find by email</label>
+              <input class="input" id="credit-search" data-credit-search type="search" autocomplete="off">
+            </div>
+            <h3 style="margin-top:18px" data-i18n="adm.credit.balances">Balances</h3>
+            <div class="admin-balances" data-credit-balances></div>
+            <p class="muted" data-credit-none hidden data-i18n="adm.credit.none">No credit entries yet.</p>
+          </div>
+          <div>
+            <div data-credit-detail><p class="muted" data-i18n="adm.credit.pick">Pick someone on the left to see their history.</p></div>
+            <form class="admin-credit-form" data-credit-form novalidate>
+              <h3 data-i18n="adm.credit.addH">Add or remove credit</h3>
+              <div class="field"><label for="cf-email" data-i18n="q.email">Email</label><input class="input" id="cf-email" name="email" type="email"></div>
+              <div class="two-up">
+                <div class="field"><label for="cf-amount" data-i18n="adm.credit.amount">Amount (a minus removes credit)</label><input class="input" id="cf-amount" name="amount" inputmode="decimal"></div>
+                <div class="field"><label for="cf-note" data-i18n="adm.credit.note">Note (only you see this)</label><input class="input" id="cf-note" name="note"></div>
+              </div>
+              <p class="field-error" data-error="credit"></p>
+              <p><button class="btn btn-sm" type="submit" data-i18n="adm.credit.add">Add entry</button></p>
+            </form>
+          </div>
+        </div>
+
+        <div class="admin-grid" data-view="requests">
           <div>
             <div class="seg admin-filter" role="group">
               <button type="button" class="seg-btn" data-filter="new" aria-pressed="true"><span class="seg-label" data-i18n="status.new">New</span><span class="seg-off" data-count="new">0</span></button>
@@ -208,7 +267,7 @@ page("admin.html", "meta.title.admin", "Admin",
       </section>
     </div>
   </main>''',
-     SCRIPTS + '  <script src="admin.js?v=13"></script>\n', noindex=True)
+     SCRIPTS + '  <script src="admin.js?v=14"></script>\n', noindex=True)
 
 # ---------------------------------------------------------------- legal
 def legal(name, key, title, desc, sections):
@@ -223,13 +282,14 @@ def legal(name, key, title, desc, sections):
             body.append(f'        <p data-i18n="{key}.{i}.p{j}">{p}</p>')
     body.append('      </div>\n    </section>\n  </main>')
     page(name, f"meta.title.{key}", title, desc, "\n".join(body),
-         '  <script src="plans.js?v=13"></script>\n  <script src="i18n.js?v=13"></script>\n  <script src="app.js?v=13"></script>\n')
+         '  <script src="plans.js?v=14"></script>\n  <script src="i18n.js?v=14"></script>\n  <script src="app.js?v=14"></script>\n  <script src="referral.js?v=14"></script>\n')
 
 legal("privacy.html", "privacy", "Privacy policy",
       "What MKG Services collects when you use this site, why, and how to have it removed.", [
     ("What we collect", [
         "When you request a quote we collect what you type into the form: your name, email, phone number if you give it, ZIP code, details about the home or building, the plan and schedule you chose, any day and time window you picked, and your notes.",
         "The price calculator keeps your size and schedule choices in your browser so the pages agree with each other. Your quote draft is kept in the browser only until you close the tab.",
+        "If a friend invites you, or you invite friends, we keep the code that was used so we can give the credit. Nobody sees another person's details; the person who invited you only learns that credit was earned.",
     ]),
     ("How we use it", [
         "To reply with a price, confirm a day and time, do the work, and bill for it. We don't sell or rent your details, and we don't use them for advertising.",
@@ -258,7 +318,53 @@ legal("terms.html", "terms", "Terms of service",
     ("Payment", [
         "Payment is due at or after each visit, by the method we agree on, including online payment where offered. Unpaid balances may pause service.",
     ]),
+    ("Referral credit", [
+        "Referral credit is for first-time customers and comes off the price of a visit when we confirm it. It stacks with no limit, doesn't expire, has no cash value, and can't be moved to another account. We may remove credit that was earned by referring yourself, your household, or your own business, and we may change or end the program at any time; credit already earned stays yours.",
+    ]),
     ("Contact", [
         "MKG Services, LLC, Charlotte, North Carolina. Call or text {phone}, or email {email}.",
     ]),
 ])
+
+
+# ---------------------------------------------------------------- refer
+page("refer.html", "meta.title.refer", "Refer a friend",
+     "Invite a friend to MKG Services. They save on their first visit and you earn cleaning credit that stacks.",
+     '''  <main>
+    <section class="page-head">
+      <div class="container">
+        <h1 class="display" data-i18n="refer.h1">Refer a friend, earn cleaning credit</h1>
+        <p class="lead" data-i18n="refer.lead">Your friend gets money off their first visit. You earn credit toward your next one. Invite as many people as you like; the credit stacks.</p>
+        <p style="margin-top:22px"><a class="btn" href="account.html" data-i18n="refer.cta">Get my invite link</a></p>
+      </div>
+    </section>
+    <section class="section" style="padding-top: 0;">
+      <div class="container">
+        <table class="ref-table">
+          <thead><tr><th></th><th data-i18n="refer.col.friend">Your friend gets</th><th data-i18n="refer.col.you">You earn</th></tr></thead>
+          <tbody>
+            <tr><th scope="row" data-i18n="refer.row.home">Homes</th><td><b data-ref-amount="friend" data-ref-seg="residential"></b></td><td><b data-ref-amount="referrer" data-ref-seg="residential"></b></td></tr>
+            <tr><th scope="row" data-i18n="refer.row.biz">Businesses</th><td><b data-ref-amount="friend" data-ref-seg="commercial"></b></td><td><b data-ref-amount="referrer" data-ref-seg="commercial"></b></td></tr>
+          </tbody>
+        </table>
+
+        <h2 class="title" style="margin: 48px 0 20px" data-i18n="refer.how.h">How it works</h2>
+        <ol class="ref-steps">
+          <li><h3 data-i18n="refer.how.1.h">Get your link</h3><p data-i18n="refer.how.1.p">Sign in with your email. Your personal code, link, and QR code are ready in seconds.</p></li>
+          <li><h3 data-i18n="refer.how.2.h">Share it</h3><p data-i18n="refer.how.2.p">Text it, post it, or let a friend scan the QR code from your phone.</p></li>
+          <li><h3 data-i18n="refer.how.3.h">You both save</h3><p data-i18n="refer.how.3.p">When your friend's first visit is confirmed, their welcome credit is added. When it's done, yours is. A few friends can cover a whole clean.</p></li>
+        </ol>
+        <p class="notice" style="margin-top: 28px" data-i18n="refer.haveCode">Got a code from a friend? Open their link, or enter the code on the quote form.</p>
+
+        <h2 class="title" style="margin: 48px 0 16px" data-i18n="refer.rules.h">The fine print, in plain words</h2>
+        <ul class="ref-rules">
+          <li data-i18n="refer.rules.1">Credit is for new customers: your friend must not have had a visit with us before.</li>
+          <li data-i18n="refer.rules.2">Your friend's credit is added when we confirm their first visit. Yours is added when that visit is done.</li>
+          <li data-i18n="refer.rules.3">Credit stacks with no limit and doesn't expire. It comes off the price of a visit when we confirm it, up to {maxPct} of that visit's price. It can't be paid out as cash or moved to another account.</li>
+          <li data-i18n="refer.rules.4">You can't refer yourself, your household, or your own business, and we may remove credit earned that way.</li>
+          <li data-i18n="refer.rules.5">We may change or end the program at any time. Credit you've already earned stays yours.</li>
+        </ul>
+      </div>
+    </section>
+  </main>''',
+     '  <script src="plans.js?v=14"></script>\n  <script src="i18n.js?v=14"></script>\n  <script src="app.js?v=14"></script>\n  <script src="referral.js?v=14"></script>\n')

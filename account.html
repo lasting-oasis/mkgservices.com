@@ -14,7 +14,7 @@
   <link rel="shortcut icon" href="favicon.ico">
   <link rel="apple-touch-icon" href="brand/apple-touch-icon.png">
   <meta name="theme-color" content="#176b61">
-  <link rel="stylesheet" href="styles.css?v=13">
+  <link rel="stylesheet" href="styles.css?v=14">
 </head>
 <body>
   <div class="topbar">
@@ -105,6 +105,31 @@
             </div>
             <button type="button" class="btn btn-secondary btn-sm" data-acct-signout data-i18n="acct.signOut">Sign out</button>
           </div>
+          <section class="ref-panel" data-ref-panel hidden>
+            <div class="ref-balance">
+              <div>
+                <p class="ref-label" data-i18n="ref.balanceH">Your credit</p>
+                <p class="ref-amount" data-ref-balance>$0</p>
+                <p class="ref-stat" data-ref-friends></p>
+              </div>
+              <p class="muted" data-i18n="ref.balanceP">It comes off the price of your next visit, and it stacks: every friend adds more.</p>
+            </div>
+            <div class="ref-invite">
+              <h2 class="title" data-i18n="acct.refH">Invite a friend, earn credit</h2>
+              <p class="step-intro" data-i18n="acct.refP">Share your link or QR code. Your friend gets money off their first visit, and you earn credit when it's done. Credit stacks: every friend adds more.</p>
+              <ul class="ref-rewards">
+                <li data-i18n="ref.rewardsHome">Homes: your friend gets {homeFriend} off, you earn {homeReferrer}.</li>
+                <li data-i18n="ref.rewardsBiz">Businesses: your friend gets {bizFriend} off, you earn {bizReferrer}.</li>
+              </ul>
+              <div class="ref-share" data-ref-share-box><p class="muted" data-i18n="ref.creating">Setting up your code…</p></div>
+              <p class="field-error" data-ref-error></p>
+            </div>
+            <div class="ref-history">
+              <h3 data-i18n="ref.history">Credit history</h3>
+              <ul class="ref-ledger" data-ref-ledger></ul>
+            </div>
+          </section>
+          <h2 class="title ref-reqs-h" data-i18n="acct.h1">Your requests</h2>
           <div class="acct-list" data-acct-list></div>
           <p class="notice" data-acct-empty hidden data-i18n="acct.empty">Nothing under this email yet. {quoteLink}</p>
           <p class="field-hint" data-i18n="acct.help">Questions about a request? Call or text {phone}, or email {email}.</p>
@@ -132,16 +157,19 @@
         <a href="account.html" data-i18n="nav.account">Client sign-in</a>
         <a href="privacy.html" data-i18n="nav.privacy">Privacy</a>
         <a href="terms.html" data-i18n="nav.terms">Terms</a>
+        <a href="refer.html" data-i18n="nav.refer">Refer a friend</a>
       </nav>
       <p>&copy; <span data-year></span> MKG Services, LLC</p>
     </div>
   </footer>
 
-  <script src="plans.js?v=13"></script>
-  <script src="i18n.js?v=13"></script>
-  <script src="app.js?v=13"></script>
-  <script src="backend.js?v=13"></script>
-  <script src="calendar.js?v=13"></script>
-  <script src="account.js?v=13"></script>
+  <script src="plans.js?v=14"></script>
+  <script src="i18n.js?v=14"></script>
+  <script src="app.js?v=14"></script>
+  <script src="backend.js?v=14"></script>
+  <script src="calendar.js?v=14"></script>
+  <script src="referral.js?v=14"></script>
+  <script src="vendor/qrcode.js?v=14"></script>
+  <script src="account.js?v=14"></script>
 </body>
 </html>

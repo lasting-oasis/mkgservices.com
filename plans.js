@@ -37,8 +37,26 @@
     // endpoint that accepts a JSON POST). Example: "https://formspree.io/f/abcd1234"
     formEndpoint: "",
 
+    // The address shared links and QR codes point at.
+    siteUrl: "https://mkgservices.com",
+
     // ZIP codes served. Leave empty to accept any ZIP and confirm coverage later.
     serviceZips: [],
+
+    // Refer-a-friend. Every signed-in client gets a personal code, link, and QR.
+    // When a friend's first visit is confirmed the friend gets `friend` dollars
+    // of credit, and when that visit is done the referrer gets `referrer`
+    // dollars. Credits are kept per email and STACK without limit; the owner
+    // applies them to a client's next visit on admin.html, up to
+    // `maxPercentOfVisit` of that visit's price (100 = the visit can be free).
+    referral: {
+      enabled: true,
+      rewards: {
+        residential: { friend: 25, referrer: 25 },
+        commercial:  { friend: 50, referrer: 50 },
+      },
+      maxPercentOfVisit: 100,
+    },
 
     // The booking calendar. A "slot" is a time window a crew can start in;
     // `capacity` is how many jobs can start in the same window on one day

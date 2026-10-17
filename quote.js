@@ -17,8 +17,9 @@
   var steps = Array.prototype.slice.call(form.querySelectorAll("[data-step]"));
   var marks = Array.prototype.slice.call(form.querySelectorAll("[data-step-mark]"));
   var current = 1;
-  var draft = { service: null, outOfArea: false, recency: (C.followUp || {}).defaultTier, date: "", slot: "" };
-  var B = C.backend, cal = null;
+  var draft = { service: null, outOfArea: false, recency: (C.followUp || {}).defaultTier, date: "", slot: "", ref: "", refValid: null };
+  var B = C.backend, cal = null, INV = C.invite;
+  var credit = 0; // referral credit of the signed-in client, shown as a heads-up
   var REVIEW = 6;
 
   function $(sel, root) { return (root || form).querySelector(sel); }
@@ -37,7 +38,7 @@
   // ---------- draft persistence ----------
   function saveDraft() {
     var d = {
-      zip: value("zip"), notes: value("notes"), company: value("company"),
+      zip: value("zip"), notes: value("notes"), company: value("company"), ref: value("ref"),
       name: value("name"), email: value("email"), phone: value("phone"),
       contactMethod: checked("contactMethod")[0], days: checked("days"), timeOfDay: checked("timeOfDay")[0],
       service: draft.service, recency: draft.recency, outOfArea: draft.outOfArea, step: current,
@@ -51,7 +52,7 @@
     var d = null;
     try { d = JSON.parse(sessionStorage.getItem(DRAFT_KEY) || "null"); } catch (e) { /* ignore */ }
     if (!d) return;
-    ["zip", "notes", "name", "email", "phone", "company"].forEach(function (k) { if (d[k] && form.elements[k]) form.elements[k].value = d[k]; });
+    ["zip", "notes", "name", "email", "phone", "company", "ref"].forEach(function (k) { if (d[k] && form.elements[k]) form.elements[k].value = d[k]; });
     [Q.typeField, Q.extraField, "contactMethod", "timeOfDay"].forEach(function (k) {
       var el = $('input[name="' + k + '"][value="' + (d[k] || "") + '"]');
       if (el) el.checked = true;
@@ -90,6 +91,63 @@
     if (clear) clear.hidden = !draft.date;
     var prefs = $("[data-when-prefs]");
     if (prefs) prefs.hidden = !!draft.date;
+  }
+
+  // ---------- a friend's invite code (step 4) ----------
+  function friendAmount() { return INV ? INV.amount("friend", C.segment) : 0; }
+  function refApplied() { return !!(INV && INV.enabled && friendAmount() > 0 && INV.valid(draft.ref) && draft.refValid !== false); }
+  function showRefStatus() {
+    var el = $("[data-ref-status]"); if (!el) return;
+    var msg = t("q.ref.hint"), cls = "";
+    if (draft.ref && !INV.valid(draft.ref) && draft.ref.length === 6) { msg = t("q.ref.bad"); cls = "is-bad"; }
+    else if (INV.valid(draft.ref)) {
+      if (draft.refValid === undefined) msg = t("q.ref.checking");
+      else if (draft.refValid === false) { msg = t("q.ref.bad"); cls = "is-bad"; }
+      else { msg = t("q.ref.ok", { amount: A.dollars(friendAmount()) }); cls = "is-ok"; }
+    }
+    el.textContent = msg; el.classList.toggle("is-ok", cls === "is-ok"); el.classList.toggle("is-bad", cls === "is-bad");
+  }
+  function checkRef() {
+    var el = form.elements.ref; if (!el || !INV) return;
+    var code = INV.clean(el.value).slice(0, 6);
+    el.value = code; draft.ref = code;
+    if (!INV.valid(code)) { draft.refValid = null; showRefStatus(); return; }
+    draft.refValid = undefined; showRefStatus();
+    B.checkReferral(code).then(function (ok) {
+      if (el.value !== code) return; // typed on since
+      draft.refValid = ok; showRefStatus(); saveDraft();
+    });
+  }
+  function initRef() {
+    var field = $("[data-ref-field]");
+    if (!INV || !INV.enabled || !friendAmount()) { if (field) field.hidden = true; return; }
+    var el = form.elements.ref;
+    var fromLink = INV.current();
+    if (fromLink) el.value = fromLink;
+    el.addEventListener("input", checkRef);
+    checkRef();
+  }
+  // A short heads-up for a signed-in client who has credit.
+  function note(stepSel, attr, text, before) {
+    var host = $(stepSel); if (!host) return;
+    var el = host.querySelector("[" + attr + "]");
+    if (!text) { if (el) el.remove(); return; }
+    if (!el) { el = document.createElement("p"); el.className = "notice"; el.setAttribute(attr, ""); var ref = before ? host.querySelector(before) : null; if (ref) host.insertBefore(el, ref); else host.appendChild(el); }
+    el.textContent = text;
+  }
+  function creditNotes() {
+    var text = credit > 0 ? t("q.credit.note", { credit: A.dollars(credit) }) : "";
+    note('[data-step="6"]', "data-credit-note", text, "[data-review]");
+  }
+  function watchCredit() {
+    if (!INV || !INV.enabled) return;
+    B.ready.then(function (live) {
+      if (!live) return;
+      B.onAuth(function (u) {
+        if (!u) { credit = 0; creditNotes(); return; }
+        B.myCredits(u.email).then(function (list) { credit = Math.max(0, B.creditBalance(list)); creditNotes(); }).catch(function () { /* none */ });
+      });
+    });
   }
 
   // ---------- plan options (step 3) ----------
@@ -266,6 +324,7 @@
         ? t("review.estimateV", { perVisit: A.dollars(e.perVisit), unit: e.perVisitLabel, pct: A.pct(e.discount), oneTime: A.dollars(e.oneTime), perMonth: e.perMonth === null ? "" : A.dollars(e.perMonth) })
         : A.dollars(e.perVisit) + " " + e.perVisitLabel, 3]);
     }
+    if (refApplied()) rows.push([t("review.referral"), t("review.referralV", { code: draft.ref, amount: A.dollars(friendAmount()) }), 4]);
     var method = checked("contactMethod")[0];
     rows.push([t("review.contact"), value("name") + ", " + value("email") + (value("phone") ? ", " + value("phone") : "") + ". " + t("review.prefers." + method), 4]);
     var days = checked("days"), tod = checked("timeOfDay")[0];
@@ -329,6 +388,7 @@
     if (form.elements.company) p.company = value("company");
     C.dims.forEach(function (d) { p[d.id] = s[d.id]; });
     p.date = draft.date || ""; p.slot = draft.slot || "";
+    if (refApplied()) { p.ref = draft.ref; p.refAmount = friendAmount(); }
     if (draft.date) p.requestedTime = whenText();
     if (draft.service) {
       p.service = singleClean(draft.service).name.en;
@@ -379,8 +439,14 @@
         if (!C.formEndpoint) { setTimeout(function () { done(true); }, 400); return; }
         return mailCopy().then(function (ok) { ok ? done(false) : fail(); });
       }
-      return B.submitRequest(data).then(function (id) {
+      return B.submitRequest(data).catch(function (err) {
+        if (!data.ref) throw err;
+        // Most likely the invite was refused (your own code, or one that was removed): send the request without it.
+        var plain = Object.assign({}, data); delete plain.ref; delete plain.refAmount; plain.refDropped = data.ref;
+        data = plain; return B.submitRequest(plain);
+      }).then(function (id) {
         $all("[data-request-id]").forEach(function (el) { el.textContent = id.slice(0, 6).toUpperCase(); });
+        if (data.ref) { note('[data-step="done"]', "data-done-ref", t("q.done.refNote", { amount: A.dollars(friendAmount()) }), "[data-review-done]"); INV.forget(); }
         return mailCopy().then(function () { done(false); });
       }).catch(function (err) {
         if (window.console) console.warn("request not saved", err);
@@ -402,6 +468,7 @@
     if (/^\d{4}-\d{2}-\d{2}$/.test(q.get("date") || "")) { draft.date = q.get("date"); draft.slot = q.get("slot") || ""; }
     var clearBtn = $("[data-when-clear]");
     if (clearBtn) clearBtn.addEventListener("click", function () { draft.date = ""; draft.slot = ""; if (cal) cal.set(draft); renderWhenSummary(); saveDraft(); });
+    initRef(); watchCredit();
     A.render();
     renderTabs();
     A.onChange(function () { if (current === 3) syncPlanUI(); });
@@ -411,6 +478,7 @@
       renderTabs();
       renderFollowUp();
       if (current === 3) syncPlanUI();
+      showRefStatus(); creditNotes();
       if (current === 5) renderWhenSummary();
       if (current === REVIEW) renderReview($("[data-review]"), true);
       if (current === "done") renderReview($("[data-review-done]"), false);

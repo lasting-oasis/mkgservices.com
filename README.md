@@ -17,9 +17,12 @@ Two service lines share one engine. Residential is priced by bedrooms and bathro
 | `availability.html` | Public calendar: which days and start windows are still open, for homes or businesses; a pick carries into the quote |
 | `account.html` | Client sign-in by emailed link; shows that email's requests, status, notes from the owner, and a Pay online button when a link is set |
 | `admin.html` | Owner's page (password): every request with confirm/decline/done, note to client, payment link, date changes; the calendar with close-day, block-window, and phone bookings |
+| `refer.html` | Public explainer for the refer-a-friend program (amounts come from `plans.js`) |
 | `privacy.html`, `terms.html` | Plain-language privacy policy and terms (bilingual) |
 
 The quote flows have six steps: ZIP, the space, plan and schedule, contact, **when** (the calendar), review. Requests are saved to Firestore by `backend.js`; `calendar.js` draws the month grid everywhere it appears. Setup for all of this is in **`docs/SETUP-firebase.md`**.
+
+Referral: `referral.js` (invite link capture, banner, QR share panel and downloadable QR card), `vendor/qrcode.js` (MIT), credits ledger in Firestore `credits`, settings in `plans.js` `referral`. See `docs/SETUP-firebase.md`.
 
 A page picks its line with `<script>window.MKG_SEGMENT = "commercial"</script>` before `plans.js`; pages without it are residential.
 

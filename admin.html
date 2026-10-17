@@ -14,7 +14,7 @@
   <link rel="shortcut icon" href="favicon.ico">
   <link rel="apple-touch-icon" href="brand/apple-touch-icon.png">
   <meta name="theme-color" content="#176b61">
-  <link rel="stylesheet" href="styles.css?v=13">
+  <link rel="stylesheet" href="styles.css?v=14">
 </head>
 <body>
   <div class="topbar">
@@ -89,7 +89,37 @@
           <button type="button" class="btn btn-secondary btn-sm" data-admin-signout data-i18n="acct.signOut">Sign out</button>
         </div>
 
-        <div class="admin-grid">
+        <div class="seg admin-tabs" role="group">
+          <button type="button" class="seg-btn" data-view-tab="requests" aria-pressed="true"><span class="seg-label" data-i18n="adm.tab.requests">Requests</span></button>
+          <button type="button" class="seg-btn" data-view-tab="credits" aria-pressed="false"><span class="seg-label" data-i18n="adm.tab.credits">Credits</span><span class="seg-off" data-credit-total></span></button>
+        </div>
+
+        <div class="admin-credits" data-view="credits" hidden>
+          <div>
+            <div class="field">
+              <label for="credit-search" data-i18n="adm.credit.search">Find by email</label>
+              <input class="input" id="credit-search" data-credit-search type="search" autocomplete="off">
+            </div>
+            <h3 style="margin-top:18px" data-i18n="adm.credit.balances">Balances</h3>
+            <div class="admin-balances" data-credit-balances></div>
+            <p class="muted" data-credit-none hidden data-i18n="adm.credit.none">No credit entries yet.</p>
+          </div>
+          <div>
+            <div data-credit-detail><p class="muted" data-i18n="adm.credit.pick">Pick someone on the left to see their history.</p></div>
+            <form class="admin-credit-form" data-credit-form novalidate>
+              <h3 data-i18n="adm.credit.addH">Add or remove credit</h3>
+              <div class="field"><label for="cf-email" data-i18n="q.email">Email</label><input class="input" id="cf-email" name="email" type="email"></div>
+              <div class="two-up">
+                <div class="field"><label for="cf-amount" data-i18n="adm.credit.amount">Amount (a minus removes credit)</label><input class="input" id="cf-amount" name="amount" inputmode="decimal"></div>
+                <div class="field"><label for="cf-note" data-i18n="adm.credit.note">Note (only you see this)</label><input class="input" id="cf-note" name="note"></div>
+              </div>
+              <p class="field-error" data-error="credit"></p>
+              <p><button class="btn btn-sm" type="submit" data-i18n="adm.credit.add">Add entry</button></p>
+            </form>
+          </div>
+        </div>
+
+        <div class="admin-grid" data-view="requests">
           <div>
             <div class="seg admin-filter" role="group">
               <button type="button" class="seg-btn" data-filter="new" aria-pressed="true"><span class="seg-label" data-i18n="status.new">New</span><span class="seg-off" data-count="new">0</span></button>
@@ -130,16 +160,18 @@
         <a href="account.html" data-i18n="nav.account">Client sign-in</a>
         <a href="privacy.html" data-i18n="nav.privacy">Privacy</a>
         <a href="terms.html" data-i18n="nav.terms">Terms</a>
+        <a href="refer.html" data-i18n="nav.refer">Refer a friend</a>
       </nav>
       <p>&copy; <span data-year></span> MKG Services, LLC</p>
     </div>
   </footer>
 
-  <script src="plans.js?v=13"></script>
-  <script src="i18n.js?v=13"></script>
-  <script src="app.js?v=13"></script>
-  <script src="backend.js?v=13"></script>
-  <script src="calendar.js?v=13"></script>
-  <script src="admin.js?v=13"></script>
+  <script src="plans.js?v=14"></script>
+  <script src="i18n.js?v=14"></script>
+  <script src="app.js?v=14"></script>
+  <script src="backend.js?v=14"></script>
+  <script src="calendar.js?v=14"></script>
+  <script src="referral.js?v=14"></script>
+  <script src="admin.js?v=14"></script>
 </body>
 </html>
