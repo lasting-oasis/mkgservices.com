@@ -14,7 +14,7 @@
   <link rel="shortcut icon" href="favicon.ico">
   <link rel="apple-touch-icon" href="brand/apple-touch-icon.png">
   <meta name="theme-color" content="#176b61">
-  <link rel="stylesheet" href="styles.css?v=18">
+  <link rel="stylesheet" href="styles.css?v=19">
 </head>
 <body>
   <div class="topbar">
@@ -97,7 +97,15 @@
         </div>
 
         <div class="admin-grid">
-          <div>
+          <section class="admin-clock" aria-labelledby="tc-h">
+            <h2 class="title" id="tc-h" style="font-size:1.3rem" data-i18n="tc.h">Time clock</h2>
+            <div class="tc" data-tc></div>
+            <details class="tc-report" data-tc-report-wrap hidden>
+              <summary data-i18n="tc.reportH">Team time</summary>
+              <div data-tc-report></div>
+            </details>
+          </section>
+          <div class="admin-main">
             <div class="field admin-search">
               <label for="adm-search" class="visually-hidden" data-i18n="adm.search">Search requests</label>
               <input class="input" id="adm-search" type="search" data-admin-search data-i18n-attr="placeholder:adm.searchHint" placeholder="Search by name, email, phone, ZIP, or #ID" autocomplete="off">
@@ -112,12 +120,6 @@
             <p class="muted" data-admin-empty hidden data-i18n="adm.empty">Nothing here.</p>
           </div>
           <aside class="admin-cal">
-            <h2 class="title" style="font-size:1.3rem" data-i18n="tc.h">Time clock</h2>
-            <div class="tc" data-tc></div>
-            <details class="tc-report" data-tc-report-wrap hidden>
-              <summary data-i18n="tc.reportH">Team time</summary>
-              <div data-tc-report></div>
-            </details>
             <h2 class="title" style="font-size:1.3rem" data-i18n="adm.weekH">The week ahead</h2>
             <div class="admin-week" data-admin-upcoming></div>
             <h2 class="title" style="font-size:1.3rem" data-i18n="adm.calH">Calendar</h2>
@@ -166,12 +168,12 @@
     </div>
   </footer>
 
-  <script src="plans.js?v=18"></script>
-  <script src="i18n.js?v=18"></script>
-  <script src="app.js?v=18"></script>
-  <script src="backend.js?v=18"></script>
-  <script src="calendar.js?v=18"></script>
-  <script src="timeclock.js?v=18"></script>
-  <script src="admin.js?v=18"></script>
+  <script src="plans.js?v=19"></script>
+  <script src="i18n.js?v=19"></script>
+  <script src="app.js?v=19"></script>
+  <script src="backend.js?v=19"></script>
+  <script src="calendar.js?v=19"></script>
+  <script src="timeclock.js?v=19"></script>
+  <script src="admin.js?v=19"></script>
 </body>
 </html>

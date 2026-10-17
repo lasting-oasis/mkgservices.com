@@ -14,6 +14,19 @@
   var user = null, items = [];
   var editing = {}; // request id -> { date, slot } while its calendar is open
   var OPEN = { new: true, confirmed: true };
+  // terms.html: a confirmed visit can be changed or cancelled free with this much notice.
+  var NOTICE_HOURS = (C.policy && C.policy.changeNoticeHours) || 24;
+
+  // When the visit starts, in the visitor's clock (start of its window, or 8am).
+  function startsAt(r) {
+    if (!r.date) return null;
+    var p = r.date.split("-"), hh = 8, mm = 0;
+    if (/^\d{4}$/.test(r.slot || "")) { hh = Number(r.slot.slice(0, 2)); mm = Number(r.slot.slice(2)); }
+    return new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2]), hh, mm).getTime();
+  }
+  // A confirmed visit inside the notice window is changed by phone, not here.
+  function tooLate(r) { var s = startsAt(r); return r.status === "confirmed" && s !== null && Date.now() > s - NOTICE_HOURS * 36e5; }
+  function safeLink(u) { return /^https:\/\/\S+$/i.test(u || "") ? u : ""; }
 
   function show(which) {
     $all("[data-acct]").forEach(function (s) { s.hidden = s.getAttribute("data-acct") !== which; });
@@ -65,7 +78,7 @@
   function card(r) {
     var s = r.status || "new", open = !!OPEN[s];
     var created = r.createdAt ? new Date(B.toMs(r.createdAt)).toLocaleDateString(locale(), { month: "short", day: "numeric", year: "numeric" }) : "";
-    var pay = r.payLink || (C.payments && C.payments.link);
+    var pay = safeLink(r.payLink) || safeLink(C.payments && C.payments.link);
     var rows = [
       [t("acct.what"), serviceText(r) + (r.segment === "commercial" ? " · " + t("avail.business") : "")],
       [t("acct.where"), (r.company ? r.company + ", " : "") + (r.zip || "")],
@@ -80,15 +93,18 @@
       '<dl class="review">' + rows.map(function (x) { return '<div class="review-row"><dt>' + esc(x[0]) + "</dt><dd>" + esc(x[1]) + "</dd></div>"; }).join("") + "</dl>";
     var actions = [];
     if (pay && s === "confirmed") actions.push('<a class="btn btn-sm" href="' + esc(pay) + '" target="_blank" rel="noopener">' + esc(t("acct.pay")) + "</a>");
-    if (open) {
+    var late = open && tooLate(r);
+    if (open && !late) {
       actions.push('<button type="button" class="btn btn-sm btn-secondary" data-acct-act="move">' + esc(ed ? t("acct.keepDate") : t("acct.changeDate")) + "</button>");
       actions.push('<button type="button" class="link-btn acct-cancel" data-acct-act="cancel">' + esc(t("acct.cancel")) + "</button>");
+    } else if (late) {
+      actions.push('<span class="muted acct-late">' + esc(t("acct.tooLate", { hours: NOTICE_HOURS, phone: (C.business && C.business.phone) || "" })) + "</span>");
     } else {
       actions.push('<a class="btn btn-sm btn-secondary" href="' + esc(againLink(r)) + '">' + esc(t("acct.again")) + "</a>");
     }
     html += '<div class="admin-actions">' + actions.join(" ") + '<span class="muted" data-acct-msg></span></div>';
-    if (ed) {
-      html += '<div class="acct-move"><p class="field-hint">' + esc(t("acct.moveHint")) + "</p><div data-acct-cal></div>" +
+    if (ed && !late) {
+      html += '<div class="acct-move"><p class="field-hint">' + esc(t(s === "confirmed" ? "acct.moveHintConfirmed" : "acct.moveHint")) + "</p><div data-acct-cal></div>" +
         '<p class="acct-move-pick" data-acct-pick>' + esc(ed.date ? Cal.fmtDate(ed.date) + (ed.slot ? ", " + Cal.slotLabel(ed.slot) : ", " + t("cal.anyWindow").toLowerCase()) : t("acct.nothingPicked")) + "</p>" +
         '<p><button type="button" class="btn btn-sm" data-acct-act="save"' + (ed.date ? "" : " disabled") + ">" + esc(t("acct.saveDate")) + "</button></p></div>";
     }
@@ -97,6 +113,8 @@
   function renderList() {
     var box = $("[data-acct-list]");
     $("[data-acct-empty]").hidden = items.length > 0;
+    var hint = $("[data-acct-wrongemail]");
+    if (hint) { hint.hidden = items.length > 0; hint.textContent = user ? t("acct.wrongEmail", { addr: user.email }) : ""; }
     box.innerHTML = sorted().map(card).join("");
     $all("[data-acct-cal]", box).forEach(function (el) {
       var art = el.closest("[data-id]"), id = art.getAttribute("data-id");
@@ -121,7 +139,7 @@
           var ed = editing[id];
           if (!ed || !ed.date) return;
           if (ed.date === (r.date || "") && ed.slot === (r.slot || "")) { delete editing[id]; renderList(); return; }
-          p = B.reschedule(r, ed.date, ed.slot).then(function () { r.date = ed.date; r.slot = ed.slot; delete editing[id]; });
+          p = B.reschedule(r, ed.date, ed.slot, true).then(function () { r.date = ed.date; r.slot = ed.slot; r.status = "new"; delete editing[id]; });
         } else if (act === "cancel") {
           if (!confirm(t("acct.cancelConfirm"))) return;
           p = B.cancelRequest(id).then(function () { r.status = "cancelled"; r.cancelledBy = "client"; delete editing[id]; });

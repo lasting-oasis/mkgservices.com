@@ -79,7 +79,7 @@ Push the change; the site sends every request to both places.
 
 ## What the owner can change without code
 
-- **In the admin page:** confirm, decline, or finish a request; move its date
+- **In the admin page:** confirm, decline, finish, or (owner) delete a request; move its date
   or window; change the service or plan it is for; set the final price the
   client sees (otherwise they see the estimate); write a note the client
   sees; add a payment link; close a day; block a window; add a booking taken
@@ -93,7 +93,10 @@ Push the change; the site sends every request to both places.
   owner fix or delete a shift (a forgotten clock-out, say).
 - **What clients can do themselves** on the account page, while a request
   is still new or confirmed: move it to another open day and window (the
-  old one frees up) or cancel it. Cancelled requests show in the admin
+  old one frees up; a confirmed visit goes back to New with a "Moved by
+  client" flag so you re-confirm it) or cancel it. Inside 24 hours of a
+  confirmed visit (`policy.changeNoticeHours` in `plans.js`, matching the
+  terms page) the buttons are replaced by "call or text us". Cancelled requests show in the admin
   page's Finished list with a note that the client cancelled. A finished,
   declined, or cancelled request has a "book this again" button that opens
   the quote form with the same service.
@@ -105,12 +108,16 @@ Push the change; the site sends every request to both places.
 
 | Collection | One document is… | Who can read | Who can write |
 |---|---|---|---|
-| `requests` | a quote request with the customer's details, status (`new`, `confirmed`, `declined`, `done`, `cancelled`), note to client, payment link, final price | admins; the customer, signed in with the same email | anyone may create; admins may change anything; the customer may only change the date/window or cancel while it is new or confirmed |
-| `holds` | one date + window a request is holding (no personal data) | everyone (this is what the public calendar reads) | created together with its request; admins and the request's customer may delete |
+| `requests` | a quote request: the customer's details, status (`new`, `confirmed`, `declined`, `done`, `cancelled`), note to client, payment link, final price; `source: "phone"` for bookings taken by phone; `movedByClientAt`/`movedFrom` when the client moved it | admins; the customer, signed in with the same email | anyone may create one, but only with the fields the quote form sends; admins may change anything; the customer may only move it (it goes back to `new`) or cancel it, while it's new or confirmed; only the owner may delete |
+| `holds` | the day + window a request is holding, keyed by the request's id (no personal data) | everyone (this is what the public calendar reads) | created together with its request; moved or dropped together with it; admins may remove one |
+| `internal` | staff-only fields for a request, keyed by its id: private notes, who it's assigned to | admins | admins |
 | `days` | a closed day or blocked windows, keyed by `YYYY-MM-DD` | everyone | admins |
-| `admins` | one document per admin, keyed by user UID; the owner's has `role: owner` | admins | created by an invited person on their first sign-in; deleted by the owner |
+| `admins` | one document per team member, keyed by user UID; the owner's has `role: owner` | admins | created by an invited person on their first sign-in; deleted by the owner |
 | `adminInvites` | one document per invited email, keyed by the email | admins | the owner |
-| `shifts` | one clock-in/out by a team member: `uid`, `email`, `inAt`, `outAt`, optional `requestId` and `note` | the member themself; the owner sees all | the member creates and closes their own; the owner may change or delete any |
+| `shifts` | one clock-in/out: `uid`, `email`, `inAt`, `outAt`, optional `requestId` and `note` | the member themself; the owner sees all | the member opens their own and may only end or edit it while it's open; the owner may change or delete any |
+
+Every rule above is enforced by `firestore.rules`, not just by the pages, so
+editing the site's JavaScript in a browser can't get around it.
 
 Pages load Firebase from Hosting's reserved URLs (`/__/firebase/...`), so there
 is no API key to paste and the same files work on the live domain and preview

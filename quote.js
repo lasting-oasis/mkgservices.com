@@ -27,6 +27,12 @@
   function checked(name) {
     return $all('input[name="' + name + '"]:checked').map(function (i) { return i.value; });
   }
+  // A day the calendar would still offer online: past the lead time, inside the horizon.
+  function bookable(ymd) {
+    var AV = C.availability || {};
+    var first = B.dates.ymd(B.dates.addDays(new Date(), AV.leadDays || 0)), last = B.dates.ymd(B.dates.addDays(new Date(), AV.horizonDays || 60));
+    return ymd >= first && ymd <= last;
+  }
   function setError(key, msg) {
     var el = $('[data-error="' + key + '"]');
     if (el) el.textContent = msg || "";
@@ -352,6 +358,14 @@
     if (current !== REVIEW) return;
     var btn = $("[data-submit]");
     setError("submit", "");
+    // The tab may have sat open past the day that was picked.
+    if (draft.date && !bookable(draft.date)) {
+      draft.date = ""; draft.slot = ""; saveDraft();
+      if (cal) cal.set(draft);
+      renderReview($("[data-review]"), true);
+      setError("submit", t("q.dateStale"));
+      return;
+    }
     btn.disabled = true; btn.textContent = t("q.sending");
 
     function done(demo) {
@@ -400,6 +414,8 @@
     else if (q.get("single")) draft.service = "deep"; // older links: ?single=1
     else if (q.get("plan")) draft.service = null;
     if (/^\d{4}-\d{2}-\d{2}$/.test(q.get("date") || "")) { draft.date = q.get("date"); draft.slot = q.get("slot") || ""; }
+    // A saved draft or an old link can carry a day that's no longer bookable.
+    if (draft.date && !bookable(draft.date)) { draft.date = ""; draft.slot = ""; }
     var clearBtn = $("[data-when-clear]");
     if (clearBtn) clearBtn.addEventListener("click", function () { draft.date = ""; draft.slot = ""; if (cal) cal.set(draft); renderWhenSummary(); saveDraft(); });
     A.render();

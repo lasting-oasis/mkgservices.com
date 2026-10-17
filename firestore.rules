@@ -1,132 +1,214 @@
 rules_version = '2';
 
-// Who can read and write what. Deployed with the site (see docs/SETUP-firebase.md).
+// Who can read and write what. Published in the Firebase console
+// (Firestore > Rules); GitHub does not deploy this file. See
+// docs/SETUP-firebase.md.
 //
-//   requests/{id}   one quote request; customer details inside. Anyone can
-//                   create one; only the owner (admin) and the customer who
-//                   sent it (signed in with the same email) can read it;
-//                   the admin can change anything, the customer can only
-//                   move or cancel it while it is new or confirmed.
-//   holds/{id}      a date + time window a request is holding. No customer
-//                   details, so anyone can read them: that is how the public
-//                   calendar shows which windows are taken.
-//   days/{date}     days off and blocked windows, set by the admin.
-//   admins/{uid}    one document per admin account. The owner's is created by
-//                   hand in the console (role: 'owner'); everyone else's is
-//                   created by the site the first time an invited person
-//                   signs in.
-//   adminInvites/{email}  an email the owner has invited onto the team.
-//   shifts/{id}     one clock-in/clock-out by a team member, optionally tied
-//                   to the request (job) they worked on.
+//   requests/{id}         one quote request, with the customer's details.
+//                         Anyone can create one, but only with the fields the
+//                         quote form sends. Admins read and change anything.
+//                         The customer who sent it (signed in with that email)
+//                         can read it and, while it is new or confirmed, move it
+//                         (it goes back to 'new' to be re-confirmed) or cancel it.
+//   holds/{id}            the day + window a request is holding, keyed by the
+//                         request's id (older holds have random ids). No
+//                         personal data, so anyone can read them: that is how
+//                         the public calendar shows what's taken.
+//   internal/{id}         staff-only fields for a request: private notes and
+//                         who it's assigned to. Admins only; customers never
+//                         receive these.
+//   days/{date}           days off and blocked windows. Admins write.
+//   admins/{uid}          one per team member. The owner's (role 'owner') is
+//                         made by hand in the console; an invited person
+//                         creates their own (role 'admin') on first sign-in.
+//   adminInvites/{email}  someone the owner invited onto the team.
+//   shifts/{id}           one clock-in/clock-out, optionally tied to a request.
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // ---------- who ----------
     function signedIn() { return request.auth != null; }
-    function hasAdminDoc() { return exists(/databases/$(database)/documents/admins/$(request.auth.uid)); }
+    function verified() { return signedIn() && request.auth.token.email_verified == true; }
     function myEmail() { return request.auth.token.email.lower(); }
-    // Invited by email and signed in with a provider that verified that email (Google).
-    function invited() {
-      return signedIn() && request.auth.token.email_verified == true &&
-        exists(/databases/$(database)/documents/adminInvites/$(myEmail()));
-    }
-    function isAdmin() { return signedIn() && (hasAdminDoc() || invited()); }
+    function hasAdminDoc() { return signedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid)); }
+    // Invited by email, and signed in with something that proved the email (Google, an email link).
+    function invited() { return verified() && exists(/databases/$(database)/documents/adminInvites/$(myEmail())); }
+    function isAdmin() { return hasAdminDoc() || invited(); }
     // The owner runs the team: the one admin document with role 'owner'.
     function isTeamOwner() {
-      return signedIn() && hasAdminDoc() &&
-        get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role == 'owner';
+      return hasAdminDoc() && get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role == 'owner';
     }
+
+    // ---------- values ----------
+    function str(v, n) { return v is string && v.size() <= n; }
+    function optStr(d, k, n) { return !(k in d) || str(d[k], n); }
+    function optNum(d, k) { return !(k in d) || (d[k] is number && d[k] >= 0 && d[k] < 10000000); }
     function isDate(s) { return s is string && s.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$'); }
-    function shortText(s, n) { return s is string && s.size() <= n; }
-    // The signed-in customer whose email is on the document being read/changed.
-    function isOwner() {
-      return signedIn() && request.auth.token.email_verified == true &&
-        resource.data.emailLower == request.auth.token.email.lower();
-    }
+    function dateOrNone(s) { return s == '' || isDate(s); }
     function changed() { return request.resource.data.diff(resource.data).affectedKeys(); }
-    function ownsRequest(requestId) {
-      return signedIn() && request.auth.token.email_verified == true && requestId != 'manual' &&
-        get(/databases/$(database)/documents/requests/$(requestId)).data.emailLower == request.auth.token.email.lower();
+    function reqPath(id) { return /databases/$(database)/documents/requests/$(id); }
+    function holdPath(id) { return /databases/$(database)/documents/holds/$(id); }
+
+    // ---------- requests ----------
+    // Exactly what the quote form sends: quote.js payload() plus what
+    // backend.js submitRequest() adds. Anything else (a "note from us", a
+    // payment link, a price, an assignee) can only be set by an admin.
+    function quoteFields(d) {
+      return d.keys().hasOnly(['status', 'createdAt', 'email', 'emailLower', 'name', 'phone', 'notes', 'zip',
+          'date', 'slot', 'segment', 'submittedAt', 'language', 'outOfArea', 'contactMethod', 'days', 'timeOfDay',
+          'homeType', 'facilityType', 'pets', 'floors', 'company', 'bedrooms', 'bathrooms', 'sqft', 'restrooms',
+          'requestedTime', 'service', 'deepCleanWithin', 'plan', 'frequency', 'estimatePerVisit', 'estimateOneVisit',
+          'estimateFullPrice', 'estimatePerMonth', 'discount', '_subject']) &&
+        d.status == 'new' && d.createdAt == request.time &&
+        str(d.name, 120) && d.name.size() > 0 &&
+        str(d.email, 200) && d.email.size() > 3 && d.emailLower == d.email.lower() &&
+        str(d.phone, 40) && str(d.notes, 2000) && str(d.zip, 10) &&
+        dateOrNone(d.date) && str(d.slot, 10) &&
+        d.segment in ['residential', 'commercial'] &&
+        optStr(d, 'submittedAt', 40) && optStr(d, 'language', 5) && optStr(d, 'contactMethod', 20) &&
+        optStr(d, 'timeOfDay', 20) && optStr(d, 'homeType', 60) && optStr(d, 'facilityType', 60) &&
+        optStr(d, 'pets', 60) && optStr(d, 'floors', 60) && optStr(d, 'company', 160) &&
+        optStr(d, 'requestedTime', 160) && optStr(d, 'service', 120) && optStr(d, 'deepCleanWithin', 120) &&
+        optStr(d, 'plan', 120) && optStr(d, 'frequency', 120) && optStr(d, '_subject', 500) &&
+        (!('outOfArea' in d) || d.outOfArea is bool) &&
+        (!('days' in d) || (d.days is list && d.days.size() <= 7)) &&
+        optNum(d, 'bedrooms') && optNum(d, 'bathrooms') && optNum(d, 'sqft') && optNum(d, 'restrooms') &&
+        optNum(d, 'estimatePerVisit') && optNum(d, 'estimateOneVisit') && optNum(d, 'estimateFullPrice') &&
+        optNum(d, 'estimatePerMonth') && optNum(d, 'discount');
+    }
+    // The signed-in customer whose email is on the request.
+    function isCustomerOf(r) { return verified() && r.emailLower == myEmail(); }
+    // After this write, the request's hold (keyed by its id) matches its day
+    // and window, or is gone when it has no window.
+    function holdMatches(id, d) {
+      return (d.date != '' && d.slot != '' && existsAfter(holdPath(id)) &&
+              getAfter(holdPath(id)).data.date == d.date && getAfter(holdPath(id)).data.slot == d.slot) ||
+             ((d.date == '' || d.slot == '') && !existsAfter(holdPath(id)));
+    }
+    // Moving to another day or window sends the request back to 'new' so the team re-confirms it.
+    function customerMoves(id) {
+      return changed().hasOnly(['date', 'slot', 'updatedAt', 'status', 'movedByClientAt', 'movedFrom']) &&
+        dateOrNone(request.resource.data.date) && str(request.resource.data.slot, 10) &&
+        request.resource.data.status == 'new' &&
+        request.resource.data.movedByClientAt == request.time && str(request.resource.data.movedFrom, 40) &&
+        holdMatches(id, request.resource.data);
+    }
+    function customerCancels(id) {
+      return changed().hasOnly(['status', 'cancelledBy', 'updatedAt']) &&
+        request.resource.data.status == 'cancelled' && request.resource.data.cancelledBy == 'client' &&
+        !existsAfter(holdPath(id));
     }
 
     match /requests/{id} {
-      allow create: if
-        request.resource.data.status == 'new' &&
-        request.resource.data.createdAt == request.time &&
-        shortText(request.resource.data.name, 120) && request.resource.data.name.size() > 0 &&
-        shortText(request.resource.data.email, 200) && request.resource.data.email.size() > 3 &&
-        request.resource.data.emailLower == request.resource.data.email.lower() &&
-        shortText(request.resource.data.phone, 40) &&
-        shortText(request.resource.data.notes, 2000) &&
-        shortText(request.resource.data.zip, 10) &&
-        (request.resource.data.date == '' || isDate(request.resource.data.date)) &&
-        shortText(request.resource.data.slot, 10) &&
-        request.resource.data.segment in ['residential', 'commercial'] &&
-        request.resource.data.keys().size() <= 40;
-      allow read: if isAdmin() || isOwner();
-      // The customer who sent a request may, while it is still new or
-      // confirmed, move it to another day/window or cancel it. Nothing else.
-      allow update: if isAdmin() || (isOwner() && resource.data.status in ['new', 'confirmed'] && (
-        (changed().hasOnly(['date', 'slot', 'updatedAt']) &&
-          (request.resource.data.date == '' || isDate(request.resource.data.date)) &&
-          shortText(request.resource.data.slot, 10)) ||
-        (changed().hasOnly(['status', 'cancelledBy', 'updatedAt']) &&
-          request.resource.data.status == 'cancelled' && request.resource.data.cancelledBy == 'client')
-      ));
+      allow read: if isAdmin() || isCustomerOf(resource.data);
+      allow create: if isAdmin() || quoteFields(request.resource.data);
+      allow update: if isAdmin() || (
+        isCustomerOf(resource.data) && resource.data.status in ['new', 'confirmed'] &&
+        request.resource.data.updatedAt == request.time &&
+        (customerMoves(id) || customerCancels(id)));
+      allow delete: if isTeamOwner();
+    }
+
+    // ---------- holds ----------
+    function holdShape(h) {
+      return h.keys().hasOnly(['date', 'slot', 'requestId', 'createdAt', 'segment']) &&
+        isDate(h.date) && str(h.slot, 10) && h.slot.size() > 0 && str(h.requestId, 64) &&
+        h.createdAt == request.time && optStr(h, 'segment', 20);
+    }
+    // The hold names the same day and window as its request will once this write lands.
+    function mirrors(id) {
+      return getAfter(reqPath(id)).data.date == request.resource.data.date &&
+             getAfter(reqPath(id)).data.slot == request.resource.data.slot;
+    }
+    // The customer writing the hold for their own open request.
+    function customerHolds(id) {
+      return verified() && getAfter(reqPath(id)).data.emailLower == myEmail() &&
+        getAfter(reqPath(id)).data.status in ['new', 'confirmed'] && mirrors(id);
+    }
+    // A hold its request no longer needs: cancelled, closed, or moved elsewhere.
+    function staleHold(h) {
+      return !(getAfter(reqPath(h.requestId)).data.status in ['new', 'confirmed']) ||
+        getAfter(reqPath(h.requestId)).data.date != h.date ||
+        getAfter(reqPath(h.requestId)).data.slot != h.slot;
+    }
+
+    match /holds/{hid} {
+      allow read: if true;
+      allow create: if holdShape(request.resource.data) && (
+        isAdmin() ||
+        (hid == request.resource.data.requestId && (
+          // a visitor's request created in this same write
+          (getAfter(reqPath(hid)).data.createdAt == request.time && mirrors(hid)) ||
+          // the customer moving their own request
+          customerHolds(hid))));
+      allow update: if holdShape(request.resource.data) &&
+        request.resource.data.requestId == resource.data.requestId && (
+        isAdmin() || (hid == resource.data.requestId && customerHolds(hid)));
+      allow delete: if isAdmin() || (
+        verified() && resource.data.requestId != 'manual' &&
+        get(reqPath(resource.data.requestId)).data.emailLower == myEmail() &&
+        staleHold(resource.data));
+    }
+
+    // ---------- staff-only request fields ----------
+    match /internal/{id} {
+      allow read: if isAdmin();
+      allow create, update: if isAdmin() &&
+        request.resource.data.keys().hasOnly(['adminNotes', 'assignedTo', 'updatedAt']) &&
+        optStr(request.resource.data, 'adminNotes', 4000) && optStr(request.resource.data, 'assignedTo', 200);
       allow delete: if isAdmin();
     }
 
-    match /holds/{id} {
-      allow read: if true;
-      // A visitor may hold a window only together with the request it belongs
-      // to (same batch), and the request must name the same date and window.
-      allow create: if isAdmin() || (
-        isDate(request.resource.data.date) &&
-        shortText(request.resource.data.slot, 10) && request.resource.data.slot.size() > 0 &&
-        request.resource.data.createdAt == request.time &&
-        request.resource.data.requestId is string &&
-        request.resource.data.keys().hasOnly(['date', 'slot', 'requestId', 'createdAt', 'segment']) &&
-        getAfter(/databases/$(database)/documents/requests/$(request.resource.data.requestId)).data.date == request.resource.data.date &&
-        getAfter(/databases/$(database)/documents/requests/$(request.resource.data.requestId)).data.slot == request.resource.data.slot
-      );
-      allow update: if isAdmin();
-      // A customer may drop their own hold (when moving or cancelling the request).
-      allow delete: if isAdmin() || ownsRequest(resource.data.requestId);
-    }
-
+    // ---------- days off ----------
     match /days/{date} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow create, update: if isAdmin() && isDate(date) &&
+        request.resource.data.keys().hasOnly(['closed', 'blockedSlots']) &&
+        (!('closed' in request.resource.data) || request.resource.data.closed is bool) &&
+        (!('blockedSlots' in request.resource.data) ||
+          (request.resource.data.blockedSlots is list && request.resource.data.blockedSlots.size() <= 12));
+      allow delete: if isAdmin();
     }
 
+    // ---------- the team ----------
     match /admins/{uid} {
       allow read: if signedIn() && (request.auth.uid == uid || isAdmin());
-      // An invited person registers themselves on first sign-in; nobody else
-      // can create one from the site (the owner's is made in the console).
+      // An invited person registers themselves on first sign-in. The owner's is made in the console.
       allow create: if signedIn() && request.auth.uid == uid && invited() &&
+        request.resource.data.keys().hasOnly(['email', 'role', 'createdAt']) &&
         request.resource.data.email == myEmail() && request.resource.data.role == 'admin' &&
-        request.resource.data.keys().hasOnly(['email', 'role', 'createdAt']);
+        request.resource.data.createdAt == request.time;
       allow update: if false;
       allow delete: if isTeamOwner() && resource.data.role != 'owner' && request.auth.uid != uid;
     }
 
-    match /shifts/{id} {
-      // A member sees and writes their own shifts; the owner sees, fixes, and deletes everyone's.
-      allow read: if isTeamOwner() || (isAdmin() && resource.data.uid == request.auth.uid);
-      allow create: if isAdmin() && request.resource.data.uid == request.auth.uid &&
-        request.resource.data.email == myEmail() &&
-        request.resource.data.inAt == request.time && request.resource.data.outAt == null &&
-        request.resource.data.keys().hasOnly(['uid', 'email', 'inAt', 'outAt', 'requestId', 'note']);
-      allow update: if isTeamOwner() ||
-        (isAdmin() && resource.data.uid == request.auth.uid && changed().hasOnly(['outAt', 'requestId', 'note']) &&
-         (request.resource.data.outAt == null || request.resource.data.outAt == request.time));
+    match /adminInvites/{email} {
+      allow read: if isAdmin();
+      allow create, update: if isTeamOwner() && email == email.lower() &&
+        email.matches('^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$') &&
+        request.resource.data.keys().hasOnly(['email', 'invitedBy', 'createdAt']) &&
+        request.resource.data.email == email && optStr(request.resource.data, 'invitedBy', 200);
       allow delete: if isTeamOwner();
     }
 
-    match /adminInvites/{email} {
-      allow read: if isAdmin();
-      allow create: if isTeamOwner() && email == email.lower() && email.matches('^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$') &&
-        request.resource.data.email == email && request.resource.data.keys().hasOnly(['email', 'invitedBy', 'createdAt']);
-      allow update: if false;
+    // ---------- time clock ----------
+    function shiftShape(d) {
+      return d.keys().hasOnly(['uid', 'email', 'inAt', 'outAt', 'requestId', 'note']) &&
+        d.uid is string && str(d.email, 200) && d.inAt is timestamp &&
+        (d.outAt == null || d.outAt is timestamp) && str(d.requestId, 64) && str(d.note, 500);
+    }
+
+    match /shifts/{id} {
+      // Members see their own shifts; the owner sees, fixes and deletes everyone's.
+      allow read: if isTeamOwner() || (isAdmin() && resource.data.uid == request.auth.uid);
+      allow create: if isAdmin() && shiftShape(request.resource.data) &&
+        request.resource.data.uid == request.auth.uid && request.resource.data.email == myEmail() &&
+        request.resource.data.inAt == request.time && request.resource.data.outAt == null;
+      // A member can only touch a shift that is still open: end it now, or change its booking or note.
+      allow update: if shiftShape(request.resource.data) && (isTeamOwner() || (
+        isAdmin() && resource.data.uid == request.auth.uid && resource.data.outAt == null &&
+        changed().hasOnly(['outAt', 'requestId', 'note']) &&
+        (request.resource.data.outAt == null || request.resource.data.outAt == request.time)));
       allow delete: if isTeamOwner();
     }
   }
