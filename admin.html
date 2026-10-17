@@ -14,7 +14,7 @@
   <link rel="shortcut icon" href="favicon.ico">
   <link rel="apple-touch-icon" href="brand/apple-touch-icon.png">
   <meta name="theme-color" content="#176b61">
-  <link rel="stylesheet" href="styles.css?v=14">
+  <link rel="stylesheet" href="styles.css?v=21">
 </head>
 <body>
   <div class="topbar">
@@ -52,6 +52,7 @@
         <a href="index.html#faq" data-i18n="nav.faq">FAQ</a>
         <a href="availability.html" data-i18n="nav.availability">Availability</a>
         <a href="commercial.html" data-i18n="nav.commercial">Commercial</a>
+        <a class="nav-signin" href="account.html" data-i18n="nav.signin">Sign in</a>
         <a class="btn btn-sm" href="quote.html" data-i18n="nav.quote">Get a quote</a>
       </nav>
     </div>
@@ -76,6 +77,14 @@
             <button class="btn" type="submit" data-i18n="adm.signIn">Sign in</button>
           </div>
         </form>
+        <p class="acct-alt"><button type="button" class="link-btn" data-admin-forgot data-i18n="acct.forgot">Forgot your password?</button></p>
+        <p class="field-hint" data-admin-forgot-msg hidden></p>
+        <p class="or-line"><span data-i18n="acct.or">or</span></p>
+        <button type="button" class="btn btn-google" data-google-signin>
+          <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.5 5.4 2.6 13.3l7.9 6.1C12.4 13.7 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.7 6c4.5-4.2 6.9-10.3 6.9-17.7z"/><path fill="#FBBC05" d="M10.5 28.6A14.5 14.5 0 0 1 9.8 24c0-1.6.3-3.1.7-4.6l-7.9-6.1A24 24 0 0 0 0 24c0 3.9.9 7.5 2.6 10.7l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.7-6c-2.1 1.4-4.9 2.3-8.2 2.3-6.3 0-11.6-4.2-13.5-10l-7.9 6.1C6.5 42.6 14.6 48 24 48z"/></svg>
+          <span data-i18n="acct.google">Continue with Google</span>
+        </button>
+        <p class="field-error" data-error="google"></p>
         <p class="notice" data-admin-offline hidden data-i18n="adm.offline">This copy of the site isn't connected to Firebase, so there's nothing to sign in to.</p>
         <p class="notice" data-admin-notadmin hidden data-i18n="adm.notAdmin">This account isn't on the admin list. See docs/SETUP-firebase.md for how to add it.</p>
       </section>
@@ -120,7 +129,19 @@
         </div>
 
         <div class="admin-grid" data-view="requests">
-          <div>
+          <section class="admin-clock" aria-labelledby="tc-h">
+            <h2 class="title" id="tc-h" style="font-size:1.3rem" data-i18n="tc.h">Time clock</h2>
+            <div class="tc" data-tc></div>
+            <details class="tc-report" data-tc-report-wrap hidden>
+              <summary data-i18n="tc.reportH">Team time</summary>
+              <div data-tc-report></div>
+            </details>
+          </section>
+          <div class="admin-main">
+            <div class="field admin-search">
+              <label for="adm-search" class="visually-hidden" data-i18n="adm.search">Search requests</label>
+              <input class="input" id="adm-search" type="search" data-admin-search data-i18n-attr="placeholder:adm.searchHint" placeholder="Search by name, email, phone, ZIP, or #ID" autocomplete="off">
+            </div>
             <div class="seg admin-filter" role="group">
               <button type="button" class="seg-btn" data-filter="new" aria-pressed="true"><span class="seg-label" data-i18n="status.new">New</span><span class="seg-off" data-count="new">0</span></button>
               <button type="button" class="seg-btn" data-filter="confirmed" aria-pressed="false"><span class="seg-label" data-i18n="status.confirmed">Confirmed</span><span class="seg-off" data-count="confirmed">0</span></button>
@@ -131,10 +152,23 @@
             <p class="muted" data-admin-empty hidden data-i18n="adm.empty">Nothing here.</p>
           </div>
           <aside class="admin-cal">
+            <h2 class="title" style="font-size:1.3rem" data-i18n="adm.weekH">The week ahead</h2>
+            <div class="admin-week" data-admin-upcoming></div>
             <h2 class="title" style="font-size:1.3rem" data-i18n="adm.calH">Calendar</h2>
             <p class="field-hint" data-i18n="adm.calHint">Click a day to close it, block a window, or add a booking you took by phone.</p>
             <div data-calendar></div>
             <div class="admin-day" data-admin-day></div>
+            <details class="admin-team" data-admin-team hidden>
+              <summary data-i18n="adm.teamH">Team</summary>
+              <p class="field-hint" data-i18n="adm.teamHint">Invite someone by email. They sign in on this page with Google using that address and they're in. Only you, the owner, can add or remove people.</p>
+              <ul class="admin-team-list" data-admin-team-list></ul>
+              <form data-admin-team-form novalidate class="admin-team-form">
+                <label for="adm-invite" class="visually-hidden" data-i18n="adm.inviteEmail">Email to invite</label>
+                <input class="input" id="adm-invite" type="email" autocomplete="off" data-i18n-attr="placeholder:adm.inviteHint" placeholder="name@example.com">
+                <button class="btn btn-sm" type="submit" data-i18n="adm.invite">Invite</button>
+              </form>
+              <p class="field-error" data-error="invite"></p>
+            </details>
           </aside>
         </div>
       </section>
@@ -160,18 +194,19 @@
         <a href="account.html" data-i18n="nav.account">Client sign-in</a>
         <a href="privacy.html" data-i18n="nav.privacy">Privacy</a>
         <a href="terms.html" data-i18n="nav.terms">Terms</a>
-        <a href="refer.html" data-i18n="nav.refer">Refer a friend</a>
+        <a href="admin.html" data-i18n="nav.staff">Staff</a>
       </nav>
       <p>&copy; <span data-year></span> MKG Services, LLC</p>
     </div>
   </footer>
 
-  <script src="plans.js?v=14"></script>
-  <script src="i18n.js?v=14"></script>
-  <script src="app.js?v=14"></script>
-  <script src="backend.js?v=14"></script>
-  <script src="calendar.js?v=14"></script>
-  <script src="referral.js?v=14"></script>
-  <script src="admin.js?v=14"></script>
+  <script src="plans.js?v=21"></script>
+  <script src="i18n.js?v=21"></script>
+  <script src="app.js?v=21"></script>
+  <script src="backend.js?v=21"></script>
+  <script src="calendar.js?v=21"></script>
+  <script src="referral.js?v=21"></script>
+  <script src="timeclock.js?v=21"></script>
+  <script src="admin.js?v=21"></script>
 </body>
 </html>

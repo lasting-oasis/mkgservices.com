@@ -1,3 +1,5 @@
+# NOTE: account/admin/availability/privacy/terms were hand-edited after this generated them (admin team, time clock, passwords).
+# Do NOT re-run this script: it would overwrite those pages. Kept for reference only.
 #!/usr/bin/env python3
 """Builds availability.html, account.html, admin.html, privacy.html and terms.html
 from the shared chrome (head, top bar, header, footer) in quote.html, so the

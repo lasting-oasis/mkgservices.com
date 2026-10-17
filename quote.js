@@ -28,6 +28,12 @@
   function checked(name) {
     return $all('input[name="' + name + '"]:checked').map(function (i) { return i.value; });
   }
+  // A day the calendar would still offer online: past the lead time, inside the horizon.
+  function bookable(ymd) {
+    var AV = C.availability || {};
+    var first = B.dates.ymd(B.dates.addDays(new Date(), AV.leadDays || 0)), last = B.dates.ymd(B.dates.addDays(new Date(), AV.horizonDays || 60));
+    return ymd >= first && ymd <= last;
+  }
   function setError(key, msg) {
     var el = $('[data-error="' + key + '"]');
     if (el) el.textContent = msg || "";
@@ -407,11 +413,65 @@
     return p;
   }
 
+  // The email the business gets for a new request: plain labels, most useful
+  // first, in English whatever language the client used.
+  var SIZE_LABELS = { bedrooms: "bedrooms", bathrooms: "bathrooms", sqft: "sq ft", restrooms: "restrooms" };
+  function mailFields(d, id) {
+    var what = d.service || [d.plan, d.frequency].filter(Boolean).join(", ");
+    var visit = A.visitText(d.date, d.slot);
+    var m = {
+      _subject: (d.segment === "commercial" ? "Commercial quote request from " : "Quote request from ") + (d.company || d.name) + ": " + what + (visit ? " on " + visit : ""),
+      email: d.email,
+    };
+    function put(label, v) {
+      if (v === undefined || v === null || v === "" || (Array.isArray(v) && !v.length)) return;
+      m[label] = Array.isArray(v) ? v.join(", ") : String(v);
+    }
+    function usd(n) { return typeof n === "number" ? A.dollars(n) : ""; }
+    put("Name", d.name);
+    put("Company", d.company);
+    put("Phone", d.phone);
+    put("Best way to reach them", d.contactMethod);
+    if (d.language === "es") put("Language", "Spanish (reply in Spanish if you can)");
+    var prefs = [(d.days || []).join(", "), d.timeOfDay && d.timeOfDay !== "Either" ? d.timeOfDay.toLowerCase() + "s" : ""].filter(Boolean).join(", ");
+    put("Day and window", visit || "None picked yet. " + (prefs ? "Best for them: " + prefs : "They're flexible"));
+    put("Service", what);
+    put("Last deep clean", d.deepCleanWithin);
+    var per = typeof d.estimatePerVisit === "number" ? d.estimatePerVisit : d.estimateOneVisit;
+    if (typeof per === "number") {
+      put("Site estimate", usd(per) + " per visit" +
+        (d.discount ? " (" + Math.round(d.discount * 100) + "% off " + usd(d.estimateFullPrice) + ")" : "") +
+        (typeof d.estimatePerMonth === "number" ? ", about " + usd(d.estimatePerMonth) + " a month" : ""));
+    }
+    put(d.segment === "commercial" ? "Facility" : "Home",
+      [d.homeType || d.facilityType].concat(C.dims.map(function (x) {
+        return typeof d[x.id] === "number" ? A.num(d[x.id]) + " " + (SIZE_LABELS[x.id] || x.id) : "";
+      })).filter(Boolean).join(", "));
+    put(d.segment === "commercial" ? "Floors" : "Pets", d.floors || d.pets);
+    put("ZIP", d.zip + (d.outOfArea ? " (outside the usual service area)" : ""));
+    put("Notes", d.notes);
+    put("Reference", id ? id.slice(0, 6).toUpperCase() : "");
+    put("Manage it", location.origin + "/admin.html");
+    return m;
+  }
+  // The email is a courtesy copy: never hold the confirmation up for long.
+  function mailCopy(d, id) {
+    return Promise.race([A.notify(mailFields(d, id)), new Promise(function (r) { setTimeout(function () { r(false); }, 8000); })]);
+  }
+
   form.addEventListener("submit", function (ev) {
     ev.preventDefault();
     if (current !== REVIEW) return;
     var btn = $("[data-submit]");
     setError("submit", "");
+    // The tab may have sat open past the day that was picked.
+    if (draft.date && !bookable(draft.date)) {
+      draft.date = ""; draft.slot = ""; saveDraft();
+      if (cal) cal.set(draft);
+      renderReview($("[data-review]"), true);
+      setError("submit", t("q.dateStale"));
+      return;
+    }
     btn.disabled = true; btn.textContent = t("q.sending");
 
     function done(demo) {
@@ -419,6 +479,7 @@
       $("[data-demo-note]").hidden = !demo;
       clearDraft();
       go("done");
+      renderTrack();
     }
     function fail() {
       btn.disabled = false; btn.textContent = t("q.send");
@@ -427,17 +488,12 @@
     }
 
     var data = payload();
-    // Optional copy to an email form service, on top of the database.
-    function mailCopy() {
-      if (!C.formEndpoint) return Promise.resolve(true);
-      return fetch(C.formEndpoint, {
-        method: "POST", headers: { "Content-Type": "application/json", Accept: "application/json" }, body: JSON.stringify(data),
-      }).then(function (r) { return r.ok; }).catch(function () { return false; });
-    }
+    // Saved to the database (shows on admin.html), and an email copy to the
+    // business when plans.js has a formEndpoint.
     B.ready.then(function (live) {
       if (!live) {
         if (!C.formEndpoint) { setTimeout(function () { done(true); }, 400); return; }
-        return mailCopy().then(function (ok) { ok ? done(false) : fail(); });
+        return mailCopy(data).then(function (ok) { ok ? done(false) : fail(); });
       }
       return B.submitRequest(data).catch(function (err) {
         if (!data.ref) throw err;
@@ -447,15 +503,63 @@
       }).then(function (id) {
         $all("[data-request-id]").forEach(function (el) { el.textContent = id.slice(0, 6).toUpperCase(); });
         if (data.ref) { note('[data-step="done"]', "data-done-ref", t("q.done.refNote", { amount: A.dollars(friendAmount()) }), "[data-review-done]"); INV.forget(); }
-        return mailCopy().then(function () { done(false); });
+        return mailCopy(data, id).then(function () { done(false); });
       }).catch(function (err) {
         if (window.console) console.warn("request not saved", err);
-        // Firebase refused (rules not deployed yet, offline): still try the email copy.
-        if (C.formEndpoint) return mailCopy().then(function (ok) { ok ? done(false) : fail(); });
+        // Firebase refused (offline, or a rule): the email copy alone still reaches us.
+        if (C.formEndpoint) return mailCopy(data).then(function (ok) { ok ? done(false) : fail(); });
         fail();
       });
     });
   });
+
+  // ---------- accounts ----------
+  // Signed in: fill in who they are, and keep the email to the account's, so
+  // the request shows up in their account. Signing out from here frees it.
+  var acctUser = null;
+  function renderAccountNote() {
+    var note = $("[data-quote-account]");
+    if (!note) return;
+    note.hidden = !acctUser;
+    if (!acctUser) { note.innerHTML = ""; return; }
+    note.innerHTML = A.esc(t("q.signedIn", { addr: acctUser.email })) + ' <button type="button" class="link-btn" data-quote-signout>' + A.esc(t("q.notYou")) + "</button>";
+    note.querySelector("[data-quote-signout]").addEventListener("click", function () { B.signOut(); });
+  }
+  function watchAccount() {
+    if (!B || !B.onAuth) return;
+    B.onAuth(function (u) {
+      var email = form.elements.email, name = form.elements.name, phone = form.elements.phone;
+      if (!email) return;
+      if (!u || !u.email) {
+        if (acctUser) { email.readOnly = false; email.value = ""; }
+        acctUser = null; renderAccountNote(); saveDraft();
+        return;
+      }
+      acctUser = u;
+      email.value = u.email; email.readOnly = true;
+      if (name && !name.value && u.displayName) name.value = u.displayName;
+      renderAccountNote();
+      // The phone number from their last request, if there is one.
+      if (phone && !phone.value && u.emailVerified) {
+        B.myRequests(u.email).then(function (list) {
+          var last = list.filter(function (r) { return r.phone; })[0];
+          if (last && !phone.value) { phone.value = last.phone; saveDraft(); }
+        }).catch(function () { /* nothing to prefill */ });
+      }
+      saveDraft();
+    });
+  }
+  // After sending: point to the account (signed in) or offer one with the same email.
+  function renderTrack() {
+    var el = document.querySelector("[data-done-track]");
+    if (!el) return;
+    if (acctUser) { el.innerHTML = A.esc(t("q.done.inAccount")) + ' <a href="account.html">' + A.esc(t("q.done.openAccount")) + "</a>"; return; }
+    var email = value("email");
+    el.innerHTML = A.esc(t("q.done.makeAccount")) + ' <a href="account.html?signup=1" data-done-signup>' + A.esc(t("q.done.createAccount")) + "</a>";
+    el.querySelector("[data-done-signup]").addEventListener("click", function () {
+      try { sessionStorage.setItem("mkg.prefillEmail", email); } catch (e) { /* the account page just won't prefill */ }
+    });
+  }
 
   // ---------- start ----------
   function init() {
@@ -466,6 +570,8 @@
     else if (q.get("single")) draft.service = "deep"; // older links: ?single=1
     else if (q.get("plan")) draft.service = null;
     if (/^\d{4}-\d{2}-\d{2}$/.test(q.get("date") || "")) { draft.date = q.get("date"); draft.slot = q.get("slot") || ""; }
+    // A saved draft or an old link can carry a day that's no longer bookable.
+    if (draft.date && !bookable(draft.date)) { draft.date = ""; draft.slot = ""; }
     var clearBtn = $("[data-when-clear]");
     if (clearBtn) clearBtn.addEventListener("click", function () { draft.date = ""; draft.slot = ""; if (cal) cal.set(draft); renderWhenSummary(); saveDraft(); });
     initRef(); watchCredit();
@@ -481,11 +587,13 @@
       showRefStatus(); creditNotes();
       if (current === 5) renderWhenSummary();
       if (current === REVIEW) renderReview($("[data-review]"), true);
-      if (current === "done") renderReview($("[data-review-done]"), false);
+      if (current === "done") { renderReview($("[data-review-done]"), false); renderTrack(); }
+      renderAccountNote();
       var btn = $("[data-submit]");
       if (btn && !btn.disabled) btn.textContent = t("q.send");
     });
     go(1);
+    watchAccount();
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
   else init();

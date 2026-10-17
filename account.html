@@ -14,7 +14,7 @@
   <link rel="shortcut icon" href="favicon.ico">
   <link rel="apple-touch-icon" href="brand/apple-touch-icon.png">
   <meta name="theme-color" content="#176b61">
-  <link rel="stylesheet" href="styles.css?v=14">
+  <link rel="stylesheet" href="styles.css?v=21">
 </head>
 <body>
   <div class="topbar">
@@ -52,6 +52,7 @@
         <a href="index.html#faq" data-i18n="nav.faq">FAQ</a>
         <a href="availability.html" data-i18n="nav.availability">Availability</a>
         <a href="commercial.html" data-i18n="nav.commercial">Commercial</a>
+        <a class="nav-signin" href="account.html" aria-current="page" data-i18n="nav.signin">Sign in</a>
         <a class="btn btn-sm" href="quote.html" data-i18n="nav.quote">Get a quote</a>
       </nav>
     </div>
@@ -59,26 +60,55 @@
 
   <main class="quote-wrap">
     <div class="container">
-      <div class="quote-card">
+      <div class="quote-card acct-card">
         <section class="step" data-acct="loading">
-          <h1 class="title" data-i18n="acct.h1">Your requests</h1>
+          <h1 class="title" data-i18n="acct.h1">Your account</h1>
           <p class="muted" data-i18n="acct.loading">One moment…</p>
         </section>
 
         <section class="step" data-acct="signin" hidden>
-          <h1 class="title" data-i18n="acct.h1">Your requests</h1>
-          <p class="step-intro" data-i18n="acct.lead">No password to remember. Enter the email you used on your quote request and we'll send you a sign-in link.</p>
-          <form data-acct-form novalidate>
+          <h1 class="title" data-acct-title data-i18n="acct.signinH">Sign in</h1>
+          <p class="step-intro" data-i18n="acct.lead">Request cleanings, follow their status, and change or cancel a visit, all in one place. Already sent us a request? Use the same email and you'll find it here.</p>
+          <div class="seg acct-tabs" role="tablist" data-i18n-attr="aria-label:acct.tabsLabel" aria-label="Sign in or create an account">
+            <button type="button" class="seg-btn" role="tab" id="tab-signin" aria-controls="acct-pw" data-acct-tab="signin" aria-selected="true"><span class="seg-label" data-i18n="acct.tabSignin">Sign in</span></button>
+            <button type="button" class="seg-btn" role="tab" id="tab-signup" aria-controls="acct-pw" data-acct-tab="signup" aria-selected="false"><span class="seg-label" data-i18n="acct.tabSignup">Create account</span></button>
+          </div>
+          <button type="button" class="btn btn-google" data-google-signin>
+            <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.5 5.4 2.6 13.3l7.9 6.1C12.4 13.7 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.7 6c4.5-4.2 6.9-10.3 6.9-17.7z"/><path fill="#FBBC05" d="M10.5 28.6A14.5 14.5 0 0 1 9.8 24c0-1.6.3-3.1.7-4.6l-7.9-6.1A24 24 0 0 0 0 24c0 3.9.9 7.5 2.6 10.7l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.7-6c-2.1 1.4-4.9 2.3-8.2 2.3-6.3 0-11.6-4.2-13.5-10l-7.9 6.1C6.5 42.6 14.6 48 24 48z"/></svg>
+            <span data-acct-google-label data-i18n="acct.google">Continue with Google</span>
+          </button>
+          <p class="field-error" data-error="google"></p>
+          <p class="or-line"><span data-i18n="acct.orEmail">or with your email</span></p>
+          <form id="acct-pw" data-acct-pw novalidate>
+            <div class="field" data-signup-only hidden>
+              <label for="acct-name" data-i18n="q.name">Your name</label>
+              <input class="input" id="acct-name" name="name" autocomplete="name" maxlength="120">
+            </div>
             <div class="field">
               <label for="acct-email" data-i18n="q.email">Email</label>
-              <input class="input" id="acct-email" name="email" type="email" autocomplete="email" inputmode="email">
+              <input class="input" id="acct-email" name="email" type="email" autocomplete="email" inputmode="email" maxlength="200">
               <p class="field-error" data-error="email"></p>
             </div>
-            <div class="step-actions" style="justify-content:flex-start">
-              <button class="btn" type="submit" data-i18n="acct.sendLink">Email me a sign-in link</button>
+            <div class="field">
+              <label for="acct-pass" data-i18n="adm.password">Password</label>
+              <div class="pw-wrap">
+                <input class="input" id="acct-pass" name="password" type="password" autocomplete="current-password" maxlength="128">
+                <button type="button" class="link-btn pw-toggle" data-pw-toggle="acct-pass" aria-controls="acct-pass" aria-pressed="false" data-i18n="acct.show">Show</button>
+              </div>
+              <p class="field-hint" data-signup-only hidden data-i18n="acct.pwHint">At least 8 characters.</p>
+              <p class="field-error" data-error="pass"></p>
             </div>
+            <p class="field-hint" data-signup-only hidden data-i18n="acct.agree">By creating an account you agree to our {termsLink} and {privacyLink}.</p>
+            <div class="step-actions" style="justify-content:flex-start">
+              <button class="btn" type="submit" data-acct-submit data-i18n="acct.signinBtn">Sign in</button>
+            </div>
+            <p class="acct-alt" data-signin-only>
+              <button type="button" class="link-btn" data-acct-forgot data-i18n="acct.forgot">Forgot your password?</button>
+              <span class="muted" aria-hidden="true">·</span>
+              <button type="button" class="link-btn" data-acct-linkmode data-i18n="acct.useLink">Email me a sign-in link instead</button>
+            </p>
           </form>
-          <p class="notice" data-acct-sent hidden data-i18n="acct.sent">Check your inbox. The link signs you in on this device; it's good for a short while.</p>
+          <p class="notice" data-acct-notice hidden></p>
           <p class="notice" data-acct-offline hidden data-i18n="acct.offline">Sign-in isn't available on this copy of the site.</p>
         </section>
 
@@ -97,13 +127,44 @@
           </form>
         </section>
 
+        <section class="step" data-acct="reset" hidden>
+          <h1 class="title" data-i18n="acct.resetH">Choose a new password</h1>
+          <p class="step-intro" data-acct-reset-for></p>
+          <form data-acct-reset novalidate>
+            <div class="field">
+              <label for="acct-newpass" data-i18n="acct.newPass">New password</label>
+              <div class="pw-wrap">
+                <input class="input" id="acct-newpass" type="password" autocomplete="new-password" maxlength="128">
+                <button type="button" class="link-btn pw-toggle" data-pw-toggle="acct-newpass" aria-controls="acct-newpass" aria-pressed="false" data-i18n="acct.show">Show</button>
+              </div>
+              <p class="field-hint" data-i18n="acct.pwHint">At least 8 characters.</p>
+              <p class="field-error" data-error="newpass"></p>
+            </div>
+            <div class="step-actions" style="justify-content:flex-start">
+              <button class="btn" type="submit" data-i18n="acct.savePass">Save and sign in</button>
+            </div>
+          </form>
+        </section>
+
         <section class="step" data-acct="list" hidden>
           <div class="acct-bar">
             <div>
-              <h1 class="title" data-i18n="acct.h1">Your requests</h1>
-              <p class="muted"><span data-i18n="acct.signedInAs">Signed in as</span> <b data-acct-email></b></p>
+              <h1 class="title" data-i18n="acct.h1">Your account</h1>
+              <p class="muted"><span data-acct-name></span> <b data-acct-email></b></p>
             </div>
-            <button type="button" class="btn btn-secondary btn-sm" data-acct-signout data-i18n="acct.signOut">Sign out</button>
+            <div class="acct-bar-btns">
+              <a class="btn btn-sm" href="quote.html" data-i18n="acct.newRequest">Request a cleaning</a>
+              <button type="button" class="btn btn-secondary btn-sm" data-acct-signout data-i18n="acct.signOut">Sign out</button>
+            </div>
+          </div>
+          <p class="notice" data-acct-flash hidden></p>
+          <div class="notice acct-verify" data-acct-verify hidden>
+            <p data-acct-verify-text></p>
+            <p class="acct-verify-btns">
+              <button type="button" class="btn btn-sm" data-acct-recheck data-i18n="acct.recheck">I've confirmed it</button>
+              <button type="button" class="link-btn" data-acct-resend data-i18n="acct.resend">Send the link again</button>
+            </p>
+            <p class="field-hint" data-acct-verify-msg></p>
           </div>
           <section class="ref-panel" data-ref-panel hidden>
             <div class="ref-balance">
@@ -129,10 +190,12 @@
               <ul class="ref-ledger" data-ref-ledger></ul>
             </div>
           </section>
-          <h2 class="title ref-reqs-h" data-i18n="acct.h1">Your requests</h2>
+          <h2 class="acct-sub" data-i18n="acct.requestsH">Your requests</h2>
           <div class="acct-list" data-acct-list></div>
-          <p class="notice" data-acct-empty hidden data-i18n="acct.empty">Nothing under this email yet. {quoteLink}</p>
+          <p class="notice" data-acct-empty hidden data-i18n="acct.empty">No requests yet. {quoteLink}</p>
+          <p class="field-hint" data-acct-wrongemail hidden></p>
           <p class="field-hint" data-i18n="acct.help">Questions about a request? Call or text {phone}, or email {email}.</p>
+          <p class="field-hint" data-acct-pwrow hidden><button type="button" class="link-btn" data-acct-changepw data-i18n="acct.changePw">Set or change my password</button> <span data-acct-pwmsg></span></p>
         </section>
       </div>
     </div>
@@ -158,18 +221,19 @@
         <a href="privacy.html" data-i18n="nav.privacy">Privacy</a>
         <a href="terms.html" data-i18n="nav.terms">Terms</a>
         <a href="refer.html" data-i18n="nav.refer">Refer a friend</a>
+        <a href="admin.html" data-i18n="nav.staff">Staff</a>
       </nav>
       <p>&copy; <span data-year></span> MKG Services, LLC</p>
     </div>
   </footer>
 
-  <script src="plans.js?v=14"></script>
-  <script src="i18n.js?v=14"></script>
-  <script src="app.js?v=14"></script>
-  <script src="backend.js?v=14"></script>
-  <script src="calendar.js?v=14"></script>
-  <script src="referral.js?v=14"></script>
-  <script src="vendor/qrcode.js?v=14"></script>
-  <script src="account.js?v=14"></script>
+  <script src="plans.js?v=21"></script>
+  <script src="i18n.js?v=21"></script>
+  <script src="app.js?v=21"></script>
+  <script src="backend.js?v=21"></script>
+  <script src="calendar.js?v=21"></script>
+  <script src="referral.js?v=21"></script>
+  <script src="vendor/qrcode.js?v=21"></script>
+  <script src="account.js?v=21"></script>
 </body>
 </html>
