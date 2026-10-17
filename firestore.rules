@@ -11,13 +11,27 @@ rules_version = '2';
 //                   details, so anyone can read them: that is how the public
 //                   calendar shows which windows are taken.
 //   days/{date}     days off and blocked windows, set by the admin.
-//   admins/{uid}    one document per admin account (created once, by hand).
+//   admins/{uid}    one document per admin account. The owner's is created by
+//                   hand in the console (role: 'owner'); everyone else's is
+//                   created by the site the first time an invited person
+//                   signs in.
+//   adminInvites/{email}  an email the owner has invited onto the team.
 service cloud.firestore {
   match /databases/{database}/documents {
 
     function signedIn() { return request.auth != null; }
-    function isAdmin() {
-      return signedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    function hasAdminDoc() { return exists(/databases/$(database)/documents/admins/$(request.auth.uid)); }
+    function myEmail() { return request.auth.token.email.lower(); }
+    // Invited by email and signed in with a provider that verified that email (Google).
+    function invited() {
+      return signedIn() && request.auth.token.email_verified == true &&
+        exists(/databases/$(database)/documents/adminInvites/$(myEmail()));
+    }
+    function isAdmin() { return signedIn() && (hasAdminDoc() || invited()); }
+    // The owner runs the team: the one admin document with role 'owner'.
+    function isTeamOwner() {
+      return signedIn() && hasAdminDoc() &&
+        get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role == 'owner';
     }
     function isDate(s) { return s is string && s.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$'); }
     function shortText(s, n) { return s is string && s.size() <= n; }
@@ -83,8 +97,22 @@ service cloud.firestore {
     }
 
     match /admins/{uid} {
-      allow read: if signedIn() && request.auth.uid == uid;
-      allow write: if false; // added in the Firebase console, never from the site
+      allow read: if signedIn() && (request.auth.uid == uid || isAdmin());
+      // An invited person registers themselves on first sign-in; nobody else
+      // can create one from the site (the owner's is made in the console).
+      allow create: if signedIn() && request.auth.uid == uid && invited() &&
+        request.resource.data.email == myEmail() && request.resource.data.role == 'admin' &&
+        request.resource.data.keys().hasOnly(['email', 'role', 'createdAt']);
+      allow update: if false;
+      allow delete: if isTeamOwner() && resource.data.role != 'owner' && request.auth.uid != uid;
+    }
+
+    match /adminInvites/{email} {
+      allow read: if isAdmin();
+      allow create: if isTeamOwner() && email == email.lower() && email.matches('^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$') &&
+        request.resource.data.email == email && request.resource.data.keys().hasOnly(['email', 'invitedBy', 'createdAt']);
+      allow update: if false;
+      allow delete: if isTeamOwner();
     }
   }
 }

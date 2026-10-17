@@ -45,11 +45,16 @@ password or Google (the Google provider is on by default in this project).
 3. Firestore Database → **Data** tab → **Start collection**:
    - Collection ID: `admins`
    - Document ID: paste the UID
-   - Add one field: `email` (string) = the same email → Save.
+   - Add two fields: `email` (string) = the same email, and `role` (string)
+     = `owner` → Save.
 4. Go to https://mkgservices.com/admin.html and sign in.
 
-To add a second admin later, repeat with their UID. To remove one, delete
-their document.
+That account is the owner. To add more admins, open **Team** at the bottom
+of the admin page's calendar column, type their email, and click Invite.
+They sign in on the admin page with **Google** using that address (a
+Google sign-in proves the email is theirs; a password alone does not) and
+they're in. Remove anyone from the same list. The owner can't be removed
+from the site; only the console can change that.
 
 ## 5. Optional: an email for every request
 
@@ -98,7 +103,8 @@ Push the change; the site sends every request to both places.
 | `requests` | a quote request with the customer's details, status (`new`, `confirmed`, `declined`, `done`, `cancelled`), note to client, payment link, final price | admins; the customer, signed in with the same email | anyone may create; admins may change anything; the customer may only change the date/window or cancel while it is new or confirmed |
 | `holds` | one date + window a request is holding (no personal data) | everyone (this is what the public calendar reads) | created together with its request; admins and the request's customer may delete |
 | `days` | a closed day or blocked windows, keyed by `YYYY-MM-DD` | everyone | admins |
-| `admins` | one document per admin, keyed by user UID | the admin themself | nobody from the site (console only) |
+| `admins` | one document per admin, keyed by user UID; the owner's has `role: owner` | admins | created by an invited person on their first sign-in; deleted by the owner |
+| `adminInvites` | one document per invited email, keyed by the email | admins | the owner |
 
 Pages load Firebase from Hosting's reserved URLs (`/__/firebase/...`), so there
 is no API key to paste and the same files work on the live domain and preview

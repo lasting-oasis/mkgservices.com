@@ -14,7 +14,7 @@
   <link rel="shortcut icon" href="favicon.ico">
   <link rel="apple-touch-icon" href="brand/apple-touch-icon.png">
   <meta name="theme-color" content="#176b61">
-  <link rel="stylesheet" href="styles.css?v=15">
+  <link rel="stylesheet" href="styles.css?v=16">
 </head>
 <body>
   <div class="topbar">
@@ -118,6 +118,17 @@
             <p class="field-hint" data-i18n="adm.calHint">Click a day to close it, block a window, or add a booking you took by phone.</p>
             <div data-calendar></div>
             <div class="admin-day" data-admin-day></div>
+            <details class="admin-team" data-admin-team hidden>
+              <summary data-i18n="adm.teamH">Team</summary>
+              <p class="field-hint" data-i18n="adm.teamHint">Invite someone by email. They sign in on this page with Google using that address and they're in. Only you, the owner, can add or remove people.</p>
+              <ul class="admin-team-list" data-admin-team-list></ul>
+              <form data-admin-team-form novalidate class="admin-team-form">
+                <label for="adm-invite" class="visually-hidden" data-i18n="adm.inviteEmail">Email to invite</label>
+                <input class="input" id="adm-invite" type="email" autocomplete="off" data-i18n-attr="placeholder:adm.inviteHint" placeholder="name@example.com">
+                <button class="btn btn-sm" type="submit" data-i18n="adm.invite">Invite</button>
+              </form>
+              <p class="field-error" data-error="invite"></p>
+            </details>
           </aside>
         </div>
       </section>
@@ -143,16 +154,17 @@
         <a href="account.html" data-i18n="nav.account">Client sign-in</a>
         <a href="privacy.html" data-i18n="nav.privacy">Privacy</a>
         <a href="terms.html" data-i18n="nav.terms">Terms</a>
+        <a href="admin.html" data-i18n="nav.staff">Staff</a>
       </nav>
       <p>&copy; <span data-year></span> MKG Services, LLC</p>
     </div>
   </footer>
 
-  <script src="plans.js?v=15"></script>
-  <script src="i18n.js?v=15"></script>
-  <script src="app.js?v=15"></script>
-  <script src="backend.js?v=15"></script>
-  <script src="calendar.js?v=15"></script>
-  <script src="admin.js?v=15"></script>
+  <script src="plans.js?v=16"></script>
+  <script src="i18n.js?v=16"></script>
+  <script src="app.js?v=16"></script>
+  <script src="backend.js?v=16"></script>
+  <script src="calendar.js?v=16"></script>
+  <script src="admin.js?v=16"></script>
 </body>
 </html>

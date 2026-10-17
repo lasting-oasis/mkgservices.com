@@ -125,9 +125,42 @@
       return r.user;
     });
   }
+  // Resolves with the admin record ({ email, role }) or null. Someone the
+  // owner invited by email gets their record created on first sign-in, as
+  // long as the sign-in verified that email (Google does; a password alone
+  // does not).
   function isAdmin(user) {
-    if (!user) return Promise.resolve(false);
-    return db.collection("admins").doc(user.uid).get().then(function (d) { return d.exists; }).catch(function () { return false; });
+    if (!user) return Promise.resolve(null);
+    var ref = db.collection("admins").doc(user.uid);
+    return ref.get().then(function (d) {
+      if (d.exists) return d.data();
+      if (!user.email || !user.emailVerified) return null;
+      return db.collection("adminInvites").doc(user.email.toLowerCase()).get().then(function (inv) {
+        if (!inv.exists) return null;
+        var rec = { email: user.email.toLowerCase(), role: "admin", createdAt: fb.firestore.FieldValue.serverTimestamp() };
+        return ref.set(rec).then(function () { return rec; });
+      });
+    }).catch(function () { return null; });
+  }
+  // The team list, live: every admin record plus every invite not yet used.
+  function watchTeam(cb) {
+    var admins = [], invites = [], seen = 0;
+    function emit() { if (seen !== 3) return; var have = {}; admins.forEach(function (a) { have[a.email] = true; });
+      cb(admins.concat(invites.filter(function (i) { return !have[i.email]; }))); }
+    var u1 = db.collection("admins").onSnapshot(function (r) { admins = r.docs.map(function (d) { var x = d.data(); x.uid = d.id; x.status = "active"; return x; }); seen |= 1; emit(); }, function (e) { cb(null, e); });
+    var u2 = db.collection("adminInvites").onSnapshot(function (r) { invites = r.docs.map(function (d) { var x = d.data(); x.status = "invited"; return x; }); seen |= 2; emit(); }, function (e) { cb(null, e); });
+    return function () { u1(); u2(); };
+  }
+  function inviteAdmin(email, byEmail) {
+    var e = String(email || "").trim().toLowerCase();
+    return db.collection("adminInvites").doc(e).set({ email: e, invitedBy: byEmail || "", createdAt: fb.firestore.FieldValue.serverTimestamp() });
+  }
+  // Removing someone drops both their record (if they ever signed in) and their invite.
+  function removeAdmin(member) {
+    var b = db.batch();
+    if (member.uid) b.delete(db.collection("admins").doc(member.uid));
+    b.delete(db.collection("adminInvites").doc(member.email));
+    return b.commit();
   }
 
   // ---------- client: own requests ----------
@@ -204,7 +237,7 @@
     get db() { return db; }, get auth() { return auth; }, get firebase() { return fb; },
     dates: { ymd: ymd, parse: parse, addDays: addDays, pad: pad },
     availability: availability, submitRequest: submitRequest,
-    onAuth: onAuth, signOut: signOut, signInPassword: signInPassword, signInGoogle: signInGoogle, sendLink: sendLink, isLink: isLink, completeLink: completeLink, isAdmin: isAdmin,
+    onAuth: onAuth, signOut: signOut, signInPassword: signInPassword, signInGoogle: signInGoogle, sendLink: sendLink, isLink: isLink, completeLink: completeLink, isAdmin: isAdmin, watchTeam: watchTeam, inviteAdmin: inviteAdmin, removeAdmin: removeAdmin,
     myRequests: myRequests, reschedule: reschedule, cancelRequest: cancelRequest, toMs: toMs,
     watchRequests: watchRequests, updateRequest: updateRequest, releaseHolds: releaseHolds, ensureHold: ensureHold,
     addManualHold: addManualHold, deleteHold: deleteHold, setDay: setDay, watchHolds: watchHolds,

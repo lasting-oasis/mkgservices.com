@@ -11,7 +11,7 @@
   var t = I.t, L = I.L, esc = A.esc, D = B.dates;
   var $ = function (s, r) { return (r || document).querySelector(s); };
   var $all = function (s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); };
-  var user = null, items = [], filter = "new", query = "", unsub = null, cal = null, openDay = "";
+  var user = null, me = null, items = [], filter = "new", query = "", unsub = null, unsubTeam = null, cal = null, openDay = "";
   var openEdits = {}, savedFlash = {}; // survive the re-render that follows every write
   var AV = C.availability;
   var CLOSED = { done: true, declined: true, cancelled: true };
@@ -261,12 +261,49 @@
     });
   }
 
+  // ---------- team (owner only) ----------
+  function renderTeam(list) {
+    var box = $("[data-admin-team-list]");
+    box.innerHTML = list.sort(function (a, b) { return (a.role === "owner" ? 0 : 1) - (b.role === "owner" ? 0 : 1) || a.email.localeCompare(b.email); }).map(function (m) {
+      var tag = m.role === "owner" ? t("adm.owner") : m.status === "invited" ? t("adm.invited") : t("adm.member");
+      var canRemove = m.role !== "owner" && m.uid !== user.uid;
+      return '<li><span>' + esc(m.email) + ' <span class="muted">· ' + esc(tag) + "</span></span>" +
+        (canRemove ? ' <button type="button" class="link-btn" data-team-remove="' + esc(m.email) + '" data-team-uid="' + esc(m.uid || "") + '">' + esc(t("adm.remove")) + "</button>" : "") + "</li>";
+    }).join("");
+    $all("[data-team-remove]", box).forEach(function (b) {
+      b.addEventListener("click", function () {
+        var email = b.getAttribute("data-team-remove");
+        if (!confirm(t("adm.removeAdminConfirm", { email: email }))) return;
+        b.disabled = true;
+        B.removeAdmin({ email: email, uid: b.getAttribute("data-team-uid") }).catch(function (e) { alert(t("adm.failed")); if (window.console) console.warn(e); b.disabled = false; });
+      });
+    });
+  }
+  function mountTeam() {
+    var panel = $("[data-admin-team]");
+    panel.hidden = me.role !== "owner";
+    if (unsubTeam) { unsubTeam(); unsubTeam = null; }
+    if (me.role !== "owner") return;
+    unsubTeam = B.watchTeam(function (list, err) { if (err) { if (window.console) console.warn(err); return; } renderTeam(list); });
+  }
+  $("[data-admin-team-form]").addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    var input = $("#adm-invite"), email = input.value.trim().toLowerCase(), msg = $('[data-error="invite"]');
+    msg.textContent = "";
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) { msg.textContent = t("err.email"); return; }
+    var btn = ev.target.querySelector("button"); btn.disabled = true;
+    B.inviteAdmin(email, user.email).then(function () { input.value = ""; })
+      .catch(function (e) { msg.textContent = t("adm.failed"); if (window.console) console.warn(e); })
+      .then(function () { btn.disabled = false; });
+  });
+
   // ---------- auth ----------
   function enter(u) {
     user = u;
-    $("[data-admin-email]").textContent = u.email;
+    $("[data-admin-email]").textContent = u.email + (me.role === "owner" ? " · " + t("adm.owner") : "");
     show("dash");
     if (!cal) mountCal();
+    mountTeam();
     if (unsub) unsub();
     unsub = B.watchRequests(function (list, err) {
       if (err) { if (window.console) console.warn(err); $("[data-admin-empty]").hidden = false; $("[data-admin-empty]").textContent = t("adm.failed"); return; }
@@ -283,15 +320,15 @@
     var b = this; b.disabled = true; $('[data-error="google"]').textContent = "";
     B.signInGoogle().catch(function (e) { $('[data-error="google"]').textContent = t("acct.googleFailed"); if (window.console) console.warn(e); }).then(function () { b.disabled = false; });
   });
-  $("[data-admin-signout]").addEventListener("click", function () { if (unsub) { unsub(); unsub = null; } document.title = baseTitle; B.signOut().then(function () { show("login"); }); });
+  $("[data-admin-signout]").addEventListener("click", function () { if (unsub) { unsub(); unsub = null; } if (unsubTeam) { unsubTeam(); unsubTeam = null; } me = null; document.title = baseTitle; B.signOut().then(function () { show("login"); }); });
   document.addEventListener("mkg:langchange", function () { if (user) { renderList(); renderDay(); } });
 
   B.ready.then(function (live) {
     if (!live) { $("[data-admin-offline]").hidden = false; $("[data-admin-form] button").disabled = true; $("[data-google-signin]").disabled = true; return; }
     B.onAuth(function (u) {
       if (!u) { show("login"); return; }
-      B.isAdmin(u).then(function (ok) {
-        if (ok) { $("[data-admin-notadmin]").hidden = true; enter(u); }
+      B.isAdmin(u).then(function (rec) {
+        if (rec) { me = rec; $("[data-admin-notadmin]").hidden = true; enter(u); }
         else { show("login"); $("[data-admin-notadmin]").hidden = false; B.signOut(); }
       });
     });

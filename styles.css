@@ -580,3 +580,8 @@ button.cal-slot:not(:disabled):hover { border-color: var(--pine); }
   .cal-state { font-size: 0.58rem; padding: 2px 4px; }
   .cal-grid { gap: 3px; }
 }
+.admin-team summary { cursor: pointer; font-weight: 700; color: var(--pine); }
+.admin-team-list { list-style: none; margin: 10px 0; padding: 0; display: grid; gap: 6px; font-size: 0.93rem; }
+.admin-team-list li { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; }
+.admin-team-form { display: flex; gap: 8px; align-items: center; }
+.admin-team-form .input { flex: 1; min-width: 0; }
