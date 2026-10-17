@@ -46,44 +46,78 @@
     }).join("");
   }
 
-  // ---------- my clock ----------
+  // ---------- my day ----------
   function openShift() { return mine.filter(function (s) { return !s.outAt; }).sort(function (a, b) { return ms(b.inAt) - ms(a.inAt); })[0] || null; }
+  // Today's bookings: mine first, then anyone's that nobody has been assigned to.
+  function myDay() {
+    var today = D.ymd(new Date()), email = (user.email || "").toLowerCase();
+    var todays = getRequests().filter(function (r) { return r.date === today && r.status !== "declined" && r.status !== "cancelled"; })
+      .sort(function (a, b) { return (a.slot || "zzzz") < (b.slot || "zzzz") ? -1 : 1; });
+    return { mine: todays.filter(function (r) { return (r.assignedTo || "") === email; }), open: todays.filter(function (r) { return !r.assignedTo; }) };
+  }
+  function jobCard(r, open) {
+    var running = open && open.requestId === r.id;
+    var mins = mine.filter(function (s) { return s.requestId === r.id && s.outAt; }).reduce(function (a, s) { return a + hours(s) * 60; }, 0);
+    var h = '<li class="tc-job' + (running ? " is-running" : "") + (r.status === "done" ? " is-done" : "") + '">' +
+      '<div class="tc-job-head"><b>' + esc(r.slot ? Cal.slotLabel(r.slot) : t("cal.anyWindow")) + "</b> · " + esc(r.name || "?") + (r.company ? " · " + esc(r.company) : "") + "</div>" +
+      '<div class="muted">' + esc((r.service || ((r.plan || "") + (r.frequency ? ", " + r.frequency : ""))) + (r.zip ? " · " + r.zip : "")) +
+        (r.phone ? ' · <a href="tel:' + esc(r.phone.replace(/[^\d+]/g, "")) + '">' + esc(r.phone) + "</a>" : "") + "</div>" +
+      (r.notes ? '<div class="muted tc-job-notes">' + esc(r.notes) + "</div>" : "") +
+      (r.replyNote ? '<div class="muted tc-job-notes">' + esc(t("acct.fromUs")) + ": " + esc(r.replyNote) + "</div>" : "");
+    if (r.status === "done") h += '<div class="tc-job-act"><span class="status status-done">' + esc(t("status.done")) + "</span>" + (mins ? ' <span class="muted">' + esc(fmtHours(mins / 60)) + "</span>" : "") + "</div>";
+    else if (running) h += '<div class="tc-job-act"><span class="tc-dot"></span><b data-tc-elapsed>' + esc(fmtHours(hours(open))) + '</b> <button type="button" class="btn btn-sm" data-tc-end="' + esc(r.id) + '">' + esc(t("tc.end")) + "</button></div>";
+    else h += '<div class="tc-job-act"><button type="button" class="btn btn-sm' + (open ? " btn-secondary" : "") + '" data-tc-start="' + esc(r.id) + '"' + (open ? " disabled" : "") + ">" + esc(t("tc.start")) + "</button>" + (mins ? ' <span class="muted">' + esc(t("tc.soFar", { time: fmtHours(mins / 60) })) + "</span>" : "") + "</div>";
+    return h + "</li>";
+  }
   function renderMine() {
     var box = $("[data-tc]"); if (!box) return;
-    var open = openShift();
-    // Keep what's being typed if a re-render lands mid-sentence.
-    var typedNote = $("[data-tc-note]", box), typedJob = $("[data-tc-job]", box);
-    if (open) { if (typedNote && typedNote.value.trim() !== (open.note || "")) open = Object.assign({}, open, { note: typedNote.value }); }
-    var keepJob = !open && typedJob ? typedJob.value : "";
+    var open = openShift(), day = myDay();
     var h = "";
-    if (open) {
-      h += '<p class="tc-status"><span class="tc-dot"></span>' + esc(t("tc.inSince", { time: fmtTime(open.inAt) })) + ' <b data-tc-elapsed>' + esc(fmtHours(hours(open))) + "</b></p>";
-      h += '<div class="field"><label>' + esc(t("tc.job")) + '</label><select class="select" data-tc-job>' + jobOptions(open.requestId) + "</select></div>";
-      h += '<div class="field"><label>' + esc(t("tc.note")) + '</label><input class="input" data-tc-note value="' + esc(open.note || "") + '" placeholder="' + esc(t("tc.noteHint")) + '"></div>';
-      h += '<p><button type="button" class="btn btn-sm" data-tc-act="out">' + esc(t("tc.clockOut")) + "</button></p>";
-    } else {
-      h += '<div class="field"><label>' + esc(t("tc.job")) + '</label><select class="select" data-tc-job>' + jobOptions(keepJob) + "</select></div>";
-      h += '<div class="field"><label>' + esc(t("tc.note")) + '</label><input class="input" data-tc-note value="' + esc(typedNote ? typedNote.value : "") + '" placeholder="' + esc(t("tc.noteHint")) + '"></div>';
-      h += '<p><button type="button" class="btn btn-sm" data-tc-act="in">' + esc(t("tc.clockIn")) + "</button></p>";
+    if (open && !open.requestId) {
+      h += '<p class="tc-status"><span class="tc-dot"></span>' + esc(t("tc.inSince", { time: fmtTime(open.inAt) })) + ' <b data-tc-elapsed>' + esc(fmtHours(hours(open))) + "</b> " +
+        '<button type="button" class="btn btn-sm" data-tc-end="">' + esc(t("tc.clockOut")) + "</button></p>";
     }
-    var recent = mine.filter(function (s) { return s.outAt; }).sort(function (a, b) { return ms(b.inAt) - ms(a.inAt); }).slice(0, 7);
+    if (day.mine.length) h += '<h4 class="tc-sub">' + esc(t("tc.myJobs")) + '</h4><ul class="tc-jobs">' + day.mine.map(function (r) { return jobCard(r, open); }).join("") + "</ul>";
+    else h += '<p class="muted">' + esc(t("tc.noJobsToday")) + "</p>";
+    if (day.open.length) h += '<h4 class="tc-sub">' + esc(t("tc.unassignedJobs")) + '</h4><ul class="tc-jobs">' + day.open.map(function (r) { return jobCard(r, open); }).join("") + "</ul>";
+    if (!open) h += '<p><button type="button" class="link-btn" data-tc-start="">' + esc(t("tc.clockInNoJob")) + "</button></p>";
+    var recent = mine.filter(function (s) { return s.outAt; }).sort(function (a, b) { return ms(b.inAt) - ms(a.inAt); }).slice(0, 5);
     if (recent.length) {
-      h += '<h4 class="tc-sub">' + esc(t("tc.recent")) + "</h4><ul class=\"tc-list\">" + recent.map(function (s) {
+      h += '<details class="tc-recent"><summary>' + esc(t("tc.recent")) + "</summary><ul class=\"tc-list\">" + recent.map(function (s) {
         return "<li><span>" + esc(fmtDay(s.inAt) + " · " + fmtTime(s.inAt) + "–" + fmtTime(s.outAt)) + "</span><b>" + esc(fmtHours(hours(s))) + "</b>" + (s.requestId ? '<span class="muted">' + esc(jobName(s.requestId)) + "</span>" : "") + "</li>";
-      }).join("") + "</ul>";
+      }).join("") + "</ul></details>";
       var week = weekStart(), wk = mine.filter(function (s) { return ms(s.inAt) >= week; }).reduce(function (a, s) { return a + hours(s); }, 0);
       h += '<p class="muted">' + esc(t("tc.thisWeek", { hours: fmtHours(wk) })) + "</p>";
     }
     h += '<p class="field-error" data-tc-err></p>';
     box.innerHTML = h;
-    var b = $("[data-tc-act]", box);
-    b.addEventListener("click", function () {
-      var job = $("[data-tc-job]", box).value, note = $("[data-tc-note]", box).value.trim();
-      b.disabled = true; $("[data-tc-err]", box).textContent = "";
-      var p = b.getAttribute("data-tc-act") === "in" ? B.clockIn(user, job, note) : B.clockOut(open.id, job, note);
-      p.catch(function (e) { $("[data-tc-err]", box).textContent = t("adm.failed"); if (window.console) console.warn(e); b.disabled = false; });
+    function fail(e) { $("[data-tc-err]", box).textContent = t("adm.failed"); if (window.console) console.warn(e); $all("button", box).forEach(function (x) { x.disabled = false; }); }
+    $all("[data-tc-start]", box).forEach(function (b) {
+      b.addEventListener("click", function () {
+        $all("button", box).forEach(function (x) { x.disabled = true; });
+        B.clockIn(user, b.getAttribute("data-tc-start"), "").catch(fail);
+      });
     });
-    if (open) { $("[data-tc-job]", box).addEventListener("change", function (ev) { B.updateShift(open.id, { requestId: ev.target.value }); }); }
+    $all("[data-tc-end]", box).forEach(function (b) {
+      b.addEventListener("click", function () {
+        var id = b.getAttribute("data-tc-end"), r = id ? reqById(id) : null;
+        $all("button", box).forEach(function (x) { x.disabled = true; });
+        B.clockOut(open.id).then(function () {
+          if (r && r.status !== "done" && confirm(t("tc.markDone", { name: r.name }))) {
+            return B.updateRequest(r.id, { status: "done" }).then(function () { return B.releaseHolds(r.id); });
+          }
+        }).catch(fail);
+      });
+    });
+  }
+  // Minutes clocked against a booking, from whatever shifts this viewer can see.
+  function timeOnJob(requestId) {
+    var src = (me && me.role === "owner" ? team : mine).filter(function (s) { return s.requestId === requestId; });
+    if (!src.length) return null;
+    var who = {}, total = 0;
+    src.forEach(function (s) { total += hours(s); who[s.email] = (who[s.email] || 0) + hours(s); });
+    var parts = Object.keys(who).map(function (e) { return e.split("@")[0] + " " + fmtHours(who[e]); });
+    return { minutes: Math.round(total * 60), text: fmtHours(total) + (parts.length > 1 ? " (" + parts.join(", ") + ")" : " (" + parts[0].split(" ")[0] + ")") };
   }
   function weekStart() { var d = new Date(); d = new Date(d.getFullYear(), d.getMonth(), d.getDate()); var dow = (d.getDay() + 6) % 7; return d.getTime() - dow * 864e5; }
 
@@ -189,7 +223,7 @@
     var rep = $("[data-tc-report-wrap]"); if (rep) rep.hidden = rec.role !== "owner";
     if (rec.role === "owner") startTeam();
     if (tick) clearInterval(tick);
-    tick = setInterval(function () { var el = $("[data-tc-elapsed]"), o = openShift(); if (el && o) el.textContent = fmtHours(hours(o)); }, 30000);
+    tick = setInterval(function () { var o = openShift(); if (o) $all("[data-tc-elapsed]").forEach(function (el) { el.textContent = fmtHours(hours(o)); }); }, 30000);
   }
   function leave() {
     if (unsubMine) { unsubMine(); unsubMine = null; }
@@ -200,5 +234,5 @@
   function refresh() { if (user) { renderMine(); if (me && me.role === "owner") renderTeam(); } }
   document.addEventListener("mkg:langchange", refresh);
 
-  C.timeclock = { enter: enter, leave: leave, refresh: refresh };
+  C.timeclock = { enter: enter, leave: leave, refresh: refresh, timeOnJob: timeOnJob };
 })();

@@ -15,6 +15,7 @@
   var openEdits = {}, savedFlash = {}; // survive the re-render that follows every write
   var AV = C.availability;
   var CLOSED = { done: true, declined: true, cancelled: true };
+  var members = []; // everyone on the team, for assigning jobs
   var baseTitle = document.title;
 
   function show(which) { $all("[data-admin]").forEach(function (s) { s.hidden = s.getAttribute("data-admin") !== which; }); }
@@ -99,6 +100,9 @@
     ];
     if (r.notes) details.push([t("review.notes"), esc(r.notes), true]);
     if (r.flooring) details.push([t("adm.flooring"), esc(r.flooring), true]);
+    if (r.assignedTo) details.push([t("adm.assignedTo"), esc(r.assignedTo), true]);
+    var tj = C.timeclock && C.timeclock.timeOnJob(r.id);
+    if (tj && tj.minutes) details.push([t("adm.timeOnJob"), esc(tj.text), true]);
     if (r.status === "cancelled") details.push([t("status.cancelled"), esc(r.cancelledBy === "client" ? t("adm.cancelledByClient") : t("adm.cancelledByYou")) + (r.updatedAt ? " · " + esc(fmtTs(r.updatedAt)) : ""), true]);
     var slotOpts = '<option value="">' + esc(t("cal.anyWindow")) + "</option>" + AV.slots.map(function (s) {
       return '<option value="' + esc(s.id) + '"' + (s.id === r.slot ? " selected" : "") + ">" + esc(L(s.label) + " " + (s.time || "")) + "</option>";
@@ -121,6 +125,9 @@
         '<div class="field"><label>' + esc(t("adm.note")) + '</label><textarea class="textarea" rows="2" data-f="replyNote">' + esc(r.replyNote || "") + "</textarea></div>" +
         '<div class="field"><label>' + esc(t("adm.payLink")) + '</label><input class="input" type="url" data-f="payLink" value="' + esc(r.payLink || "") + '" placeholder="https://buy.stripe.com/..."></div>' +
         '<div class="field"><label>' + esc(t("adm.private")) + '</label><textarea class="textarea" rows="2" data-f="adminNotes">' + esc(r.adminNotes || "") + "</textarea></div>" +
+        '<div class="field"><label>' + esc(t("adm.assign")) + '</label><select class="select" data-f="assignedTo"><option value="">' + esc(t("adm.unassigned")) + "</option>" +
+          members.map(function (m) { return '<option value="' + esc(m.email) + '"' + (m.email === r.assignedTo ? " selected" : "") + ">" + esc(m.email) + "</option>"; }).join("") +
+          (r.assignedTo && !members.some(function (m) { return m.email === r.assignedTo; }) ? '<option value="' + esc(r.assignedTo) + '" selected>' + esc(r.assignedTo) + "</option>" : "") + "</select></div>" +
         '<p><button type="button" class="btn btn-sm" data-act="save">' + esc(t("adm.save")) + "</button> <span class='muted' data-saved>" + (savedFlash[r.id] ? esc(t("adm.saved")) : "") + "</span></p>" +
       "</details></article>";
   }
@@ -189,7 +196,7 @@
     var h = "", lastDay = "";
     list.forEach(function (r) {
       if (r.date !== lastDay) { h += (lastDay ? "</ul>" : "") + '<h4 class="admin-week-day"><button type="button" class="link-btn" data-week-day="' + esc(r.date) + '">' + esc(r.date === today ? t("adm.today") : Cal.fmtDate(r.date, { weekday: "short", month: "short", day: "numeric" })) + "</button></h4><ul>"; lastDay = r.date; }
-      h += '<li><button type="button" class="link-btn" data-week-req="' + esc(r.id) + '">' + esc(r.name || "?") + "</button> · " + esc(r.slot ? slotName(r.slot) : t("cal.anyWindow")) + " · " + pill(r.status || "new") + "</li>";
+      h += '<li><button type="button" class="link-btn" data-week-req="' + esc(r.id) + '">' + esc(r.name || "?") + "</button> · " + esc(r.slot ? slotName(r.slot) : t("cal.anyWindow")) + " · " + pill(r.status || "new") + (r.assignedTo ? ' <span class="muted">→ ' + esc(r.assignedTo.split("@")[0]) + "</span>" : "") + "</li>";
     });
     box.innerHTML = h + "</ul>";
     $all("[data-week-day]", box).forEach(function (b) { b.addEventListener("click", function () { openDay = b.getAttribute("data-week-day"); renderDay(); }); });
@@ -283,8 +290,12 @@
     var panel = $("[data-admin-team]");
     panel.hidden = me.role !== "owner";
     if (unsubTeam) { unsubTeam(); unsubTeam = null; }
-    if (me.role !== "owner") return;
-    unsubTeam = B.watchTeam(function (list, err) { if (err) { if (window.console) console.warn(err); return; } renderTeam(list); });
+    unsubTeam = B.watchTeam(function (list, err) {
+      if (err) { if (window.console) console.warn(err); return; }
+      members = list.filter(function (m) { return m.status === "active"; });
+      if (me.role === "owner") renderTeam(list);
+      renderList();
+    });
   }
   $("[data-admin-team-form]").addEventListener("submit", function (ev) {
     ev.preventDefault();
