@@ -32,10 +32,17 @@
     },
 
     // Quote requests are saved to the site's Firebase database (see
-    // docs/SETUP-firebase.md) and show up on admin.html. To ALSO get an email
-    // for each one, paste a form-service URL here (Formspree, Basin, or any
-    // endpoint that accepts a JSON POST). Example: "https://formspree.io/f/abcd1234"
-    formEndpoint: "",
+    // docs/SETUP-firebase.md) and show up on admin.html. The business ALSO
+    // gets an email for each new request, and when a client moves or cancels
+    // a booking from their account, through this form service (Formspree,
+    // form "MKG quote requests", owned by mkgservices704@gmail.com). Any
+    // endpoint that accepts a JSON POST works; "" turns the emails off.
+    formEndpoint: "https://formspree.io/f/xjyglbgo",
+
+    // Firebase App Check: a reCAPTCHA (Fraud Defense) site key, so the
+    // database can tell this site's pages from scripts and bots. Public by
+    // design. Only used on mkgservices.com, the domain the key allows.
+    appCheckKey: "6LckBPMtAAAAAMrY8dXpkrE9QKJJudt3yfvhDjsO",
 
     // ZIP codes served. Leave empty to accept any ZIP and confirm coverage later.
     serviceZips: [],

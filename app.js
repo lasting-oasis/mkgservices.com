@@ -338,6 +338,31 @@
     });
   }
 
+  // ---------- emails to the business ----------
+  // Sends a message to the form service set in plans.js (formEndpoint), which
+  // emails it to the business. A field named "email" becomes the Reply-To, so
+  // replying goes straight to the client. Resolves true when the service took
+  // it, false when it didn't (or none is set). Never rejects.
+  function notify(fields) {
+    if (!C.formEndpoint || !window.fetch) return Promise.resolve(false);
+    return fetch(C.formEndpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify(fields),
+    }).then(function (r) { return r.ok; }).catch(function () { return false; });
+  }
+
+  // A visit's day and window in English, whatever language the visitor uses,
+  // for those emails. "" when no day was picked.
+  function visitText(date, slot) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date || "")) return "";
+    var p = date.split("-");
+    var day = new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2]))
+      .toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" });
+    var s = ((C.availability && C.availability.slots) || []).filter(function (x) { return x.id === slot; })[0];
+    return day + ", " + (s ? s.label.en + (s.time ? " (" + s.time + ")" : "") : "any window");
+  }
+
   function init() {
     load();
     chrome();
@@ -348,6 +373,7 @@
   C.app = {
     state: state, set: set, estimate: estimate, plan: plan, frequency: frequency, dim: dim,
     dollars: dollars, num: num, pct: pct, esc: esc, render: render, relocalize: relocalize, fillBusiness: fillBusiness, accountNav: accountNav,
+    notify: notify, visitText: visitText,
     onChange: function (fn) { listeners.push(fn); },
   };
 

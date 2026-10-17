@@ -34,8 +34,9 @@ not deploy it automatically).
 3. **Settings** tab → **Authorized domains**: make sure `mkgservices.com` and
    `www.mkgservices.com` are listed. Add them if not.
 
-Clients sign in with Google or the email link (no password). The admin uses a
-password or Google (the Google provider is on by default in this project).
+Clients sign in with Google, an email and password, or a one-time email link.
+Staff use a password or Google (the Google provider is on by default in this
+project).
 
 ## 4. Create the admin account
 
@@ -56,17 +57,28 @@ Google sign-in proves the email is theirs; a password alone does not) and
 they're in. Remove anyone from the same list. The owner can't be removed
 from the site; only the console can change that.
 
-## 5. Optional: an email for every request
+## 5. Emails to the business (set up)
 
-The admin page is the inbox. To also get an email per request, create a free
-form at https://formspree.io (or Basin), copy its endpoint URL and paste it
-into `plans.js`:
+The admin page is the inbox; the business also gets an email for:
 
-```js
-formEndpoint: "https://formspree.io/f/xxxxxxxx",
-```
+- every new quote request, with the client's details, the day and window
+  they picked, the site's estimate, and a link to the admin page;
+- a client moving or cancelling a booking from their account (a confirmed
+  visit that a client moves goes back to New, and the email says so).
 
-Push the change; the site sends every request to both places.
+Replying to one of these emails goes straight to the client (Reply-To is
+their address). The emails are in English even when the client used the
+Spanish site; those requests say "Language: Spanish".
+
+They go through **Formspree**, form "MKG quote requests", owned by
+mkgservices704@gmail.com. The endpoint is `formEndpoint` in `plans.js`
+(`""` turns the emails off). The free plan covers 50 emails a month; past
+that, Formspree holds them in an "Over limit" folder until the next month
+(requests are still saved and shown on the admin page). A confirmation email
+**to the client** ("autoresponse") is a paid Formspree feature.
+
+If the email service is down or slow, the request is still saved and the
+client still sees their confirmation; the email is a courtesy copy.
 
 ## 6. Optional: online payment
 
@@ -121,10 +133,12 @@ or after the account existed; nothing has to be linked by hand.
   the same email.
 - "Forgot your password?" is on the account page and the Staff page.
 - Links in Firebase's emails (confirm email, reset password, sign-in link)
-  are handled by account.html. In the console, Authentication > Templates >
-  (any template) > edit > **Customize action URL** should be
-  `https://mkgservices.com/account.html`, so those links point at the site
-  instead of firebaseapp.com.
+  are handled by account.html: the link opens Firebase's page on
+  firebaseapp.com, which sends the client on to account.html. (Authentication
+  > Templates > **Customize action URL** would skip that hop, but the console
+  doesn't keep the setting in this project; nothing depends on it.)
+- Google sign-in runs on mkgservices.com itself (see "Sign-in domain" below),
+  so Google's window says "to continue to mkgservices.com".
 
 ## How the data is laid out (for whoever maintains this)
 
@@ -146,6 +160,41 @@ is no API key to paste and the same files work on the live domain and preview
 channels. Opened from anywhere else, pages fall back to the "not connected"
 behaviour described at the top.
 
-Later, if volume grows: the Blaze plan (free tier, card on file) unlocks Cloud
-Functions and the Trigger Email extension for notifications straight from the
-database, and App Check to stop automated spam. Neither is needed to start.
+## Sign-in domain, anti-spam, and billing (set up October 2026)
+
+**Sign-in domain.** On mkgservices.com, backend.js starts Firebase with
+`authDomain` = the site's own domain instead of the project's
+firebaseapp.com address. For that to work, Google Cloud > Google Auth
+Platform > Clients > "Web client (auto created by Google Service)" lists
+`https://mkgservices.com` and `https://www.mkgservices.com` as JavaScript
+origins and `https://mkgservices.com/__/auth/handler` and
+`https://www.mkgservices.com/__/auth/handler` as redirect URIs. Don't remove
+them. The consent screen (Google Auth Platform > Branding) is named
+"MKG Services" and links the site's home, privacy and terms pages.
+
+**App Check (anti-bot).** Firebase App Check is registered for the web app
+with a reCAPTCHA key named "mkgservices.com website" (Google Cloud > Security >
+Fraud Defense > Keys). The site key is `appCheckKey` in plans.js; backend.js
+switches it on only on mkgservices.com. Every database request from the site
+then carries a token proving it came from these pages.
+
+It starts in **monitor-only** mode. To block everything else (scripts, bots,
+copies of the site): Firebase console > App Check > APIs > **Cloud Firestore**
+> check that nearly all recent requests are "Verified", then **Enforce**.
+After that, the database only answers the live site (preview channels and the
+emulator stop working with it until enforcement is turned off). If a real
+client ever reports the calendar not loading, the App risk slider (App Check
+> Apps > the web app > Fraud Defense) can be lowered from 0.5.
+
+reCAPTCHA is free up to 10,000 checks a month across the project; a check
+happens about once an hour per visitor on the booking pages. Above that,
+Google bills $8 a month (up to 100,000).
+
+**Billing.** The project is on the Blaze (pay-as-you-go) plan. A budget alert
+emails the billing account's admins at 10%, 50% and 100% of $1 a month
+(Google Cloud > Billing > Budgets & alerts). It warns; it does not stop
+charges. Normal use of this site stays inside the free tiers.
+
+Still available on Blaze if wanted later: Cloud Functions and the Trigger
+Email extension, for emails sent straight from the database (for example a
+confirmation to the client) without Formspree.

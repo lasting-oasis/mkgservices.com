@@ -156,21 +156,47 @@
         var r = items.filter(function (x) { return x.id === id; })[0];
         if (!r) return;
         if (act === "move") { if (editing[id]) delete editing[id]; else editing[id] = { date: r.date || "", slot: r.slot || "" }; renderList(); return; }
-        var p;
+        var p, before = { date: r.date || "", slot: r.slot || "", status: r.status };
         if (act === "save") {
           var ed = editing[id];
           if (!ed || !ed.date) return;
           if (ed.date === (r.date || "") && ed.slot === (r.slot || "")) { delete editing[id]; renderList(); return; }
-          p = B.reschedule(r, ed.date, ed.slot, true).then(function () { r.date = ed.date; r.slot = ed.slot; r.status = "new"; delete editing[id]; });
+          p = B.reschedule(r, ed.date, ed.slot, true).then(function () { r.date = ed.date; r.slot = ed.slot; r.status = "new"; delete editing[id]; tellBusiness(r, "moved", before); });
         } else if (act === "cancel") {
           if (!confirm(t("acct.cancelConfirm"))) return;
-          p = B.cancelRequest(id).then(function () { r.status = "cancelled"; r.cancelledBy = "client"; delete editing[id]; });
+          p = B.cancelRequest(id).then(function () { r.status = "cancelled"; r.cancelledBy = "client"; delete editing[id]; tellBusiness(r, "cancelled", before); });
         } else return;
         $all("[data-acct-act]", art).forEach(function (x) { x.disabled = true; });
         p.then(function () { renderList(); })
           .catch(function (e) { if (window.console) console.warn(e); $all("[data-acct-act]", art).forEach(function (x) { x.disabled = false; }); $("[data-acct-msg]", art).textContent = t("acct.failed"); });
       });
     });
+  }
+  // An email to the business (plans.js formEndpoint) when a client moves or
+  // cancels here, so nobody has to notice it on the admin page first.
+  function tellBusiness(r, kind, before) {
+    var who = r.name || r.email || "";
+    var was = A.visitText(before.date, before.slot) || "no day picked";
+    var f = { email: r.email || (user && user.email) || "" };
+    if (kind === "moved") {
+      var now = A.visitText(r.date, r.slot);
+      f._subject = "Client moved their visit: " + who + ", now " + now;
+      f["New day and window"] = now;
+      f["Was"] = was;
+      f["Next step"] = before.status === "confirmed"
+        ? "It had been confirmed, so it is back to New. Confirm the new time on the admin page, or call them."
+        : "Check the new time on the admin page.";
+    } else {
+      f._subject = "Client cancelled: " + who + ", " + was;
+      f["Cancelled visit"] = was;
+      f["It was"] = before.status === "confirmed" ? "Confirmed" : "Not confirmed yet";
+    }
+    f.Name = r.name || "";
+    if (r.phone) f.Phone = r.phone;
+    f.Service = r.service || [r.plan, r.frequency].filter(Boolean).join(", ");
+    f.Reference = String(r.id || "").slice(0, 6).toUpperCase();
+    f["Manage it"] = location.origin + "/admin.html";
+    A.notify(f);
   }
   function loadRequests() {
     B.myRequests(user.email).then(function (list) { items = list; renderList(); })

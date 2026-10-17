@@ -353,6 +353,52 @@
     return p;
   }
 
+  // The email the business gets for a new request: plain labels, most useful
+  // first, in English whatever language the client used.
+  var SIZE_LABELS = { bedrooms: "bedrooms", bathrooms: "bathrooms", sqft: "sq ft", restrooms: "restrooms" };
+  function mailFields(d, id) {
+    var what = d.service || [d.plan, d.frequency].filter(Boolean).join(", ");
+    var visit = A.visitText(d.date, d.slot);
+    var m = {
+      _subject: (d.segment === "commercial" ? "Commercial quote request from " : "Quote request from ") + (d.company || d.name) + ": " + what + (visit ? " on " + visit : ""),
+      email: d.email,
+    };
+    function put(label, v) {
+      if (v === undefined || v === null || v === "" || (Array.isArray(v) && !v.length)) return;
+      m[label] = Array.isArray(v) ? v.join(", ") : String(v);
+    }
+    function usd(n) { return typeof n === "number" ? A.dollars(n) : ""; }
+    put("Name", d.name);
+    put("Company", d.company);
+    put("Phone", d.phone);
+    put("Best way to reach them", d.contactMethod);
+    if (d.language === "es") put("Language", "Spanish (reply in Spanish if you can)");
+    var prefs = [(d.days || []).join(", "), d.timeOfDay && d.timeOfDay !== "Either" ? d.timeOfDay.toLowerCase() + "s" : ""].filter(Boolean).join(", ");
+    put("Day and window", visit || "None picked yet. " + (prefs ? "Best for them: " + prefs : "They're flexible"));
+    put("Service", what);
+    put("Last deep clean", d.deepCleanWithin);
+    var per = typeof d.estimatePerVisit === "number" ? d.estimatePerVisit : d.estimateOneVisit;
+    if (typeof per === "number") {
+      put("Site estimate", usd(per) + " per visit" +
+        (d.discount ? " (" + Math.round(d.discount * 100) + "% off " + usd(d.estimateFullPrice) + ")" : "") +
+        (typeof d.estimatePerMonth === "number" ? ", about " + usd(d.estimatePerMonth) + " a month" : ""));
+    }
+    put(d.segment === "commercial" ? "Facility" : "Home",
+      [d.homeType || d.facilityType].concat(C.dims.map(function (x) {
+        return typeof d[x.id] === "number" ? A.num(d[x.id]) + " " + (SIZE_LABELS[x.id] || x.id) : "";
+      })).filter(Boolean).join(", "));
+    put(d.segment === "commercial" ? "Floors" : "Pets", d.floors || d.pets);
+    put("ZIP", d.zip + (d.outOfArea ? " (outside the usual service area)" : ""));
+    put("Notes", d.notes);
+    put("Reference", id ? id.slice(0, 6).toUpperCase() : "");
+    put("Manage it", location.origin + "/admin.html");
+    return m;
+  }
+  // The email is a courtesy copy: never hold the confirmation up for long.
+  function mailCopy(d, id) {
+    return Promise.race([A.notify(mailFields(d, id)), new Promise(function (r) { setTimeout(function () { r(false); }, 8000); })]);
+  }
+
   form.addEventListener("submit", function (ev) {
     ev.preventDefault();
     if (current !== REVIEW) return;
@@ -382,25 +428,20 @@
     }
 
     var data = payload();
-    // Optional copy to an email form service, on top of the database.
-    function mailCopy() {
-      if (!C.formEndpoint) return Promise.resolve(true);
-      return fetch(C.formEndpoint, {
-        method: "POST", headers: { "Content-Type": "application/json", Accept: "application/json" }, body: JSON.stringify(data),
-      }).then(function (r) { return r.ok; }).catch(function () { return false; });
-    }
+    // Saved to the database (shows on admin.html), and an email copy to the
+    // business when plans.js has a formEndpoint.
     B.ready.then(function (live) {
       if (!live) {
         if (!C.formEndpoint) { setTimeout(function () { done(true); }, 400); return; }
-        return mailCopy().then(function (ok) { ok ? done(false) : fail(); });
+        return mailCopy(data).then(function (ok) { ok ? done(false) : fail(); });
       }
       return B.submitRequest(data).then(function (id) {
         $all("[data-request-id]").forEach(function (el) { el.textContent = id.slice(0, 6).toUpperCase(); });
-        return mailCopy().then(function () { done(false); });
+        return mailCopy(data, id).then(function () { done(false); });
       }).catch(function (err) {
         if (window.console) console.warn("request not saved", err);
-        // Firebase refused (rules not deployed yet, offline): still try the email copy.
-        if (C.formEndpoint) return mailCopy().then(function (ok) { ok ? done(false) : fail(); });
+        // Firebase refused (offline, or a rule): the email copy alone still reaches us.
+        if (C.formEndpoint) return mailCopy(data).then(function (ok) { ok ? done(false) : fail(); });
         fail();
       });
     });

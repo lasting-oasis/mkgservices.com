@@ -2,7 +2,7 @@
   The site's connection to Firebase (Firestore for data, Auth for sign-in).
 
   Nothing here needs configuring: Firebase Hosting serves the project's own
-  config at /__/firebase/init.js, so the same files work on mkgservices.com,
+  config at /__/firebase/init.json, so the same files work on mkgservices.com,
   on preview channels, and in the local emulator. Opened from anywhere else
   (a plain file server), there is no Firebase and every page falls back to
   "demo" behaviour: the calendar shows all windows open and the quote form
@@ -33,17 +33,49 @@
     });
   }
 
+  // The live site. www.mkgservices.com redirects here, but is listed too.
+  var SITE = /^(www\.)?mkgservices\.com$/.test(location.hostname);
+
   // Resolves to true when Firebase is available, false otherwise. Never rejects.
+  //
+  // On mkgservices.com two things are switched on before anything is used:
+  // - Sign-in runs on the site's own domain (authDomain) instead of the
+  //   project's firebaseapp.com address, so Google's window says
+  //   mkgservices.com and sign-in works in browsers that block third-party
+  //   storage. Firebase Hosting serves /__/auth/handler on every domain it
+  //   hosts; the Google OAuth client lists mkgservices.com as a redirect.
+  // - App Check (plans.js appCheckKey): each database request carries a
+  //   token showing it came from these pages. Enforcement is switched on in
+  //   the Firebase console (App Check > APIs > Cloud Firestore).
+  // Elsewhere (preview channels, the emulator) neither applies.
   var ready = (function () {
     if (location.protocol === "file:") return Promise.resolve(false);
     var useEmu = /[?&]emulator=1/.test(location.search) || /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
+    var useAppCheck = SITE && !useEmu && !!C.appCheckKey;
     return script(base + SDK + "/firebase-app-compat.js")
       .then(function () { return script(base + SDK + "/firebase-auth-compat.js"); })
       .then(function () { return script(base + SDK + "/firebase-firestore-compat.js"); })
-      .then(function () { return script(base + "init.js" + (useEmu ? "?useEmulator=true" : "")); })
+      .then(function () {
+        if (!useAppCheck) return null;
+        return script(base + SDK + "/firebase-app-check-compat.js").catch(function () { useAppCheck = false; });
+      })
+      .then(function () {
+        if (useEmu) return script(base + "init.js?useEmulator=true");
+        return fetch(base + "init.json").then(function (r) {
+          if (!r.ok) throw new Error("no firebase config");
+          return r.json();
+        }).then(function (cfg) {
+          if (SITE) cfg.authDomain = location.hostname;
+          window.firebase.initializeApp(cfg);
+        });
+      })
       .then(function () {
         if (!window.firebase || !window.firebase.apps || !window.firebase.apps.length) return false;
         fb = window.firebase;
+        if (useAppCheck && fb.appCheck) {
+          try { fb.appCheck().activate(new fb.appCheck.ReCaptchaEnterpriseProvider(C.appCheckKey), true); }
+          catch (e) { if (window.console) console.warn("App Check not started", e); }
+        }
         db = fb.firestore();
         auth = fb.auth();
         return true;
