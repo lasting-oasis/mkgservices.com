@@ -585,3 +585,22 @@ button.cal-slot:not(:disabled):hover { border-color: var(--pine); }
 .admin-team-list li { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; }
 .admin-team-form { display: flex; gap: 8px; align-items: center; }
 .admin-team-form .input { flex: 1; min-width: 0; }
+.tc { border: 1.5px solid var(--line); border-radius: var(--r-lg); padding: 14px 16px; display: grid; gap: 10px; background: var(--paper); }
+.tc .field { margin: 0; }
+.tc p { margin: 0; }
+.tc-status { font-weight: 600; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.tc-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #2fb36b; box-shadow: 0 0 0 3px rgba(47,179,107,0.2); }
+.tc-sub { margin: 6px 0 0; font-size: 0.95rem; }
+.tc-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; font-size: 0.9rem; }
+.tc-list li { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; border-top: 1px solid var(--line); padding-top: 6px; }
+.tc-list li:first-child { border-top: 0; padding-top: 0; }
+.tc-report summary, .tc-fix summary { cursor: pointer; font-weight: 700; color: var(--pine); }
+.tc-report > div { margin-top: 10px; display: grid; gap: 10px; }
+.tc-periods { margin-bottom: 4px; }
+.tc-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+.tc-table th, .tc-table td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); }
+.tc-table th { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.03em; color: var(--muted); }
+.tc-table td:nth-child(n+2), .tc-table th:nth-child(n+2) { text-align: right; }
+.tc-totals { margin: 0; }
+.tc-fixrow { display: grid !important; gap: 6px; }
+.tc-fixrow label { font-size: 0.85rem; display: grid; gap: 2px; }

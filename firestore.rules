@@ -16,6 +16,8 @@ rules_version = '2';
 //                   created by the site the first time an invited person
 //                   signs in.
 //   adminInvites/{email}  an email the owner has invited onto the team.
+//   shifts/{id}     one clock-in/clock-out by a team member, optionally tied
+//                   to the request (job) they worked on.
 service cloud.firestore {
   match /databases/{database}/documents {
 
@@ -105,6 +107,19 @@ service cloud.firestore {
         request.resource.data.keys().hasOnly(['email', 'role', 'createdAt']);
       allow update: if false;
       allow delete: if isTeamOwner() && resource.data.role != 'owner' && request.auth.uid != uid;
+    }
+
+    match /shifts/{id} {
+      // A member sees and writes their own shifts; the owner sees, fixes, and deletes everyone's.
+      allow read: if isTeamOwner() || (isAdmin() && resource.data.uid == request.auth.uid);
+      allow create: if isAdmin() && request.resource.data.uid == request.auth.uid &&
+        request.resource.data.email == myEmail() &&
+        request.resource.data.inAt == request.time && request.resource.data.outAt == null &&
+        request.resource.data.keys().hasOnly(['uid', 'email', 'inAt', 'outAt', 'requestId', 'note']);
+      allow update: if isTeamOwner() ||
+        (isAdmin() && resource.data.uid == request.auth.uid && changed().hasOnly(['outAt', 'requestId', 'note']) &&
+         (request.resource.data.outAt == null || request.resource.data.outAt == request.time));
+      allow delete: if isTeamOwner();
     }
 
     match /adminInvites/{email} {

@@ -304,10 +304,11 @@
     show("dash");
     if (!cal) mountCal();
     mountTeam();
+    if (C.timeclock) C.timeclock.enter(u, me, function () { return items; });
     if (unsub) unsub();
     unsub = B.watchRequests(function (list, err) {
       if (err) { if (window.console) console.warn(err); $("[data-admin-empty]").hidden = false; $("[data-admin-empty]").textContent = t("adm.failed"); return; }
-      items = list; renderList(); if (openDay) renderDay();
+      items = list; renderList(); if (openDay) renderDay(); if (C.timeclock) C.timeclock.refresh();
     });
   }
   $("[data-admin-form]").addEventListener("submit", function (ev) {
@@ -320,7 +321,7 @@
     var b = this; b.disabled = true; $('[data-error="google"]').textContent = "";
     B.signInGoogle().catch(function (e) { $('[data-error="google"]').textContent = t("acct.googleFailed"); if (window.console) console.warn(e); }).then(function () { b.disabled = false; });
   });
-  $("[data-admin-signout]").addEventListener("click", function () { if (unsub) { unsub(); unsub = null; } if (unsubTeam) { unsubTeam(); unsubTeam = null; } me = null; document.title = baseTitle; B.signOut().then(function () { show("login"); }); });
+  $("[data-admin-signout]").addEventListener("click", function () { if (unsub) { unsub(); unsub = null; } if (unsubTeam) { unsubTeam(); unsubTeam = null; } if (C.timeclock) C.timeclock.leave(); me = null; document.title = baseTitle; B.signOut().then(function () { show("login"); }); });
   document.addEventListener("mkg:langchange", function () { if (user) { renderList(); renderDay(); } });
 
   B.ready.then(function (live) {

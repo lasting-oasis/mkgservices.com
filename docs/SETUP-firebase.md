@@ -86,6 +86,11 @@ Push the change; the site sends every request to both places.
   by phone; remove one. The "week ahead" panel lists what is scheduled in
   the next 7 days; the search box finds a request by name, email, phone,
   ZIP, or ID; the tab title shows how many new requests are waiting.
+- **Time clock.** Everyone on the team can clock in and out on the admin
+  page and say which booking they were on. The owner's "Team time" panel
+  shows hours, jobs, hours per job and $ per hour per person for the week,
+  month, or last 7/30 days, with a CSV download for payroll, and lets the
+  owner fix or delete a shift (a forgotten clock-out, say).
 - **What clients can do themselves** on the account page, while a request
   is still new or confirmed: move it to another open day and window (the
   old one frees up) or cancel it. Cancelled requests show in the admin
@@ -105,6 +110,7 @@ Push the change; the site sends every request to both places.
 | `days` | a closed day or blocked windows, keyed by `YYYY-MM-DD` | everyone | admins |
 | `admins` | one document per admin, keyed by user UID; the owner's has `role: owner` | admins | created by an invited person on their first sign-in; deleted by the owner |
 | `adminInvites` | one document per invited email, keyed by the email | admins | the owner |
+| `shifts` | one clock-in/out by a team member: `uid`, `email`, `inAt`, `outAt`, optional `requestId` and `note` | the member themself; the owner sees all | the member creates and closes their own; the owner may change or delete any |
 
 Pages load Firebase from Hosting's reserved URLs (`/__/firebase/...`), so there
 is no API key to paste and the same files work on the live domain and preview

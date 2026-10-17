@@ -151,6 +151,32 @@
     var u2 = db.collection("adminInvites").onSnapshot(function (r) { invites = r.docs.map(function (d) { var x = d.data(); x.status = "invited"; return x; }); seen |= 2; emit(); }, function (e) { cb(null, e); });
     return function () { u1(); u2(); };
   }
+  // ---------- time clock ----------
+  // A member's own shifts, live (every one; sorted newest first by the caller).
+  function watchMyShifts(uid, cb) {
+    return db.collection("shifts").where("uid", "==", uid).onSnapshot(function (r) {
+      cb(r.docs.map(function (d) { var x = d.data(); x.id = d.id; return x; }));
+    }, function (e) { cb(null, e); });
+  }
+  // Everyone's shifts that started on or after a date (owner only).
+  function watchShiftsSince(fromDate, cb) {
+    return db.collection("shifts").where("inAt", ">=", fromDate).orderBy("inAt", "desc").onSnapshot(function (r) {
+      cb(r.docs.map(function (d) { var x = d.data(); x.id = d.id; return x; }));
+    }, function (e) { cb(null, e); });
+  }
+  function clockIn(user, requestId, note) {
+    return db.collection("shifts").add({ uid: user.uid, email: String(user.email || "").toLowerCase(), inAt: fb.firestore.FieldValue.serverTimestamp(), outAt: null, requestId: requestId || "", note: note || "" });
+  }
+  function clockOut(id, requestId, note) {
+    var patch = { outAt: fb.firestore.FieldValue.serverTimestamp() };
+    if (requestId !== undefined) patch.requestId = requestId || "";
+    if (note !== undefined) patch.note = note || "";
+    return db.collection("shifts").doc(id).update(patch);
+  }
+  function updateShift(id, patch) { return db.collection("shifts").doc(id).update(patch); }
+  function deleteShift(id) { return db.collection("shifts").doc(id).delete(); }
+  function tsFromDate(d) { return fb.firestore.Timestamp.fromDate(d); }
+
   function inviteAdmin(email, byEmail) {
     var e = String(email || "").trim().toLowerCase();
     return db.collection("adminInvites").doc(e).set({ email: e, invitedBy: byEmail || "", createdAt: fb.firestore.FieldValue.serverTimestamp() });
@@ -238,6 +264,7 @@
     dates: { ymd: ymd, parse: parse, addDays: addDays, pad: pad },
     availability: availability, submitRequest: submitRequest,
     onAuth: onAuth, signOut: signOut, signInPassword: signInPassword, signInGoogle: signInGoogle, sendLink: sendLink, isLink: isLink, completeLink: completeLink, isAdmin: isAdmin, watchTeam: watchTeam, inviteAdmin: inviteAdmin, removeAdmin: removeAdmin,
+    watchMyShifts: watchMyShifts, watchShiftsSince: watchShiftsSince, clockIn: clockIn, clockOut: clockOut, updateShift: updateShift, deleteShift: deleteShift, tsFromDate: tsFromDate,
     myRequests: myRequests, reschedule: reschedule, cancelRequest: cancelRequest, toMs: toMs,
     watchRequests: watchRequests, updateRequest: updateRequest, releaseHolds: releaseHolds, ensureHold: ensureHold,
     addManualHold: addManualHold, deleteHold: deleteHold, setDay: setDay, watchHolds: watchHolds,
