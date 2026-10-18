@@ -268,7 +268,12 @@
     var art = b.closest("[data-id]"), id = art.getAttribute("data-id"), what = b.getAttribute("data-act"), r = byId(id);
     if (!r) return;
     if (what === "discard") { delete drafts[id]; renderList(); return; }
-    if (what === "delete" && !confirm(t("adm.deleteConfirm", { name: r.name || "?" }))) return;
+    if (what === "delete") {
+      // A permanent delete needs the word typed out, so a stray click can't wipe a client's request.
+      var typed = prompt(t("adm.deleteConfirm", { name: r.name || "?" }));
+      if (typed === null) return;
+      if (["delete", "borrar"].indexOf(String(typed).trim().toLowerCase()) === -1) { alert(t("adm.deleteWrongWord")); return; }
+    }
     var p, del = B.firebase.firestore.FieldValue.delete();
     if (what === "save") {
       var patch = {}, priv = {}, date = "", slot = "", bad = "";
