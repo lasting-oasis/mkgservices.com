@@ -59,13 +59,13 @@ The legal suffix is left off the mark on purpose: "MKG Services" is the brand, "
 - `styles.css` holds the colors and type at the top in `:root`.
 
 - `plans.js` also holds the calendar settings (`availability`: windows, capacity per window, weekdays, lead time, horizon), the optional email copy of each request (`formEndpoint`), and the optional Stripe payment link (`payments.link`). Days off and blocked windows are set on `admin.html`, not in code.
-- `firestore.rules` decides who can read and write the database; paste it into the Firebase console whenever it changes (see `docs/SETUP-firebase.md`).
+- `firestore.rules` decides who can read and write the database. It is deployed with the site on every push to `main` (the deploy workflow runs `firebase deploy --only firestore:rules` before publishing the pages); `test/` has tests for it that run in the Firestore emulator.
 
 Everything else (`app.js`, `quote.js`, `backend.js`, `calendar.js`, `admin.js`, `account.js`, `availability.js`) is behaviour and should not need touching. `docs/make-pages.py` regenerates the availability, account, admin, privacy, and terms pages from the shared header and footer in `quote.html`.
 
 ## Deploying (Firebase Hosting, free plan)
 
-Every push to `main` deploys the site through the GitHub Action in `.github/workflows/firebase-hosting-merge.yml`. Pull requests get a temporary preview URL. One-time setup:
+Every push to `main` deploys the database rules and then the site through the GitHub Action in `.github/workflows/firebase-hosting-merge.yml`. Pull requests get a temporary preview URL (hosting only: a preview runs against the live database and its current rules). One-time setup:
 
 1. Create a project at console.firebase.google.com and open **Build → Hosting → Get started** once so the site exists.
 2. Put the project ID in `.firebaserc` (replace `REPLACE_WITH_YOUR_FIREBASE_PROJECT_ID`).
@@ -87,4 +87,4 @@ The site is live at https://mkgservices.com (domain bought at Cloudflare Registr
 5. **Confirm the policies in the copy and in `terms.html`**: no contracts, skip/pause without a fee, supplies included, price confirmed before the first visit, reply time (`responseTime`), 24-hour change/cancel notice and the late-cancel charge, the come-back-and-fix promise, insurance. Change the wording in `i18n.js` (`terms.*`) if any of it isn't how you work.
 6. Add a logo if you have one (the header uses a simple mark), real photos if wanted, and customer reviews once there are real ones. The site deliberately has no invented reviews, ratings, or guarantees.
 
-See `docs/PLAN.md` for the competitor research and the phased roadmap (accounts, recurring billing, admin view).
+See `docs/PLAN.md` for the competitor research and the phased roadmap (accounts, recurring billing, admin view), and `docs/audit/` for the October 2026 site audit: every finding, what was fixed, and how to rerun it.

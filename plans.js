@@ -70,6 +70,9 @@
     // (roughly, how many crews you run). Visitors see a window as full once
     // that many requests hold it. Days off and blocked windows are set on
     // admin.html, not here.
+    // The capacity, the window ids, and horizonDays are enforced server-side
+    // too: firestore.rules repeats them in its "calendar limits" section.
+    // Change them in both places (test/ checks the rules).
     availability: {
       capacity: 2,
       weekdays: [1, 2, 3, 4, 5, 6],   // 0 = Sunday ... 6 = Saturday

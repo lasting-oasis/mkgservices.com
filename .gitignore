@@ -1,0 +1,5 @@
+# Local tooling and emulator output; nothing here belongs in the site.
+node_modules/
+*.log
+.firebase/
+.DS_Store

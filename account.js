@@ -174,7 +174,7 @@
         } else return;
         $all("[data-acct-act]", art).forEach(function (x) { x.disabled = true; });
         p.then(function () { renderList(); })
-          .catch(function (e) { if (window.console) console.warn(e); $all("[data-acct-act]", art).forEach(function (x) { x.disabled = false; }); $("[data-acct-msg]", art).textContent = t("acct.failed"); });
+          .catch(function (e) { if (window.console) console.warn(e); $all("[data-acct-act]", art).forEach(function (x) { x.disabled = false; }); $("[data-acct-msg]", art).textContent = t(e && e.code === "mkg/full" ? "q.windowFull" : "acct.failed"); });
       });
     });
   }

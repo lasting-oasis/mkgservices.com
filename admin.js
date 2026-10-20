@@ -120,7 +120,9 @@
     balances = {};
     ledger.forEach(function (c) { balances[c.emailLower] = (balances[c.emailLower] || 0) + (Number(c.amount) || 0); });
   }
-  function visitPrice(r) { return typeof r.estimatePerVisit === "number" ? r.estimatePerVisit : typeof r.estimateOneVisit === "number" ? r.estimateOneVisit : null; }
+  // The price a visit is really at: the final price once the owner set one, otherwise the site's estimate.
+  function estimateOf(r) { return typeof r.estimatePerVisit === "number" ? r.estimatePerVisit : typeof r.estimateOneVisit === "number" ? r.estimateOneVisit : null; }
+  function visitPrice(r) { return typeof r.quotedPrice === "number" ? r.quotedPrice : estimateOf(r); }
   // A returning customer (same email or phone, earlier visit) doesn't earn a "new customer" credit automatically.
   function isRepeat(r) {
     var mine = B.toMs(r.createdAt);
@@ -181,6 +183,48 @@
       });
     }
     return chain;
+  }
+  // A declined or cancelled visit gives back what it earned or used: the
+  // friend's welcome credit, and any credit applied to it. Runs for cancels
+  // made here and for cancels the client made from their account.
+  var revoking = {};
+  function revoke(r) {
+    if (!INV || revoking[r.id]) return Promise.resolve();
+    var chain = Promise.resolve(), any = false;
+    if (r.refWelcomeGranted) {
+      any = true;
+      chain = chain.then(function () { return B.removeCredit("welcome-" + r.id); }).then(function () { return B.updateRequest(r.id, { refWelcomeGranted: false }); });
+    }
+    if (r.creditApplied > 0) {
+      any = true;
+      chain = chain.then(function () { return B.removeCredit("use-" + r.id); }).then(function () { return B.updateRequest(r.id, { creditApplied: 0, youPay: null }); });
+    }
+    if (!any) return chain;
+    revoking[r.id] = true;
+    return chain.catch(function (e) { if (window.console) console.warn(e); }).then(function () { delete revoking[r.id]; });
+  }
+  function reconcileCredits() {
+    if (!ledger.length) return;
+    items.forEach(function (r) { if ((r.status === "declined" || r.status === "cancelled") && (r.refWelcomeGranted || r.creditApplied > 0)) revoke(r); });
+  }
+  // A status change and everything that follows it: the window is freed or
+  // held again, credits are granted (confirmed, done) or taken back (declined,
+  // cancelled). timeclock.js uses it too, so "done" means the same everywhere.
+  function setStatus(r, what) {
+    return B.updateRequest(r.id, { status: what }).then(function () {
+      if (CLOSED[what]) return B.releaseHolds(r.id);
+      return B.ensureHold(Object.assign({}, r, { status: what }));
+    }).then(function () {
+      if (what === "declined" || what === "cancelled") return revoke(r);
+      return grants(r, what).catch(function (e) { if (window.console) console.warn(e); alert(t("adm.credit.grantFailed")); });
+    });
+  }
+  // Confirming into a window other bookings already fill: say so first.
+  function windowCheck(r, what) {
+    if (what !== "confirmed" || !r.date || !r.slot) return Promise.resolve(true);
+    return B.windowCount(r.date, r.slot, r.id).then(function (n) {
+      return n < AV.capacity || confirm(t("adm.windowFull", { taken: n, cap: AV.capacity }));
+    }).catch(function () { return true; });
   }
 
   function card(r) {
@@ -290,6 +334,10 @@
       if (bad) { $("[data-edit-err]", art).textContent = bad; return; }
       var old = raw.filter(function (x) { return x.id === id; })[0] || {};
       PRIVATE.forEach(function (k) { if (old[k] !== undefined) patch[k] = del; }); // move older fields off the customer-readable request
+      if (patch.quotedPrice !== undefined && r.creditApplied > 0) { // a new price changes what the client pays after their credit
+        var np = typeof patch.quotedPrice === "number" ? patch.quotedPrice : estimateOf(r);
+        patch.youPay = np === null ? null : Math.max(0, rounded(np - r.creditApplied));
+      }
       var moved = date !== (r.date || "") || slot !== (r.slot || "");
       b.disabled = true;
       p = Promise.all([B.updateRequest(id, patch), B.saveInternal(id, priv)]).then(function () {
@@ -312,12 +360,7 @@
       p = B.removeCredit("use-" + id).then(function () { return B.updateRequest(id, { creditApplied: 0, youPay: null }); });
     } else {
       b.disabled = true;
-      p = B.updateRequest(id, { status: what }).then(function () {
-        if (CLOSED[what]) return B.releaseHolds(id);
-        return B.ensureHold(Object.assign({}, r, { status: what }));
-      }).then(function () {
-        return grants(r, what).catch(function (e) { if (window.console) console.warn(e); alert(t("adm.credit.grantFailed")); });
-      });
+      p = windowCheck(r, what).then(function (go) { if (!go) { b.disabled = false; return null; } return setStatus(r, what); });
     }
     p.catch(function (e) { b.disabled = false; fail(e); }).then(function () { if (cal) cal.refresh().then(renderDay); });
   }
@@ -404,7 +447,7 @@
             p = B.addPhoneBooking(openDay, sid, name.trim(), seg);
           } else if (what === "drop") {
             if (!confirm(t("adm.removeConfirm"))) return;
-            p = B.deleteHold(b.getAttribute("data-hold"));
+            p = B.unschedule(b.getAttribute("data-hold"));
           }
           if (p) p.catch(fail).then(function () { cal.refresh().then(renderDay); });
         });
@@ -528,12 +571,14 @@
     if (C.timeclock) C.timeclock.enter(u, me, function () { return items; });
     subs.push(B.watchRequests(function (list, err) {
       if (err) { if (window.console) console.warn(err); $("[data-admin-empty]").hidden = false; $("[data-admin-empty]").textContent = t("adm.failed"); return; }
-      raw = list; merge(); loadOwners(); renderList(); if (openDay) renderDay(); if (C.timeclock) C.timeclock.refresh();
+      raw = list; merge(); loadOwners(); renderList(); reconcileCredits(); if (openDay) renderDay(); if (C.timeclock) C.timeclock.refresh();
     }));
     subs.push(B.watchCredits(function (list, err) {
       if (err) { if (window.console) console.warn(err); return; }
-      ledger = list; recompute(); renderCredits(); renderList();
+      ledger = list; recompute(); renderCredits(); renderList(); reconcileCredits();
     }));
+    // The window counters the rules enforce capacity with: make them agree with the holds for the bookable stretch ahead.
+    B.syncCounters(D.ymd(new Date()), D.ymd(D.addDays(new Date(), (AV.horizonDays || 60) + 7))).catch(function (e) { if (window.console) console.warn("counters", e); });
     subs.push(B.watchInternal(function (m, err) {
       if (err) { if (window.console) console.warn(err); return; }
       internal = m; merge(); renderList(); if (C.timeclock) C.timeclock.refresh();
@@ -569,6 +614,8 @@
   });
   $("[data-admin-signout]").addEventListener("click", function () { leave(false); });
   document.addEventListener("mkg:langchange", function () { if (user) { renderList(); renderDay(); renderCredits(); if (isOwner()) renderTeam(); } });
+
+  C.adminActions = { setStatus: setStatus };
 
   B.ready.then(function (live) {
     if (!live) { $("[data-admin-offline]").hidden = false; $("[data-admin-form] button").disabled = true; $("[data-google-signin]").disabled = true; return; }
