@@ -15,16 +15,21 @@ sign-in pages say they're not connected.
 2. In the left menu: **Build → Firestore Database → Create database**.
 3. Location: **nam5 (United States)**. Mode: **Start in production mode**. Create.
 
-## 2. Paste the access rules
+## 2. The access rules
 
-1. Firestore Database → **Rules** tab.
-2. Delete what's there, paste the whole contents of `firestore.rules` from the
-   repository, and click **Publish**.
+`firestore.rules` in the repository is deployed by the GitHub Action on every
+push to `main`, just before the pages (so the rules are never older than the
+site). Nothing to paste. If the deploy log ever shows a permission error on
+that step, give the deploy service account the **Firebase Rules Admin** role
+in Google Cloud → IAM. To publish them by hand instead: Firestore Database →
+**Rules** tab, paste the whole file, **Publish**.
 
 These rules are what keep customer details private: anyone can *send* a
 request, but only an admin (step 4) and the customer who sent it can *read* it.
-Repeat this step whenever `firestore.rules` changes in the repo (GitHub does
-not deploy it automatically).
+They also keep the calendar honest: a visitor can only hold an open window on
+a bookable day, and never more than `capacity` (plans.js) per window. The
+capacity, the window ids, and the horizon are repeated at the top of the
+`calendar limits` section of the rules and must match plans.js.
 
 ## 3. Turn on sign-in
 
@@ -91,9 +96,8 @@ client still sees their confirmation; the email is a courtesy copy.
 
 ## Referral program (nothing extra to turn on)
 
-It uses the same database and sign-in. After any update to `firestore.rules`,
-**re-paste the file into Firebase console > Firestore > Rules and Publish**
-(the referral collections are in it).
+It uses the same database and sign-in (the referral collections are in
+`firestore.rules`, which deploys with the site).
 
 - A signed-in client gets a 6-character code, an invite link (`/?ref=CODE`), and a QR code on `account.html`.
 - A friend who arrives by that link sees a banner and the code is filled in on the quote form.
@@ -162,7 +166,8 @@ or after the account existed; nothing has to be linked by hand.
 | Collection | One document is… | Who can read | Who can write |
 |---|---|---|---|
 | `requests` | a quote request: the customer's details, status (`new`, `confirmed`, `declined`, `done`, `cancelled`), note to client, payment link, final price; `source: "phone"` for bookings taken by phone; `movedByClientAt`/`movedFrom` when the client moved it | admins; the customer, signed in with the same email | anyone may create one, but only with the fields the quote form sends; admins may change anything; the customer may only move it (it goes back to `new`) or cancel it, while it's new or confirmed; only the owner may delete |
-| `holds` | the day + window a request is holding, keyed by the request's id (no personal data) | everyone (this is what the public calendar reads) | created together with its request; moved or dropped together with it; admins may remove one |
+| `holds` | the day + window a request is holding, keyed by the request's id (no personal data) | everyone (this is what the public calendar reads) | created together with its request and its window's counter; moved or dropped together with it; a visitor's hold must be on a bookable day and window with room; admins may remove one |
+| `slots` | one counter per day + window, keyed `YYYY-MM-DD_slot`: `count` holds, `last` the hold that moved it. The rules enforce capacity with it | everyone (no personal data) | written in the same transaction as the hold, by one; admins freely (the admin page re-syncs them from the holds on sign-in) |
 | `internal` | staff-only fields for a request, keyed by its id: private notes, who it's assigned to | admins | admins |
 | `days` | a closed day or blocked windows, keyed by `YYYY-MM-DD` | everyone | admins |
 | `admins` | one document per team member, keyed by user UID; the owner's has `role: owner` | admins | created by an invited person on their first sign-in; deleted by the owner |

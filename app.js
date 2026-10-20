@@ -220,7 +220,7 @@
           '<p class="plan-tagline">' + esc(L(p.tagline)) + "</p>" +
           '<div class="plan-price"><span class="price-big" data-price="' + p.id + '"></span>' +
             '<span class="price-unit" data-price="' + p.id + '" data-price-part="label"></span></div>' +
-          '<p class="plan-monthly" data-monthly hidden>' + esc(t("plans.monthly")) + ' <span data-price="' + p.id + '" data-price-part="perMonth"></span></p>' +
+          '<p class="plan-monthly" data-monthly hidden>' + esc(t("plans.monthly")) + ' <span data-price="' + p.id + '" data-price-part="perMonth"></span> ' + esc(t("plans.monthlyUnit")) + "</p>" +
           '<div class="plan-was">' +
             '<span data-saving-pill><s data-price="' + p.id + '" data-price-part="oneTime"></s> ' + esc(t("plans.atFull")) + "</span>" +
             '<span class="pill" data-saving-pill>' + esc(t("plans.save")) + ' <span data-price="' + p.id + '" data-price-part="discount"></span></span>' +
@@ -295,6 +295,8 @@
       if (!el.hasAttribute("data-business-keep")) el.textContent = v;
     });
     $all("[data-business-wrap]").forEach(function (el) { el.hidden = !L(b[el.dataset.businessWrap]); });
+    // Policy numbers quoted in the copy (the change notice, for one) come from plans.js.
+    $all("[data-policy]").forEach(function (el) { var v = C.policy ? C.policy[el.dataset.policy] : undefined; el.textContent = v === undefined || v === null ? "" : String(v); });
   }
 
   function chrome() {

@@ -128,6 +128,8 @@
         B.clockOut(open.id).then(function () {
           // Only a confirmed job can be finished from here; a crew-mate may already have done it.
           if (r && r.status === "confirmed" && confirm(t("tc.markDone", { name: r.name || "?" }))) {
+            // The same path as the admin page's Done button: frees the window and grants referral credits.
+            if (C.adminActions) return C.adminActions.setStatus(r, "done");
             return B.updateRequest(r.id, { status: "done" }).then(function () { return B.releaseHolds(r.id); });
           }
         }).catch(failed);
