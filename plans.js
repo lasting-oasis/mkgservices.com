@@ -2,7 +2,7 @@
   MKG Services site configuration.
 
   Everything the owner is likely to change lives here: contact details,
-  plan names, what each plan includes, placeholder pricing, and the
+  plan names, what each plan includes, the prices, and the
   recurring discounts. The pages read this file; no markup edits needed.
 
   There are two service lines, "segments", with the same logic and their own
@@ -14,9 +14,10 @@
   Text that visitors see is written twice, { en: "...", es: "..." }, so the
   site can show English or Spanish. Fixed page text lives in i18n.js.
 
-  PRICING IS A PLACEHOLDER. Replace base / per-unit amounts with real numbers
-  before launch. Estimates are shown as "estimated" on the site and the final
-  price is confirmed in the quote reply.
+  PRICES. These are the live prices. They must match the Prices tab of the
+  owner's MKG Books spreadsheet: when a price changes, change it here and in
+  that tab on the same day. Estimates are shown as "estimated" on the site and
+  the final price is confirmed in the quote reply.
 
   Price per visit = (base + sum of per[dim] x size[dim]) x (1 - schedule discount)
 */

@@ -200,6 +200,19 @@
               <label class="choice"><input type="radio" name="contactMethod" value="Call"><span data-i18n="q.method.Call">Call</span></label>
             </div>
           </fieldset>
+          <div class="field">
+            <label for="heardFrom"><span data-i18n="q.heard">How did you hear about us?</span> <span class="muted" style="font-weight:500" data-i18n="q.optional">Optional</span></label>
+            <select class="select" id="heardFrom" name="heardFrom" style="max-width: 340px;">
+                <option value="" data-i18n="q.heard.none">Choose one</option>
+                <option value="Google" data-i18n="q.heard.Google">Google search or Maps</option>
+                <option value="Friend" data-i18n="q.heard.Friend">A friend, family member or neighbor</option>
+                <option value="Social" data-i18n="q.heard.Social">Facebook or Instagram</option>
+                <option value="Nextdoor" data-i18n="q.heard.Nextdoor">Nextdoor</option>
+                <option value="Flyer" data-i18n="q.heard.Flyer">A flyer or card</option>
+                <option value="Saw us" data-i18n="q.heard.Saw us">Saw your team at work</option>
+                <option value="Other" data-i18n="q.heard.Other">Something else</option>
+            </select>
+          </div>
           <div class="field" data-ref-field>
             <label for="ref"><span data-i18n="q.ref.label">A friend's invite code</span> <span class="muted" style="font-weight:500" data-i18n="q.optional">Optional</span></label>
             <input class="input" id="ref" name="ref" maxlength="6" autocomplete="off" autocapitalize="characters" spellcheck="false" data-i18n-attr="placeholder:q.ref.ph" placeholder="e.g. K7M2QX" style="max-width: 200px; text-transform: uppercase; letter-spacing: 0.12em;">
@@ -299,7 +312,7 @@
         <a href="refer.html" data-i18n="nav.refer">Refer a friend</a>
         <a href="admin.html" data-i18n="nav.staff">Staff</a>
       </nav>
-      <p>&copy; <span data-year></span> MKG Services, LLC</p>
+      <p>&copy; <span data-year></span> MKG Services, LLC. <span data-i18n="footer.rights">All rights reserved.</span></p>
     </div>
   </footer>
 

@@ -44,7 +44,7 @@
   // ---------- draft persistence ----------
   function saveDraft() {
     var d = {
-      zip: value("zip"), notes: value("notes"), company: value("company"), ref: value("ref"),
+      zip: value("zip"), notes: value("notes"), company: value("company"), ref: value("ref"), heardFrom: value("heardFrom"),
       name: value("name"), email: value("email"), phone: value("phone"),
       contactMethod: checked("contactMethod")[0], days: checked("days"), timeOfDay: checked("timeOfDay")[0],
       service: draft.service, recency: draft.recency, outOfArea: draft.outOfArea, step: current,
@@ -58,7 +58,7 @@
     var d = null;
     try { d = JSON.parse(sessionStorage.getItem(DRAFT_KEY) || "null"); } catch (e) { /* ignore */ }
     if (!d) return;
-    ["zip", "notes", "name", "email", "phone", "company", "ref"].forEach(function (k) { if (d[k] && form.elements[k]) form.elements[k].value = d[k]; });
+    ["zip", "notes", "name", "email", "phone", "company", "ref", "heardFrom"].forEach(function (k) { if (d[k] && form.elements[k]) form.elements[k].value = d[k]; });
     [Q.typeField, Q.extraField, "contactMethod", "timeOfDay"].forEach(function (k) {
       var el = $('input[name="' + k + '"][value="' + (d[k] || "") + '"]');
       if (el) el.checked = true;
@@ -392,6 +392,7 @@
     p[Q.typeField] = checked(Q.typeField)[0];
     p[Q.extraField] = checked(Q.extraField)[0];
     if (form.elements.company) p.company = value("company");
+    if (value("heardFrom")) p.heardFrom = value("heardFrom");
     C.dims.forEach(function (d) { p[d.id] = s[d.id]; });
     p.date = draft.date || ""; p.slot = draft.slot || "";
     if (refApplied()) { p.ref = draft.ref; p.refAmount = friendAmount(); }
@@ -416,6 +417,7 @@
   // The email the business gets for a new request: plain labels, most useful
   // first, in English whatever language the client used.
   var SIZE_LABELS = { bedrooms: "bedrooms", bathrooms: "bathrooms", sqft: "sq ft", restrooms: "restrooms" };
+  var HEARD = { "Google": "Google search or Maps", "Friend": "A friend, family member or neighbor", "Social": "Facebook or Instagram", "Nextdoor": "Nextdoor", "Flyer": "A flyer or card", "Saw us": "Saw your team at work", "Other": "Something else" };
   function mailFields(d, id) {
     var what = d.service || [d.plan, d.frequency].filter(Boolean).join(", ");
     var visit = A.visitText(d.date, d.slot);
@@ -432,6 +434,7 @@
     put("Company", d.company);
     put("Phone", d.phone);
     put("Best way to reach them", d.contactMethod);
+    put("Heard about us from", d.heardFrom ? (HEARD[d.heardFrom] || d.heardFrom) : "");
     if (d.language === "es") put("Language", "Spanish (reply in Spanish if you can)");
     var prefs = [(d.days || []).join(", "), d.timeOfDay && d.timeOfDay !== "Either" ? d.timeOfDay.toLowerCase() + "s" : ""].filter(Boolean).join(", ");
     put("Day and window", visit || "None picked yet. " + (prefs ? "Best for them: " + prefs : "They're flexible"));

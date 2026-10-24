@@ -163,7 +163,16 @@
       if (doc.date && doc.slot) {
         batch.set(holdRef(ref.id), { date: doc.date, slot: doc.slot, requestId: ref.id, createdAt: now, segment: doc.segment || "residential" });
       }
-      return batch.commit().then(function () { return ref.id; });
+      return batch.commit().then(function () { return ref.id; }).catch(function (e) {
+        // "How did you hear about us?" is newer than some published copies of
+        // firestore.rules. If the database refuses the field, send the
+        // request without it rather than lose the request.
+        if (e && e.code === "permission-denied" && data.heardFrom) {
+          var rest = Object.assign({}, data); delete rest.heardFrom;
+          return submitRequest(rest);
+        }
+        throw e;
+      });
     });
   }
 

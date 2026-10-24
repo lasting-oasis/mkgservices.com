@@ -56,7 +56,7 @@
   function matches(r) {
     if (!query) return true;
     var hay = [r.name, r.email, r.phone, r.zip, r.company, r.id, r.service, r.plan, r.notes, r.adminNotes, r.assignedTo].join(" ").toLowerCase();
-    return query.split(/\s+/).every(function (w) { return !w || hay.indexOf(w) !== -1; });
+    return query.split(/\s+/).every(function (w) { w = w.replace(/^#+/, ""); return !w || hay.indexOf(w) !== -1; });
   }
   function visible() {
     var list = items.filter(matches);
@@ -204,6 +204,7 @@
     details.push([t("review.estimate"), esc(est)]);
     refRows(r).forEach(function (row) { details.push(row); });
     if (r.notes) details.push([t("review.notes"), esc(r.notes)]);
+    if (r.heardFrom) details.push([t("adm.heardFrom"), esc(tv("q.heard", r.heardFrom))]);
     if (r.flooring) details.push([t("adm.flooring"), esc(r.flooring)]);
     if (r.assignedTo) details.push([t("adm.assignedTo"), esc(r.assignedTo)]);
     var tj = C.timeclock && C.timeclock.timeOnJob(r.id);

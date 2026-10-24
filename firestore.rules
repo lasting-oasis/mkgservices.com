@@ -62,7 +62,7 @@ service cloud.firestore {
           'date', 'slot', 'segment', 'submittedAt', 'language', 'outOfArea', 'contactMethod', 'days', 'timeOfDay',
           'homeType', 'facilityType', 'pets', 'floors', 'company', 'bedrooms', 'bathrooms', 'sqft', 'restrooms',
           'requestedTime', 'service', 'deepCleanWithin', 'plan', 'frequency', 'estimatePerVisit', 'estimateOneVisit',
-          'estimateFullPrice', 'estimatePerMonth', 'discount', '_subject', 'ref', 'refAmount', 'refDropped']) &&
+          'estimateFullPrice', 'estimatePerMonth', 'discount', '_subject', 'ref', 'refAmount', 'refDropped', 'heardFrom']) &&
         d.status == 'new' && d.createdAt == request.time &&
         str(d.name, 120) && d.name.size() > 0 &&
         str(d.email, 200) && d.email.size() > 3 && d.emailLower == d.email.lower() &&
@@ -74,6 +74,7 @@ service cloud.firestore {
         optStr(d, 'pets', 60) && optStr(d, 'floors', 60) && optStr(d, 'company', 160) &&
         optStr(d, 'requestedTime', 160) && optStr(d, 'service', 120) && optStr(d, 'deepCleanWithin', 120) &&
         optStr(d, 'plan', 120) && optStr(d, 'frequency', 120) && optStr(d, '_subject', 500) &&
+        optStr(d, 'heardFrom', 40) &&
         (!('outOfArea' in d) || d.outOfArea is bool) &&
         (!('days' in d) || (d.days is list && d.days.size() <= 7)) &&
         optNum(d, 'bedrooms') && optNum(d, 'bathrooms') && optNum(d, 'sqft') && optNum(d, 'restrooms') &&
