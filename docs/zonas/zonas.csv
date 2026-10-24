@@ -1,0 +1,64 @@
+zip,zone,zone_day,place,county,state,miles_from_uptown
+28216,North,Mon / Lun,"Charlotte norte (Beatties Ford, Oakdale)",Mecklenburg,NC,5.9
+28269,North,Mon / Lun,Charlotte norte (Highland Creek),Mecklenburg,NC,8.0
+28078,North,Mon / Lun,Huntersville,Mecklenburg,NC,12.5
+28031,North,Mon / Lun,Cornelius,Mecklenburg,NC,17.1
+28036,North,Mon / Lun,Davidson,Mecklenburg,NC,17.9
+28037,North,Mon / Lun,Denver,Lincoln,NC,22.2
+28117,North,Mon / Lun,Mooresville (Lago Norman),Iredell,NC,24.0
+28115,North,Mon / Lun,Mooresville,Iredell,NC,25.4
+28206,Northeast,Mon / Lun,"Charlotte (NoDa, Villa Heights)",Mecklenburg,NC,2.2
+28213,Northeast,Mon / Lun,Charlotte (University sur),Mecklenburg,NC,7.4
+28262,Northeast,Mon / Lun,"Charlotte (University, Mallard Creek)",Mecklenburg,NC,9.4
+28075,Northeast,Mon / Lun,Harrisburg,Cabarrus,NC,12.7
+28027,Northeast,Mon / Lun,Concord (oeste),Cabarrus,NC,16.2
+28107,Northeast,Mon / Lun,Midland,Cabarrus,NC,17.8
+28025,Northeast,Mon / Lun,Concord (este),Cabarrus,NC,20.5
+28081,Northeast,Mon / Lun,Kannapolis,Cabarrus,NC,21.3
+28083,Northeast,Mon / Lun,Kannapolis,Cabarrus,NC,23.8
+28205,East,Tue / Mar,Charlotte (Plaza Midwood),Mecklenburg,NC,3.3
+28212,East,Tue / Mar,Charlotte este (Albemarle Rd),Mecklenburg,NC,5.9
+28215,East,Tue / Mar,Charlotte este (Hickory Grove),Mecklenburg,NC,7.8
+28270,East,Tue / Mar,"Charlotte (Providence, Sardis)",Mecklenburg,NC,9.0
+28105,East,Tue / Mar,Matthews,Mecklenburg,NC,10.8
+28227,East,Tue / Mar,Mint Hill,Mecklenburg,NC,11.1
+28104,East,Tue / Mar,Matthews y Stallings (Union),Union,NC,13.4
+28079,East,Tue / Mar,Indian Trail,Union,NC,16.0
+28110,East,Tue / Mar,Monroe,Union,NC,21.5
+28202,South,Wed / Mié,Uptown,Mecklenburg,NC,0.0
+28280,South,Wed / Mié,Uptown (oficinas),Mecklenburg,NC,0.1
+28244,South,Wed / Mié,Uptown (oficinas),Mecklenburg,NC,0.2
+28282,South,Wed / Mié,Uptown (oficinas),Mecklenburg,NC,0.2
+28204,South,Wed / Mié,Elizabeth y Midtown,Mecklenburg,NC,1.2
+28203,South,Wed / Mié,South End y Dilworth,Mecklenburg,NC,1.7
+28207,South,Wed / Mié,Myers Park y Eastover,Mecklenburg,NC,2.4
+28209,South,Wed / Mié,Montford y Park Road,Mecklenburg,NC,3.5
+28211,South,Wed / Mié,Cotswold y SouthPark este,Mecklenburg,NC,4.5
+28210,South,Wed / Mié,SouthPark,Mecklenburg,NC,6.7
+28226,South,Wed / Mié,"Charlotte sur (Carmel, Piper Glen)",Mecklenburg,NC,8.5
+28134,South,Wed / Mié,Pineville,Mecklenburg,NC,10.4
+28277,South,Wed / Mié,Ballantyne,Mecklenburg,NC,12.2
+29715,South,Wed / Mié,Tega Cay (SC),York,SC,15.1
+29708,South,Wed / Mié,Fort Mill (SC),York,SC,15.2
+29707,South,Wed / Mié,Indian Land (SC),Lancaster,SC,16.6
+28173,South,Wed / Mié,"Waxhaw, Weddington y Marvin",Union,NC,21.8
+29732,South,Wed / Mié,Rock Hill norte (SC),York,SC,22.2
+29733,South,Wed / Mié,Rock Hill (SC),York,SC,22.6
+29730,South,Wed / Mié,Rock Hill (SC),York,SC,25.7
+28208,West,Thu / Jue,"Charlotte oeste (West Blvd, aeropuerto)",Mecklenburg,NC,3.2
+28217,West,Thu / Jue,"Charlotte suroeste (Coliseum, Arrowood)",Mecklenburg,NC,5.7
+28214,West,Thu / Jue,Charlotte noroeste (Mountain Island),Mecklenburg,NC,7.6
+28273,West,Thu / Jue,Steele Creek,Mecklenburg,NC,8.8
+28012,West,Thu / Jue,Belmont,Gaston,NC,11.0
+28278,West,Thu / Jue,Steele Creek sur y Lake Wylie (NC),Mecklenburg,NC,11.6
+28120,West,Thu / Jue,Mount Holly,Gaston,NC,12.7
+28032,West,Thu / Jue,Cramerton,Gaston,NC,13.2
+28101,West,Thu / Jue,McAdenville,Gaston,NC,13.6
+28098,West,Thu / Jue,Lowell,Gaston,NC,14.6
+28164,West,Thu / Jue,Stanley,Gaston,NC,16.4
+28056,West,Thu / Jue,Gastonia este,Gaston,NC,16.8
+28054,West,Thu / Jue,Gastonia,Gaston,NC,17.8
+28006,West,Thu / Jue,Alexis,Gaston,NC,18.7
+28034,West,Thu / Jue,Dallas,Gaston,NC,21.3
+28052,West,Thu / Jue,Gastonia oeste,Gaston,NC,22.1
+29710,West,Thu / Jue,Lake Wylie y Clover (SC),York,SC,25.9
