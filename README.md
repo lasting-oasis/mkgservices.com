@@ -24,6 +24,8 @@ The quote flows have six steps: ZIP, the space, plan and schedule, contact, **wh
 
 Referral: `referral.js` (invite link capture, banner, QR share panel and downloadable QR card), `vendor/qrcode.js` (MIT), credits ledger in Firestore `credits`, settings in `plans.js` `referral`. See `docs/SETUP-firebase.md`.
 
+Leave-behind cards: `leavebehind.js`, used by the admin page. A confirmed or finished request has a **Leave-behind card** button, and the week-ahead panel prints one card per confirmed visit in the next 7 days, 4 to a letter page, each in the client's language. A client who already has an invite code gets it printed with their invite link as a QR code; anyone else gets a QR code to the sign-in page, where their code is created.
+
 A page picks its line with `<script>window.MKG_SEGMENT = "commercial"</script>` before `plans.js`; pages without it are residential.
 
 ## Languages

@@ -231,6 +231,7 @@
         (s !== "done" ? '<button type="button" class="btn btn-sm btn-secondary" data-act="done">' + esc(t("adm.markDone")) + "</button>" : "") +
         (!CLOSED[s] ? '<button type="button" class="btn btn-sm btn-secondary" data-act="declined">' + esc(t("adm.decline")) + "</button>" : "") +
         (CLOSED[s] ? '<button type="button" class="btn btn-sm btn-secondary" data-act="new">' + esc(t("adm.reopen")) + "</button>" : "") +
+        ((s === "confirmed" || s === "done") && C.leaveBehind ? '<button type="button" class="btn btn-sm btn-secondary" data-act="leaveCard">' + esc(t("adm.leaveCard")) + "</button>" : "") +
       "</div>" +
       creditBlock(r) +
       '<details class="admin-edit"' + (openEdits[r.id] ? " open" : "") + "><summary>" + esc(t("adm.edit")) + '<span class="admin-unsaved"' + (dirty ? "" : " hidden") + ' data-unsaved> · ' + esc(t("adm.unsaved")) + "</span></summary>" +
@@ -269,6 +270,7 @@
     var art = b.closest("[data-id]"), id = art.getAttribute("data-id"), what = b.getAttribute("data-act"), r = byId(id);
     if (!r) return;
     if (what === "discard") { delete drafts[id]; renderList(); return; }
+    if (what === "leaveCard") { C.leaveBehind.print([r]); return; }
     if (what === "delete") {
       // A permanent delete needs the word typed out, so a stray click can't wipe a client's request.
       var typed = prompt(t("adm.deleteConfirm", { name: r.name || "?" }));
@@ -349,7 +351,12 @@
       h += '<li' + (r.status === "cancelled" ? ' class="is-cancelled"' : "") + '><button type="button" class="link-btn" data-week-req="' + esc(r.id) + '">' + esc(r.name || "?") + "</button> · " +
         esc(r.slot ? slotName(r.slot) : t("cal.anyWindow")) + " · " + pill(r.status || "new") + (r.movedByClientAt && r.status === "new" ? ' <span class="status status-moved">' + esc(t("adm.movedH")) + "</span>" : "") + who + "</li>";
     });
-    box.innerHTML = h + "</ul>";
+    // Leave-behind cards for the confirmed visits in this list, printed in one go (e.g. when the schedule goes out on Thursday).
+    var toCard = list.filter(function (r) { return r.status === "confirmed"; });
+    box.innerHTML = h + "</ul>" + (C.leaveBehind && toCard.length ? '<p class="admin-week-cards"><button type="button" class="btn btn-sm btn-secondary" data-week-cards>' +
+      esc(t("adm.leaveCards")) + ' (' + toCard.length + ')</button><span class="field-hint">' + esc(t("adm.leaveCardsHint")) + "</span></p>" : "");
+    var wc = $("[data-week-cards]", box);
+    if (wc) wc.addEventListener("click", function () { C.leaveBehind.print(toCard); });
     $all("[data-week-day]", box).forEach(function (b) { b.addEventListener("click", function () { openDay = b.getAttribute("data-week-day"); renderDay(); }); });
     $all("[data-week-req]", box).forEach(function (b) {
       b.addEventListener("click", function () {

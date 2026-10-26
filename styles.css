@@ -547,6 +547,7 @@ button.cal-slot:not(:disabled):hover { border-color: var(--pine); }
 .admin-week-day { margin: 8px 0 2px; font-size: 0.95rem; }
 .admin-week ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
 .admin-week .status { font-size: 0.75rem; padding: 1px 8px; }
+.admin-week-cards { margin: 10px 0 0; display: grid; gap: 4px; justify-items: start; }
 .admin-item.is-flash { box-shadow: 0 0 0 3px var(--lemon); transition: box-shadow 0.3s; }
 .admin { padding-top: 32px; }
 .admin .quote-card { max-width: 480px; }
