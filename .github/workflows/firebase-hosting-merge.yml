@@ -26,6 +26,10 @@ jobs:
           fi
       - uses: actions/checkout@v4
         if: steps.check.outputs.ready == 'true'
+        with:
+          # Keep the job's token out of .git/config. The site is deployed
+          # from this checkout, and firebase.json ignores dot-folders.
+          persist-credentials: false
       - uses: FirebaseExtended/action-hosting-deploy@v0
         if: steps.check.outputs.ready == 'true'
         with:
