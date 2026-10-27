@@ -38,6 +38,12 @@ jobs:
       # Google Cloud > IAM. firebase-tools 13 is used here because 15.x
       # first checks that the Firestore API is enabled, which needs the
       # Service Usage permission this key may not have (see the pin below).
+      # A failure's error lines are also posted as annotations, so they show
+      # on the run's summary page without opening the log.
+      - uses: actions/setup-node@v4
+        if: steps.check.outputs.ready == 'true'
+        with:
+          node-version: "22"
       - name: Deploy Firestore rules
         if: steps.check.outputs.ready == 'true'
         env:
@@ -46,7 +52,16 @@ jobs:
           printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > "$RUNNER_TEMP/firebase-sa.json"
           trap 'rm -f "$RUNNER_TEMP/firebase-sa.json"' EXIT
           export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/firebase-sa.json"
-          npx --yes firebase-tools@13.35.1 deploy --only firestore:rules --non-interactive
+          log="$RUNNER_TEMP/rules-deploy.log"
+          if npx --yes firebase-tools@13.35.1 deploy --only firestore:rules --non-interactive >"$log" 2>&1; then
+            cat "$log"
+          else
+            status=$?
+            cat "$log"
+            { grep -iE "error|denied|permission|missing|invalid|failed" "$log" || true; } | tail -n 8 | sed 's/%/%25/g' |
+              while IFS= read -r line; do echo "::error title=Firestore rules deploy::$line"; done
+            exit "$status"
+          fi
       - uses: FirebaseExtended/action-hosting-deploy@v0
         if: steps.check.outputs.ready == 'true'
         with:
