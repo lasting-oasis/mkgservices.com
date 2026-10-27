@@ -19,3 +19,5 @@ jobs:
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
           firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          # Same pin as firebase-hosting-merge.yml; see the note there.
+          firebaseToolsVersion: "15.34.0"

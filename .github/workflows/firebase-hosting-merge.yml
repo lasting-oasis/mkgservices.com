@@ -32,3 +32,8 @@ jobs:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
           firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           channelId: live
+          # Pinned to the version that last deployed (Oct 18, 2026). The first
+          # deploy with 15.34.1, which checks that the Hosting API is enabled
+          # before deploying, failed on Oct 27. Before moving to a newer version,
+          # give the deploy service account the Service Usage Consumer role.
+          firebaseToolsVersion: "15.34.0"
