@@ -65,7 +65,7 @@
     "dial.full": "Full price. Choose a schedule below to see the discount.",
     "dial.howOften": "How often?",
     "dial.li1": "Same checklist every visit, so nothing gets missed",
-    "dial.li2": "Skip, pause, or switch plans with no fee",
+    "dial.li2": "Skip, pause, or switch plans free with a day's notice",
     "dial.li3": "Price confirmed before your first clean",
     "dial.cta": "Get a quote for the {planName} plan",
     "dial.fine": "Estimate for a {bedrooms}-bedroom, {bathrooms}-bathroom home.",
@@ -130,7 +130,7 @@
     "faq.q1": "How does the recurring discount work?",
     "faq.a1": "Each plan has a full per-visit price based on your home's bedrooms and bathrooms. {discountSentence} The discount stays as long as the schedule does.",
     "faq.q2": "Can I skip a week or pause?",
-    "faq.a2": "Yes. Let us know before your visit and we'll skip it. If you pause for a while and come back, your plan and discount pick up where they left off.",
+    "faq.a2": "Yes. Tell us at least {noticeHours} hours before your visit and we'll skip it at no charge; with less notice we may charge up to half the visit price. If you pause for a while and come back, your plan and discount pick up where they left off.",
     "faq.q3": "Do I need to be home?",
     "faq.a3": "No. Most clients give us a way in: a lockbox, a door code, or a neighbor. We'll sort out what works for you when we confirm your first visit.",
     "faq.q4": "Do you bring supplies and equipment?",
@@ -563,7 +563,8 @@
     "adm.addBooking": "Add booking",
     "adm.remove": "Remove",
     "adm.addPrompt": "Customer name for this phone booking:",
-    "adm.removeConfirm": "Remove this booking from the calendar?",
+    "adm.removeConfirm": "Remove this booking from the calendar? The request keeps its details but loses its day and window, and goes back to New.",
+    "adm.windowFull": "That window already has {taken} of {cap} bookings. Confirm this one anyway?",
     "adm.badLogin": "Wrong email or password.",
     "adm.search": "Search requests",
     "adm.searchHint": "Search by name, email, phone, ZIP, or #ID",
@@ -700,6 +701,8 @@
     "tc.flagOverlap": "overlaps",
     "tc.flagged": "{n} to check",
     "q.dateStale": "The day you picked is no longer open for online booking, so we cleared it. Go back to pick another day, or send your request without one.",
+    "q.windowFull": "That window just filled up, so we cleared it. Go back to pick another day or window, or send your request without one.",
+    "q.unsaved": "We received your request by email, but it couldn't be saved to our booking system, so your day and window aren't held yet. We'll confirm everything when we reply.",
     "legal.privacyLink": "privacy policy",
     "legal.termsLink": "terms of service",
     "meta.title.privacy": "Privacy policy | MKG Services",
@@ -727,7 +730,7 @@
     "terms.1.h": "Estimates and prices",
     "terms.1.p1": "Prices on this site are estimates based on what you tell us. The exact price is confirmed in our reply, or after a walk-through for commercial spaces and single cleans, before any work starts.",
     "terms.2.h": "Requests, confirmations, and changes",
-    "terms.2.p1": "Sending a request or picking a day on the calendar does not book a visit. A visit is booked when we confirm it with you. You can change or cancel a confirmed visit free of charge with at least 24 hours' notice; later than that, we may charge up to half the visit price.",
+    "terms.2.p1": "Sending a request or picking a day on the calendar does not book a visit. A visit is booked when we confirm it with you. You can change or cancel a confirmed visit free of charge with at least {noticeHours} hours' notice; later than that, we may charge up to half the visit price.",
     "terms.2.p2": "Recurring plans have no contract. Pause or stop with a week's notice.",
     "terms.3.h": "Our work",
     "terms.3.p1": "We bring our own supplies and equipment unless we agree otherwise. If something isn't right, tell us within 24 hours and we'll come back and fix it at no charge. We're insured; damage caused by our team is reported to you the same day.",
@@ -886,7 +889,7 @@
     "dial.full": "Precio completo. Elige una frecuencia abajo para ver el descuento.",
     "dial.howOften": "¿Cada cuánto?",
     "dial.li1": "La misma lista en cada visita, para que nada se olvide",
-    "dial.li2": "Salta, pausa o cambia de plan sin cargo",
+    "dial.li2": "Salta, pausa o cambia de plan sin cargo con un día de aviso",
     "dial.li3": "Precio confirmado antes de tu primera limpieza",
     "dial.cta": "Pedir cotización del plan {planName}",
     "dial.fine": "Estimado para una casa de {bedrooms} habitaciones y {bathrooms} baños.",
@@ -951,7 +954,7 @@
     "faq.q1": "¿Cómo funciona el descuento recurrente?",
     "faq.a1": "Cada plan tiene un precio completo por visita según las habitaciones y baños de tu casa. {discountSentence} El descuento se mantiene mientras se mantenga la frecuencia.",
     "faq.q2": "¿Puedo saltar una semana o pausar?",
-    "faq.a2": "Sí. Avísanos antes de tu visita y la saltamos. Si pausas un tiempo y vuelves, tu plan y tu descuento siguen donde quedaron.",
+    "faq.a2": "Sí. Avísanos con al menos {noticeHours} horas de anticipación y la saltamos sin costo; con menos tiempo podemos cobrar hasta la mitad del precio de la visita. Si pausas un tiempo y vuelves, tu plan y tu descuento siguen donde quedaron.",
     "faq.q3": "¿Tengo que estar en casa?",
     "faq.a3": "No. La mayoría de los clientes nos dan una forma de entrar: una caja de llaves, un código o un vecino. Lo acordamos contigo al confirmar tu primera visita.",
     "faq.q4": "¿Traen productos y equipo?",
@@ -1384,7 +1387,8 @@
     "adm.addBooking": "Agregar reserva",
     "adm.remove": "Quitar",
     "adm.addPrompt": "Nombre del cliente para esta reserva por teléfono:",
-    "adm.removeConfirm": "¿Quitar esta reserva del calendario?",
+    "adm.removeConfirm": "¿Quitar esta reserva del calendario? La solicitud conserva sus datos pero pierde su día y ventana, y vuelve a Nuevas.",
+    "adm.windowFull": "Esa ventana ya tiene {taken} de {cap} reservas. ¿Confirmar esta de todos modos?",
     "adm.badLogin": "Correo o contraseña incorrectos.",
     "adm.search": "Buscar solicitudes",
     "adm.searchHint": "Buscar por nombre, correo, teléfono, ZIP o #ID",
@@ -1521,6 +1525,8 @@
     "tc.flagOverlap": "se superpone",
     "tc.flagged": "{n} para revisar",
     "q.dateStale": "El día que elegiste ya no se puede reservar en línea, así que lo quitamos. Vuelve atrás para elegir otro, o envía tu solicitud sin día.",
+    "q.windowFull": "Esa ventana se acaba de llenar, así que la quitamos. Vuelve atrás para elegir otro día u otra ventana, o envía tu solicitud sin día.",
+    "q.unsaved": "Recibimos tu solicitud por correo, pero no se pudo guardar en nuestro sistema de reservas, así que tu día y ventana aún no están apartados. Lo confirmamos todo al responderte.",
     "legal.privacyLink": "política de privacidad",
     "legal.termsLink": "términos del servicio",
     "meta.title.privacy": "Política de privacidad | MKG Services",
@@ -1548,7 +1554,7 @@
     "terms.1.h": "Estimados y precios",
     "terms.1.p1": "Los precios de este sitio son estimados basados en lo que nos cuentas. El precio exacto se confirma en nuestra respuesta, o después de un recorrido en el caso de espacios comerciales y limpiezas únicas, antes de empezar cualquier trabajo.",
     "terms.2.h": "Solicitudes, confirmaciones y cambios",
-    "terms.2.p1": "Enviar una solicitud o elegir un día en el calendario no reserva una visita. La visita queda reservada cuando te la confirmamos. Puedes cambiar o cancelar una visita confirmada sin costo con al menos 24 horas de aviso; con menos tiempo, podemos cobrar hasta la mitad del precio de la visita.",
+    "terms.2.p1": "Enviar una solicitud o elegir un día en el calendario no reserva una visita. La visita queda reservada cuando te la confirmamos. Puedes cambiar o cancelar una visita confirmada sin costo con al menos {noticeHours} horas de aviso; con menos tiempo, podemos cobrar hasta la mitad del precio de la visita.",
     "terms.2.p2": "Los planes recurrentes no tienen contrato. Pausa o cancela con una semana de aviso.",
     "terms.3.h": "Nuestro trabajo",
     "terms.3.p1": "Llevamos nuestros propios productos y equipo salvo que acordemos otra cosa. Si algo no quedó bien, avísanos dentro de las 24 horas y volvemos a arreglarlo sin costo. Estamos asegurados; cualquier daño causado por nuestro equipo se te informa el mismo día.",
@@ -1723,6 +1729,7 @@
     email: '<a data-business="email"></a>',
     responseTime: '<span data-business="responseTime"></span>',
     serviceArea: '<span data-business="serviceArea"></span>',
+    noticeHours: '<span data-policy="changeNoticeHours"></span>',
     zip: '<strong data-out-zip></strong>',
     friendAmount: '<b data-ref-amount="friend"></b>',
     referrerAmount: '<b data-ref-amount="referrer"></b>',
@@ -1760,6 +1767,16 @@
     }
     var sw = document.querySelectorAll("[data-lang-switch]");
     for (var k = 0; k < sw.length; k++) sw[k].setAttribute("aria-pressed", sw[k].getAttribute("data-lang-switch") === lang ? "true" : "false");
+    // Search engines and share previews: the Spanish page lives at ?lang=es,
+    // so the canonical and share URLs say which version this is.
+    var urls = [document.querySelector('link[rel="canonical"]'), document.querySelector('meta[property="og:url"]')];
+    for (var m = 0; m < urls.length; m++) {
+      var el = urls[m];
+      if (!el) continue;
+      var attr = el.tagName === "LINK" ? "href" : "content", base = el.getAttribute("data-base") || el.getAttribute(attr) || "";
+      if (!el.getAttribute("data-base")) el.setAttribute("data-base", base);
+      el.setAttribute(attr, lang === "en" ? base : base + (base.indexOf("?") === -1 ? "?" : "&") + "lang=" + lang);
+    }
   }
 
   function set(next) {

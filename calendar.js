@@ -114,7 +114,19 @@
       html += '<div class="cal-legend"><span><i class="is-open"></i>' + esc(t("cal.legend.open")) + '</span><span><i class="is-few"></i>' + esc(t("cal.legend.few")) + '</span><span><i class="is-full"></i>' + esc(t("cal.legend.full")) + "</span></div>";
       if (live === false) html += '<p class="notice cal-offline">' + esc(t("cal.offline")) + "</p>";
       html += '<div class="cal-day" data-cal-windows>' + windowsHtml() + "</div></div>";
+      // Redrawing replaces every button; keep the keyboard where it was.
+      var active = document.activeElement, keep = null;
+      if (active && root.contains(active)) {
+        keep = active.hasAttribute("data-cal-day") ? '[data-cal-day="' + active.getAttribute("data-cal-day") + '"]'
+          : active.hasAttribute("data-cal-slot") ? '[data-cal-slot="' + active.getAttribute("data-cal-slot") + '"]'
+          : active.hasAttribute("data-cal-prev") ? "[data-cal-prev]" : active.hasAttribute("data-cal-next") ? "[data-cal-next]" : ".cal-month";
+      }
       root.innerHTML = html;
+      if (keep) {
+        var again = root.querySelector(keep);
+        if (!again || again.disabled) { again = root.querySelector(".cal-month"); if (again) again.setAttribute("tabindex", "-1"); }
+        if (again && again.focus) again.focus({ preventScroll: true });
+      }
 
       root.querySelector("[data-cal-prev]").addEventListener("click", function () { vm--; if (vm < 0) { vm = 11; vy--; } load(); });
       root.querySelector("[data-cal-next]").addEventListener("click", function () { vm++; if (vm > 11) { vm = 0; vy++; } load(); });

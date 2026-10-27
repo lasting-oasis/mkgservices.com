@@ -14,6 +14,13 @@ rules_version = '2';
 //                         request's id (older holds have random ids). No
 //                         personal data, so anyone can read them: that is how
 //                         the public calendar shows what's taken.
+//   slots/{date_slot}     how many holds a day + window has ({ count, last }),
+//                         written in the same transaction as the hold. The
+//                         rules use it to refuse a hold once the window is at
+//                         capacity, and to refuse holds on closed days, blocked
+//                         windows, past days, or days past the booking horizon.
+//                         The limits live in calendarLimits() below and must
+//                         match plans.js `availability`.
 //   internal/{id}         staff-only fields for a request: private notes and
 //                         who it's assigned to. Admins only; customers never
 //                         receive these.
@@ -69,18 +76,26 @@ service cloud.firestore {
         str(d.phone, 40) && str(d.notes, 2000) && str(d.zip, 10) &&
         dateOrNone(d.date) && str(d.slot, 10) &&
         d.segment in ['residential', 'commercial'] &&
-        optStr(d, 'submittedAt', 40) && optStr(d, 'language', 5) && optStr(d, 'contactMethod', 20) &&
-        optStr(d, 'timeOfDay', 20) && optStr(d, 'homeType', 60) && optStr(d, 'facilityType', 60) &&
-        optStr(d, 'pets', 60) && optStr(d, 'floors', 60) && optStr(d, 'company', 160) &&
-        optStr(d, 'requestedTime', 160) && optStr(d, 'service', 120) && optStr(d, 'deepCleanWithin', 120) &&
-        optStr(d, 'plan', 120) && optStr(d, 'frequency', 120) && optStr(d, '_subject', 500) &&
-        optStr(d, 'heardFrom', 40) &&
-        (!('outOfArea' in d) || d.outOfArea is bool) &&
-        (!('days' in d) || (d.days is list && d.days.size() <= 7)) &&
-        optNum(d, 'bedrooms') && optNum(d, 'bathrooms') && optNum(d, 'sqft') && optNum(d, 'restrooms') &&
-        refOk(d) && optStr(d, 'refDropped', 6) && optNum(d, 'refAmount') &&
-        optNum(d, 'estimatePerVisit') && optNum(d, 'estimateOneVisit') && optNum(d, 'estimateFullPrice') &&
-        optNum(d, 'estimatePerMonth') && optNum(d, 'discount');
+        // The optional short strings, together: a value that is not a string
+        // fails the concatenation, and the total keeps the document small.
+        // (Firestore evaluates at most 1,000 expressions per request; a
+        // per-field check for each of these used nearly all of them.)
+        (d.get('submittedAt', '') + d.get('language', '') + d.get('contactMethod', '') + d.get('timeOfDay', '') +
+         d.get('homeType', '') + d.get('facilityType', '') + d.get('pets', '') + d.get('floors', '') +
+         d.get('company', '') + d.get('requestedTime', '') + d.get('service', '') + d.get('deepCleanWithin', '') +
+         d.get('plan', '') + d.get('frequency', '') + d.get('_subject', '') + d.get('refDropped', '') +
+         d.get('heardFrom', '')).size() <= 1800 &&
+        d.get('outOfArea', false) is bool &&
+        d.get('days', []).join(',').size() <= 60 &&
+        nums(d) && refOk(d);
+    }
+    // The optional numbers (sizes and the site's own estimate): each at least
+    // zero. A value that is not a number fails the comparison. (They are
+    // informational: the team prices the visit on admin.html.)
+    function nums(d) {
+      return d.get('bedrooms', 0) >= 0 && d.get('bathrooms', 0) >= 0 && d.get('sqft', 0) >= 0 && d.get('restrooms', 0) >= 0 &&
+        d.get('refAmount', 0) >= 0 && d.get('discount', 0) >= 0 && d.get('estimatePerVisit', 0) >= 0 &&
+        d.get('estimateOneVisit', 0) >= 0 && d.get('estimateFullPrice', 0) >= 0 && d.get('estimatePerMonth', 0) >= 0;
     }
     // An invite code on a request must exist and must not be the customer's own.
     function refOk(d) {
@@ -123,6 +138,44 @@ service cloud.firestore {
       allow delete: if isTeamOwner();
     }
 
+    // ---------- calendar limits (must match plans.js availability) ----------
+    function slotIds() { return ['0800', '1130', '1500', '1830']; }
+    function capacity() { return 2; }
+    function horizonDays() { return 62; }   // plans.js horizonDays plus a little slack for time zones
+    function dayPath(date) { return /databases/$(database)/documents/days/$(date); }
+    function slotPath(date, slot) { return /databases/$(database)/documents/slots/$(date + '_' + slot); }
+    function dayStart(s) { return timestamp.date(int(s[0:4]), int(s[5:7]), int(s[8:10])); }
+    // A day and window the public calendar would offer right now: a real
+    // window, not in the past, inside the horizon, a working day (Mon-Sat),
+    // and not closed or blocked by the team on admin.html.
+    function inHorizon(ts) {
+      return ts >= request.time - duration.value(1, 'd') && ts <= request.time + duration.value(horizonDays(), 'd') && ts.dayOfWeek() <= 6;
+    }
+    function dayOpen(day, slot) { return day.get('closed', false) != true && !(slot in day.get('blockedSlots', [])); }
+    function bookable(date, slot) {
+      return isDate(date) && slot in slotIds() && inHorizon(dayStart(date)) &&
+        (!exists(dayPath(date)) || dayOpen(get(dayPath(date)).data, slot));
+    }
+    function countBefore(date, slot) { return exists(slotPath(date, slot)) ? get(slotPath(date, slot)).data.get('count', 0) : 0; }
+    function counterAfter(date, slot) { return getAfter(slotPath(date, slot)).data; }
+    // This same write moved the window's counter up by one, for this hold, and
+    // the window is not over capacity.
+    function counterIs(c, hid, n) { return c.last == hid && c.count == n; }
+    function counted(hid, date, slot) {
+      return existsAfter(slotPath(date, slot)) &&
+        counterIs(counterAfter(date, slot), hid, countBefore(date, slot) + 1) && counterAfter(date, slot).count <= capacity();
+    }
+    // ... or down by one (a hold from before counters existed leaves it at zero).
+    function uncounted(hid, date, slot) {
+      return existsAfter(slotPath(date, slot)) &&
+        counterIs(counterAfter(date, slot), hid, countBefore(date, slot) > 0 ? countBefore(date, slot) - 1 : 0);
+    }
+    // A customer moving their hold: same place, or counted out of the old window and into the new one.
+    function recounted(hid, before, after) {
+      return (before.date == after.date && before.slot == after.slot) ||
+        (bookable(after.date, after.slot) && counted(hid, after.date, after.slot) && uncounted(hid, before.date, before.slot));
+    }
+
     // ---------- holds ----------
     function holdShape(h) {
       return h.keys().hasOnly(['date', 'slot', 'requestId', 'createdAt', 'segment']) &&
@@ -148,20 +201,55 @@ service cloud.firestore {
 
     match /holds/{hid} {
       allow read: if true;
+      // The team may hold any day (a phone booking on a closed day is their
+      // call); everyone else only an open, bookable window, counted.
       allow create: if holdShape(request.resource.data) && (
         isAdmin() ||
-        (hid == request.resource.data.requestId && (
+        (hid == request.resource.data.requestId &&
+          bookable(request.resource.data.date, request.resource.data.slot) &&
+          counted(hid, request.resource.data.date, request.resource.data.slot) && (
           // a visitor's request created in this same write
           (getAfter(reqPath(hid)).data.createdAt == request.time && mirrors(hid)) ||
           // the customer moving their own request
           customerHolds(hid))));
       allow update: if holdShape(request.resource.data) &&
         request.resource.data.requestId == resource.data.requestId && (
-        isAdmin() || (hid == resource.data.requestId && customerHolds(hid)));
+        isAdmin() || (hid == resource.data.requestId && customerHolds(hid) &&
+          recounted(hid, resource.data, request.resource.data)));
       allow delete: if isAdmin() || (
         verified() && resource.data.requestId != 'manual' &&
         get(reqPath(resource.data.requestId)).data.emailLower == myEmail() &&
-        staleHold(resource.data));
+        staleHold(resource.data) && uncounted(hid, resource.data.date, resource.data.slot));
+    }
+
+    // ---------- window counters ----------
+    // { date, slot, count, last }: `count` holds in that window, `last` the id
+    // of the hold that moved it. Anyone may read them (no personal data). The
+    // team may write them freely (admin.html also re-syncs them from the holds);
+    // everyone else only by exactly one, together with the hold named in `last`,
+    // in the same write.
+    function slotShape(sid, d) {
+      return d.keys().hasOnly(['date', 'slot', 'count', 'last']) && isDate(d.date) && str(d.slot, 10) &&
+        sid == d.date + '_' + d.slot && d.count is int && d.count >= 0 && d.count <= capacity() && str(d.last, 64);
+    }
+    function heldAfter(d) {
+      return existsAfter(holdPath(d.last)) && getAfter(holdPath(d.last)).data.date == d.date &&
+        getAfter(holdPath(d.last)).data.slot == d.slot;
+    }
+    function heldBefore(d) {
+      return exists(holdPath(d.last)) && get(holdPath(d.last)).data.date == d.date && get(holdPath(d.last)).data.slot == d.slot;
+    }
+
+    match /slots/{sid} {
+      allow read: if true;
+      allow write: if isAdmin() || (slotShape(sid, request.resource.data) && (
+        // up by one, for a hold written into this window in this same write
+        (request.resource.data.count == countBefore(request.resource.data.date, request.resource.data.slot) + 1 &&
+          heldAfter(request.resource.data) && getAfter(holdPath(request.resource.data.last)).data.createdAt == request.time) ||
+        // down by one (or kept at zero), for a hold leaving this window in this same write
+        (request.resource.data.count == (countBefore(request.resource.data.date, request.resource.data.slot) > 0 ?
+            countBefore(request.resource.data.date, request.resource.data.slot) - 1 : 0) &&
+          heldBefore(request.resource.data) && !heldAfter(request.resource.data))));
     }
 
     // ---------- staff-only request fields ----------

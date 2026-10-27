@@ -38,7 +38,20 @@
     var el = $('[data-error="' + key + '"]');
     if (el) el.textContent = msg || "";
     var input = form.elements[key];
-    if (input && input.classList) input.classList.toggle("is-invalid", !!msg);
+    if (input && input.classList) {
+      input.classList.toggle("is-invalid", !!msg);
+      if (msg) input.setAttribute("aria-invalid", "true"); else input.removeAttribute("aria-invalid");
+    }
+  }
+  // Error messages are announced by screen readers and tied to their field.
+  function wireErrors() {
+    $all("[data-error]").forEach(function (el) {
+      var key = el.getAttribute("data-error");
+      if (!el.id) el.id = "err-" + key;
+      el.setAttribute("aria-live", "polite");
+      var input = form.elements[key];
+      if (input && input.setAttribute && input.tagName) input.setAttribute("aria-describedby", ((input.getAttribute("aria-describedby") || "") + " " + el.id).trim());
+    });
   }
 
   // ---------- draft persistence ----------
@@ -369,7 +382,11 @@
   }
 
   $all("[data-next]").forEach(function (b) {
-    b.addEventListener("click", function () { if (validate(current)) go(current + 1); });
+    b.addEventListener("click", function () {
+      if (validate(current)) { go(current + 1); return; }
+      var bad = $('[data-step="' + current + '"] .is-invalid');
+      if (bad && bad.focus) bad.focus();
+    });
   });
   $all("[data-back]").forEach(function (b) {
     b.addEventListener("click", function () { go(Math.max(1, current - 1)); });
@@ -475,19 +492,35 @@
       setError("submit", t("q.dateStale"));
       return;
     }
+    // The window may have filled up (or been closed) since the day was picked.
+    if (draft.date && cal) {
+      var info = cal.dayInfo(draft.date), win = draft.slot ? info.windows.filter(function (w) { return w.slot.id === draft.slot; })[0] : null;
+      if (info.closed || (draft.slot && (!win || win.left <= 0))) { windowFull(); return; }
+    }
     btn.disabled = true; btn.textContent = t("q.sending");
 
-    function done(demo) {
+    // unsaved: the email copy went out but the database refused the request,
+    // so nothing is held; the page says so instead of "Request sent".
+    function done(demo, unsaved) {
       renderReview($("[data-review-done]"), false);
       $("[data-demo-note]").hidden = !demo;
+      var un = $("[data-unsaved-note]"); if (un) un.hidden = !unsaved;
       clearDraft();
       go("done");
-      renderTrack();
+      if (unsaved) { var tr = document.querySelector("[data-done-track]"); if (tr) tr.innerHTML = ""; }
+      else renderTrack();
     }
     function fail() {
       btn.disabled = false; btn.textContent = t("q.send");
       var alt = C.business.email ? t("err.submitAlt", { email: C.business.email }) : "";
       setError("submit", t("err.submit", { alt: alt }));
+    }
+    function windowFull() {
+      draft.date = ""; draft.slot = ""; saveDraft();
+      if (cal) { cal.set(draft); cal.refresh(); }
+      btn.disabled = false; btn.textContent = t("q.send");
+      renderReview($("[data-review]"), true);
+      setError("submit", t("q.windowFull"));
     }
 
     var data = payload();
@@ -499,7 +532,7 @@
         return mailCopy(data).then(function (ok) { ok ? done(false) : fail(); });
       }
       return B.submitRequest(data).catch(function (err) {
-        if (!data.ref) throw err;
+        if (!data.ref || (err && err.code === "mkg/full")) throw err;
         // Most likely the invite was refused (your own code, or one that was removed): send the request without it.
         var plain = Object.assign({}, data); delete plain.ref; delete plain.refAmount; plain.refDropped = data.ref;
         data = plain; return B.submitRequest(plain);
@@ -508,9 +541,10 @@
         if (data.ref) { note('[data-step="done"]', "data-done-ref", t("q.done.refNote", { amount: A.dollars(friendAmount()) }), "[data-review-done]"); INV.forget(); }
         return mailCopy(data, id).then(function () { done(false); });
       }).catch(function (err) {
+        if (err && err.code === "mkg/full") { windowFull(); return; }
         if (window.console) console.warn("request not saved", err);
-        // Firebase refused (offline, or a rule): the email copy alone still reaches us.
-        if (C.formEndpoint) return mailCopy(data).then(function (ok) { ok ? done(false) : fail(); });
+        // Firebase refused (offline, or a rule): the email copy still reaches us, but nothing is saved or held.
+        if (C.formEndpoint) return mailCopy(data).then(function (ok) { ok ? done(false, true) : fail(); });
         fail();
       });
     });
@@ -566,6 +600,7 @@
 
   // ---------- start ----------
   function init() {
+    wireErrors();
     loadDraft();
     renderPlanOptions();
     var q = new URLSearchParams(location.search);

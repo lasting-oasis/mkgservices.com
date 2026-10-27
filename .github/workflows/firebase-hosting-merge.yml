@@ -30,6 +30,23 @@ jobs:
           # Keep the job's token out of .git/config. The site is deployed
           # from this checkout, and firebase.json ignores dot-folders.
           persist-credentials: false
+      # The database rules go first, so the pages never run against rules
+      # older than themselves; if this step fails, the pages are not
+      # deployed either. firebase.json names the rules file; the project
+      # comes from .firebaserc. If this step ever fails with a permission
+      # error, give the service account the "Firebase Rules Admin" role in
+      # Google Cloud > IAM. firebase-tools 13 is used here because 15.x
+      # first checks that the Firestore API is enabled, which needs the
+      # Service Usage permission this key may not have (see the pin below).
+      - name: Deploy Firestore rules
+        if: steps.check.outputs.ready == 'true'
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > "$RUNNER_TEMP/firebase-sa.json"
+          trap 'rm -f "$RUNNER_TEMP/firebase-sa.json"' EXIT
+          export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/firebase-sa.json"
+          npx --yes firebase-tools@13.35.1 deploy --only firestore:rules --non-interactive
       - uses: FirebaseExtended/action-hosting-deploy@v0
         if: steps.check.outputs.ready == 'true'
         with:

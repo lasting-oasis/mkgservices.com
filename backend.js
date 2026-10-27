@@ -9,8 +9,9 @@
   shows its demo confirmation.
 
   Data layout (and who may do what) is in firestore.rules. In short: a
-  request's hold on the calendar is holds/{requestId}; staff-only fields
-  (private notes, assignee) live in internal/{requestId}, never on the
+  request's hold on the calendar is holds/{requestId}, mirrored by a counter
+  in slots/{date}_{slot} that the rules use to enforce capacity; staff-only
+  fields (private notes, assignee) live in internal/{requestId}, never on the
   request the customer can read.
 
   Everything is exposed as window.MKG.backend; see the bottom of the file.
@@ -98,6 +99,77 @@
   function holdsOf(requestId) { return db.collection("holds").where("requestId", "==", requestId).get(); }
   function isTs(v) { return !!v && typeof v.toMillis === "function"; }
 
+  // ---------- holds and their window counters ----------
+  // Every hold is mirrored by slots/{date}_{slot} = { date, slot, count, last }:
+  // how many holds that window has, and the id of the hold that last moved
+  // it. firestore.rules enforces capacity, closed days, blocked windows, and
+  // the booking horizon through those counters, so a hold and its counter are
+  // always written in one transaction here. The team's writes are not capped
+  // by the rules (admin.html warns instead), and syncCounters() repairs drift.
+  var CAP = (C.availability && C.availability.capacity) || 1;
+  function slotId(date, slot) { return date + "_" + slot; }
+  function slotRef(date, slot) { return db.collection("slots").doc(slotId(date, slot)); }
+  function holdData(id, date, slot, segment) { return { date: date, slot: slot, requestId: id, createdAt: stamp(), segment: segment || "residential" }; }
+  function fullError() { var e = new Error("That window is full"); e.code = "mkg/full"; return e; }
+  // One transaction that moves hold `id` from wherever it is to `next`
+  // ({ date, slot }, or null to drop it), keeps the counters in step, deletes
+  // any `extras` (older holds of the same request with random ids), and runs
+  // `body(tx, oldHold)` for the caller's own writes. Rejects with code
+  // "mkg/full" when the new window is at capacity, unless `force` (the team).
+  function holdTx(id, next, segment, opts, body) {
+    opts = opts || {};
+    return db.runTransaction(function (tx) {
+      return tx.get(holdRef(id)).then(function (hd) {
+        var old = hd.exists ? hd.data() : null;
+        var from = old && old.date && old.slot ? { date: old.date, slot: old.slot } : null;
+        var to = next && next.date && next.slot ? { date: next.date, slot: next.slot } : null;
+        var same = !!(from && to && from.date === to.date && from.slot === to.slot);
+        var extras = (opts.extras || []).filter(function (x) { return x.id !== id && x.date && x.slot; });
+        var reads = [];
+        if (from && !same) reads.push(tx.get(slotRef(from.date, from.slot)));
+        if (to && !same) reads.push(tx.get(slotRef(to.date, to.slot)));
+        extras.forEach(function (x) { reads.push(tx.get(slotRef(x.date, x.slot))); });
+        return Promise.all(reads).then(function (snaps) {
+          var counts = {};
+          snaps.forEach(function (s) { counts[s.id] = s.exists ? (Number(s.data().count) || 0) : 0; });
+          if (to && !same && counts[slotId(to.date, to.slot)] >= CAP && !opts.force) throw fullError();
+          if (body) body(tx, old);
+          function bump(hid, p, n) {
+            var k = slotId(p.date, p.slot);
+            counts[k] = Math.max(0, (counts[k] || 0) + n);
+            tx.set(slotRef(p.date, p.slot), { date: p.date, slot: p.slot, count: counts[k], last: hid });
+          }
+          extras.forEach(function (x) { tx.delete(holdRef(x.id)); bump(x.id, x, -1); });
+          if (same) return old;
+          if (from) bump(id, from, -1);
+          if (to) { tx.set(holdRef(id), holdData(id, to.date, to.slot, segment || (old && old.segment))); bump(id, to, 1); }
+          else if (old) tx.delete(holdRef(id));
+          return old;
+        });
+      });
+    });
+  }
+  // How many holds a window has right now, not counting one request's own.
+  function windowCount(date, slot, excludeId) {
+    return db.collection("holds").where("date", "==", date).where("slot", "==", slot).get()
+      .then(function (r) { return r.docs.filter(function (d) { return d.id !== excludeId && d.data().requestId !== excludeId; }).length; });
+  }
+  // Team only: make the counters between two dates agree with the holds.
+  function syncCounters(from, to) {
+    return Promise.all([
+      db.collection("holds").where("date", ">=", from).where("date", "<=", to).get(),
+      db.collection("slots").where("date", ">=", from).where("date", "<=", to).get(),
+    ]).then(function (r) {
+      var want = {}, have = {}, b = db.batch(), n = 0;
+      rows(r[0]).forEach(function (h) { if (typeof h.date === "string" && typeof h.slot === "string" && h.slot) { var k = slotId(h.date, h.slot); want[k] = (want[k] || 0) + 1; } });
+      rows(r[1]).forEach(function (s) { have[s.id] = Number(s.count) || 0; });
+      function fix(k, count) { var p = k.split("_"); b.set(db.collection("slots").doc(k), { date: p[0], slot: p[1], count: count, last: "sync" }); n++; }
+      Object.keys(want).forEach(function (k) { if (have[k] !== want[k]) fix(k, want[k]); });
+      Object.keys(have).forEach(function (k) { if (!want[k] && have[k] !== 0) fix(k, 0); });
+      return n ? b.commit().then(function () { return n; }) : 0;
+    });
+  }
+
   // Whatever is stored, pages get fields of the type they expect, so one odd
   // record can't break a list.
   var STR = ["name", "email", "emailLower", "phone", "notes", "zip", "company", "service", "plan", "frequency",
@@ -143,36 +215,33 @@
   }
 
   // ---------- public: quote requests ----------
-  // Saves the request and, when a date and window were picked, its hold, in
-  // one batch. Resolves with the new request id.
+  // Saves the request and, when a date and window were picked, its hold and
+  // the window's counter, in one transaction. Resolves with the new request
+  // id; rejects with code "mkg/full" when that window filled up meanwhile.
   function submitRequest(data) {
     return ready.then(function (ok) {
       if (!ok) throw new Error("no-backend");
-      var now = stamp();
-      var batch = db.batch();
       var ref = db.collection("requests").doc();
       var doc = Object.assign({}, data, {
-        status: "new", createdAt: now,
+        status: "new", createdAt: stamp(),
         email: String(data.email || "").trim(),
         emailLower: String(data.email || "").trim().toLowerCase(),
         date: data.date || "", slot: data.slot || "",
         name: String(data.name || ""), phone: String(data.phone || ""), notes: String(data.notes || ""), zip: String(data.zip || ""),
       });
       Object.keys(doc).forEach(function (k) { if (doc[k] === undefined) delete doc[k]; });
-      batch.set(ref, doc);
-      if (doc.date && doc.slot) {
-        batch.set(holdRef(ref.id), { date: doc.date, slot: doc.slot, requestId: ref.id, createdAt: now, segment: doc.segment || "residential" });
-      }
-      return batch.commit().then(function () { return ref.id; }).catch(function (e) {
-        // "How did you hear about us?" is newer than some published copies of
-        // firestore.rules. If the database refuses the field, send the
-        // request without it rather than lose the request.
-        if (e && e.code === "permission-denied" && data.heardFrom) {
-          var rest = Object.assign({}, data); delete rest.heardFrom;
-          return submitRequest(rest);
-        }
-        throw e;
-      });
+      return holdTx(ref.id, { date: doc.date, slot: doc.slot }, doc.segment, {}, function (tx) { tx.set(ref, doc); })
+        .then(function () { return ref.id; })
+        .catch(function (e) {
+          // "How did you hear about us?" is newer than some published copies
+          // of firestore.rules. If the database refuses the field, send the
+          // request without it rather than lose the request.
+          if (e && e.code === "permission-denied" && data.heardFrom) {
+            var rest = Object.assign({}, data); delete rest.heardFrom;
+            return submitRequest(rest);
+          }
+          throw e;
+        });
     });
   }
 
@@ -349,30 +418,28 @@
   // the request changes, and its hold follows (made, moved, or dropped).
   // byClient: the customer did it from their account page, so the request
   // goes back to 'new' for the team to re-confirm, with a note of where it was.
+  // Rejects with code "mkg/full" when a client picks a window that filled up.
   function reschedule(req, date, slot, byClient) {
     date = date || ""; slot = slot || "";
     return holdsOf(req.id).then(function (r) {
-      var now = stamp(), b = db.batch(), hasOwn = false;
-      var patch = { date: date, slot: slot, updatedAt: now };
-      if (byClient) {
-        patch.status = "new"; patch.movedByClientAt = now;
-        patch.movedFrom = req.date ? req.date + (req.slot ? " " + req.slot : "") : "";
-      }
-      b.update(db.collection("requests").doc(req.id), patch);
-      r.docs.forEach(function (d) { if (d.id === req.id) hasOwn = true; else b.delete(d.ref); }); // older holds had random ids
       var open = byClient || !!OPEN[req.status || "new"];
-      if (date && slot && open) b.set(holdRef(req.id), { date: date, slot: slot, requestId: req.id, createdAt: now, segment: req.segment || "residential" });
-      else if (hasOwn) b.delete(holdRef(req.id));
-      return b.commit();
+      var next = date && slot && open ? { date: date, slot: slot } : null;
+      return holdTx(req.id, next, req.segment, { force: !byClient, extras: rows(r) }, function (tx) {
+        var now = stamp(), patch = { date: date, slot: slot, updatedAt: now };
+        if (byClient) {
+          patch.status = "new"; patch.movedByClientAt = now;
+          patch.movedFrom = req.date ? req.date + (req.slot ? " " + req.slot : "") : "";
+        }
+        tx.update(db.collection("requests").doc(req.id), patch);
+      });
     });
   }
   // A customer cancels their own request; its window opens up again.
   function cancelRequest(id) {
     return holdsOf(id).then(function (r) {
-      var b = db.batch();
-      b.update(db.collection("requests").doc(id), { status: "cancelled", cancelledBy: "client", updatedAt: stamp() });
-      r.docs.forEach(function (d) { b.delete(d.ref); });
-      return b.commit();
+      return holdTx(id, null, null, { extras: rows(r) }, function (tx) {
+        tx.update(db.collection("requests").doc(id), { status: "cancelled", cancelledBy: "client", updatedAt: stamp() });
+      });
     });
   }
   function byNewest(a, b) { return (toMs(b.createdAt) - toMs(a.createdAt)); }
@@ -403,39 +470,51 @@
   }
   // Declining or finishing a request frees its window.
   function releaseHolds(requestId) {
-    return holdsOf(requestId).then(function (r) {
-      var b = db.batch(); r.docs.forEach(function (d) { b.delete(d.ref); }); return b.commit();
-    });
+    return holdsOf(requestId).then(function (r) { return holdTx(requestId, null, null, { extras: rows(r) }); });
   }
   // Confirming or reopening puts it back on the calendar (when it has a window).
   function ensureHold(req) {
     if (!req.date || !req.slot || !OPEN[req.status || "new"]) return Promise.resolve();
-    return holdsOf(req.id).then(function (r) {
-      if (r.docs.length) return null;
-      return holdRef(req.id).set({ date: req.date, slot: req.slot, requestId: req.id, createdAt: stamp(), segment: req.segment || "residential" });
-    });
+    return holdTx(req.id, { date: req.date, slot: req.slot }, req.segment, { force: true });
   }
   // A booking taken by phone: a confirmed request (so it can be assigned,
   // clocked against and seen in the lists) plus its hold. The name lives on
   // the request, which only the team can read; the public hold has none.
   function addPhoneBooking(date, slot, name, segment) {
-    var ref = db.collection("requests").doc(), b = db.batch(), now = stamp(), seg = segment || "residential";
-    b.set(ref, { name: String(name || "").slice(0, 120), email: "", emailLower: "", phone: "", notes: "", zip: "",
-      segment: seg, date: date, slot: slot || "", status: "confirmed", source: "phone", createdAt: now, updatedAt: now });
-    if (date && slot) b.set(holdRef(ref.id), { date: date, slot: slot, requestId: ref.id, createdAt: now, segment: seg });
-    return b.commit().then(function () { return ref.id; });
+    var ref = db.collection("requests").doc(), now = stamp(), seg = segment || "residential";
+    return holdTx(ref.id, { date: date, slot: slot || "" }, seg, { force: true }, function (tx) {
+      tx.set(ref, { name: String(name || "").slice(0, 120), email: "", emailLower: "", phone: "", notes: "", zip: "",
+        segment: seg, date: date, slot: slot || "", status: "confirmed", source: "phone", createdAt: now, updatedAt: now });
+    }).then(function () { return ref.id; });
   }
   // Owner only: a request, its hold(s) and its staff fields, gone for good.
   function deleteRequest(id) {
     return holdsOf(id).then(function (r) {
-      var b = db.batch();
-      r.docs.forEach(function (d) { b.delete(d.ref); });
-      b.delete(db.collection("internal").doc(id));
-      b.delete(db.collection("requests").doc(id));
-      return b.commit();
+      return holdTx(id, null, null, { extras: rows(r) }, function (tx) {
+        tx.delete(db.collection("internal").doc(id));
+        tx.delete(db.collection("requests").doc(id));
+      });
     });
   }
-  function deleteHold(id) { return holdRef(id).delete(); }
+  // The team taking a booking off the calendar from the day panel: the hold
+  // goes and its window frees up, and the request it belonged to loses its
+  // day and window and goes back to New, so the lists, the client's account
+  // and the calendar keep agreeing.
+  function unschedule(holdId) {
+    return holdRef(holdId).get().then(function (hd) {
+      if (!hd.exists) return null;
+      var h = hd.data(), reqId = h.requestId === holdId ? holdId : "";
+      return (reqId ? db.collection("requests").doc(reqId).get() : Promise.resolve(null)).then(function (rd) {
+        var r = rd && rd.exists ? rd.data() : null;
+        return holdTx(holdId, null, null, {}, function (tx) {
+          if (!r) return;
+          var patch = { date: "", slot: "", updatedAt: stamp() };
+          if (r.status === "confirmed") patch.status = "new";
+          tx.update(db.collection("requests").doc(reqId), patch);
+        });
+      });
+    });
+  }
   function setDay(date, data) {
     if (!data || (!data.closed && !(data.blockedSlots || []).length)) return db.collection("days").doc(date).delete();
     return db.collection("days").doc(date).set({ closed: !!data.closed, blockedSlots: data.blockedSlots || [] });
@@ -513,7 +592,8 @@
     watchMyShifts: watchMyShifts, watchShiftsSince: watchShiftsSince, clockIn: clockIn, clockOut: clockOut, updateShift: updateShift, deleteShift: deleteShift, tsFromDate: tsFromDate,
     myRequests: myRequests, reschedule: reschedule, cancelRequest: cancelRequest, toMs: toMs,
     watchRequests: watchRequests, updateRequest: updateRequest, watchInternal: watchInternal, saveInternal: saveInternal,
-    releaseHolds: releaseHolds, ensureHold: ensureHold, addPhoneBooking: addPhoneBooking, deleteRequest: deleteRequest, deleteHold: deleteHold, setDay: setDay,
+    releaseHolds: releaseHolds, ensureHold: ensureHold, addPhoneBooking: addPhoneBooking, deleteRequest: deleteRequest, unschedule: unschedule, setDay: setDay,
+    windowCount: windowCount, syncCounters: syncCounters,
     checkReferral: checkReferral, ensureCode: ensureCode, myCredits: credits, creditsFor: credits, creditBalance: balance, ownerOfCode: ownerOfCode,
     watchCredits: watchCredits, addCredit: addCredit, removeCredit: removeCredit, newCode: newCode,
   };
