@@ -484,6 +484,9 @@
     if (current !== REVIEW) return;
     var btn = $("[data-submit]");
     setError("submit", "");
+    // A copy of the site without its own test database and inbox (app.js
+    // C.target) sends nothing at all, rather than reach the live ones.
+    if (!C.target || !C.target.ready) { setError("submit", t("q.testConfig")); return; }
     // The tab may have sat open past the day that was picked.
     if (draft.date && !bookable(draft.date)) {
       draft.date = ""; draft.slot = ""; saveDraft();
@@ -501,8 +504,13 @@
 
     // unsaved: the email copy went out but the database refused the request,
     // so nothing is held; the page says so instead of "Request sent".
-    function done(demo, unsaved) {
+    // savedId: the database id when the request was saved. Only then is a
+    // reference shown; the email-only and demo outcomes never show one.
+    function done(demo, unsaved, savedId) {
       renderReview($("[data-review-done]"), false);
+      var code = savedId && !demo && !unsaved ? String(savedId).slice(0, 6).toUpperCase() : "";
+      $all("[data-request-id]").forEach(function (el) { el.textContent = code; });
+      var refLine = $("[data-saved-ref]"); if (refLine) refLine.hidden = !code;
       $("[data-demo-note]").hidden = !demo;
       var un = $("[data-unsaved-note]"); if (un) un.hidden = !unsaved;
       clearDraft();
@@ -524,12 +532,13 @@
     }
 
     var data = payload();
-    // Saved to the database (shows on admin.html), and an email copy to the
-    // business when plans.js has a formEndpoint.
+    // Saved to the database (shows on admin.html), and an email copy to this
+    // copy's inbox (C.target.inbox: on mkgservices.com, plans.js formEndpoint).
     B.ready.then(function (live) {
       if (!live) {
-        if (!C.formEndpoint) { setTimeout(function () { done(true); }, 400); return; }
-        return mailCopy(data).then(function (ok) { ok ? done(false) : fail(); });
+        if (!C.target.inbox) { setTimeout(function () { done(true); }, 400); return; }
+        // A test copy whose database didn't start: emailed, not saved, and the page says so.
+        return mailCopy(data).then(function (ok) { ok ? done(false, C.target.env !== "live") : fail(); });
       }
       return B.submitRequest(data).catch(function (err) {
         if (!data.ref || (err && err.code === "mkg/full")) throw err;
@@ -537,14 +546,13 @@
         var plain = Object.assign({}, data); delete plain.ref; delete plain.refAmount; plain.refDropped = data.ref;
         data = plain; return B.submitRequest(plain);
       }).then(function (id) {
-        $all("[data-request-id]").forEach(function (el) { el.textContent = id.slice(0, 6).toUpperCase(); });
         if (data.ref) { note('[data-step="done"]', "data-done-ref", t("q.done.refNote", { amount: A.dollars(friendAmount()) }), "[data-review-done]"); INV.forget(); }
-        return mailCopy(data, id).then(function () { done(false); });
+        return mailCopy(data, id).then(function () { done(false, false, id); });
       }).catch(function (err) {
         if (err && err.code === "mkg/full") { windowFull(); return; }
         if (window.console) console.warn("request not saved", err);
         // Firebase refused (offline, or a rule): the email copy still reaches us, but nothing is saved or held.
-        if (C.formEndpoint) return mailCopy(data).then(function (ok) { ok ? done(false, true) : fail(); });
+        if (C.target.inbox) return mailCopy(data).then(function (ok) { ok ? done(false, true) : fail(); });
         fail();
       });
     });

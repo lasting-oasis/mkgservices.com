@@ -266,6 +266,7 @@
     "q.done.h": "Request sent",
     "q.done.p": "We'll reply {responseTime} with an exact price for your home.",
     "q.demo": "This copy of the site isn't connected to its database, so nothing was sent. On mkgservices.com the request is saved and we're notified.",
+    "q.testConfig": "Nothing was sent. This test copy of the site has no test database or test inbox set up, so it can't take requests. To request a quote, use mkgservices.com.",
     "q.home": "Back to the home page",
     "q.talk": "Rather talk it through? Call or text {phone}, or email {email}.",
 
@@ -702,6 +703,7 @@
     "tc.flagged": "{n} to check",
     "q.dateStale": "The day you picked is no longer open for online booking, so we cleared it. Go back to pick another day, or send your request without one.",
     "q.windowFull": "That window just filled up, so we cleared it. Go back to pick another day or window, or send your request without one.",
+    "q.done.refLabel": "Your reference number:",
     "q.unsaved": "We received your request by email, but it couldn't be saved to our booking system, so your day and window aren't held yet. We'll confirm everything when we reply.",
     "legal.privacyLink": "privacy policy",
     "legal.termsLink": "terms of service",
@@ -1090,6 +1092,7 @@
     "q.done.h": "Solicitud enviada",
     "q.done.p": "Te respondemos {responseTime} con un precio exacto para tu casa.",
     "q.demo": "Esta copia del sitio no está conectada a su base de datos, así que no se envió nada. En mkgservices.com la solicitud se guarda y nos avisa.",
+    "q.testConfig": "No se envió nada. Esta copia de prueba del sitio no tiene configurada una base de datos ni un buzón de prueba, así que no puede recibir solicitudes. Para pedir una cotización, usa mkgservices.com.",
     "q.home": "Volver al inicio",
     "q.talk": "¿Prefieres hablarlo? Llama o escribe al {phone}, o envía un correo a {email}.",
 
@@ -1526,6 +1529,7 @@
     "tc.flagged": "{n} para revisar",
     "q.dateStale": "El día que elegiste ya no se puede reservar en línea, así que lo quitamos. Vuelve atrás para elegir otro, o envía tu solicitud sin día.",
     "q.windowFull": "Esa ventana se acaba de llenar, así que la quitamos. Vuelve atrás para elegir otro día u otra ventana, o envía tu solicitud sin día.",
+    "q.done.refLabel": "Tu número de referencia:",
     "q.unsaved": "Recibimos tu solicitud por correo, pero no se pudo guardar en nuestro sistema de reservas, así que tu día y ventana aún no están apartados. Lo confirmamos todo al responderte.",
     "legal.privacyLink": "política de privacidad",
     "legal.termsLink": "términos del servicio",

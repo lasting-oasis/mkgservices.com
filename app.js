@@ -9,6 +9,96 @@
   if (!C || !C.i18n) return;
   var I = C.i18n, t = I.t, L = I.L;
 
+  // ---------- which database and inbox this copy of the site uses ----------
+  // Only mkgservices.com talks to the live database and the business's inbox.
+  // Every other copy must pass ONE readiness check (checkTarget below) before
+  // Firebase starts (backend.js) or a quote is sent (quote.js):
+  //   live      mkgservices.com, www.mkgservices.com: the live project and
+  //             plans.js formEndpoint, as always.
+  //   emulator  localhost or 127.0.0.1 (or ?emulator=1 on a non-hosted address):
+  //             TEST.emulator, the local emulators (a "demo-" project) and the
+  //             capture inbox from test/capture-inbox.js.
+  //   preview   anything else: a pull request's *.web.app preview, a file
+  //             opened from disk: TEST.preview, a separate test Firebase
+  //             project and a test inbox. Empty until the owner names them.
+  // A copy is ready only when its project is the intended test project and
+  // its inbox is exactly an entry on TEST.approvedInboxes (same path, case
+  // and query), and neither is a production
+  // destination (PROD), even if someone approved it by mistake. Not ready:
+  // no Firebase at all, and the quote form says so and sends nothing.
+  /* TEST-CONFIG-START */
+  var TEST = {
+    approvedInboxes: ["http://127.0.0.1:8025/inbox"],
+    emulator: {
+      projectId: "demo-mkg-preview",
+      inbox: "http://127.0.0.1:8025/inbox",
+      firestore: "127.0.0.1:8080",
+      auth: "127.0.0.1:9099",
+    },
+    preview: {
+      projectId: "",   // the intended test project, e.g. "mkg-preview-test"
+      firebase: null,  // that project's web config ({ apiKey, authDomain, projectId, appId, ... })
+      inbox: "",       // a test inbox, also listed in approvedInboxes
+    },
+  };
+  /* TEST-CONFIG-END */
+  var PROD = {
+    projectIds: ["gen-lang-client-0946383119"],
+    inboxes: [C.formEndpoint, "https://formspree.io/f/xjyglbgo"],
+  };
+
+  // Production check, deliberately loose: lower-case, no query, no trailing
+  // slash, so no spelling of the business's inbox slips through.
+  function looseUrl(u) {
+    try { var x = new URL(String(u)); return (x.protocol + "//" + x.host + x.pathname).replace(/\/+$/, "").toLowerCase(); }
+    catch (e) { return ""; }
+  }
+  function isProdInbox(u) {
+    var n = looseUrl(u);
+    return !!n && PROD.inboxes.some(function (p) { return looseUrl(p) === n; });
+  }
+  // Approval check, deliberately strict: the exact endpoint that will be
+  // posted to. Only the parts URLs treat as case-free are normalised (scheme,
+  // host, a default port); the path, including its case and any trailing
+  // slash, and the query must match the approved entry character for
+  // character. No user name or password, no #fragment. "" when unusable.
+  function exactUrl(u) {
+    try {
+      var x = new URL(String(u));
+      if (!/^https?:$/.test(x.protocol) || x.username || x.password || x.hash || /#/.test(String(u))) return "";
+      return x.protocol + "//" + x.host + x.pathname + x.search;
+    } catch (e) { return ""; }
+  }
+  function checkTarget(loc, test) {
+    var host = loc.hostname;
+    if (/^(www\.)?mkgservices\.com$/.test(host)) return { env: "live", inbox: C.formEndpoint || "", ready: true, reason: "" };
+    var hosted = /(\.web\.app|\.firebaseapp\.com)$/.test(host);
+    var emu = loc.protocol !== "file:" && (/^(localhost|127\.0\.0\.1)$/.test(host) || (!hosted && /[?&]emulator=1/.test(loc.search)));
+    var env = emu ? "emulator" : "preview";
+    var want = emu ? test.emulator : test.preview;
+    var cfg = emu ? { projectId: want.projectId, apiKey: "demo-key", authDomain: want.projectId + ".firebaseapp.com" } : want.firebase;
+    var out = { env: env, inbox: "", firebase: null, emulator: emu ? test.emulator : null, ready: false, reason: "" };
+    function no(r) { out.reason = r; return out; }
+    // The database: exactly the intended test project, never production.
+    if (!want.projectId) return no("no test project named");
+    if (PROD.projectIds.indexOf(want.projectId) >= 0) return no("test project is the production project");
+    if (emu && !/^demo-/.test(want.projectId)) return no("emulator project is not a demo- project");
+    if (!cfg || cfg.projectId !== want.projectId) return no("Firebase config is not the intended test project");
+    if (PROD.projectIds.indexOf(cfg.projectId) >= 0) return no("Firebase config is the production project");
+    // The inbox: approved, and never the business's inbox.
+    if (!want.inbox) return no("no test inbox");
+    if (isProdInbox(want.inbox)) return no("test inbox is the production inbox");
+    var used = exactUrl(want.inbox);
+    if (!used) return no("test inbox is not a plain http(s) address");
+    var approved = (test.approvedInboxes || []).some(function (a) { return exactUrl(a) === used; });
+    if (!approved) return no("test inbox is not exactly an approved endpoint");
+    // What notify() posts to is this exact string: the approved endpoint.
+    out.firebase = cfg; out.inbox = used; out.ready = true;
+    return out;
+  }
+  C.target = checkTarget(location, TEST);
+  if (!C.target.ready && window.console) console.warn("MKG test copy not ready: " + C.target.reason + ". Nothing will be saved or sent.");
+
   var STORAGE_KEY = "mkg.state" + (C.segment === "residential" ? "" : "." + C.segment);
 
   // ---------- pricing ----------
@@ -341,13 +431,16 @@
   }
 
   // ---------- emails to the business ----------
-  // Sends a message to the form service set in plans.js (formEndpoint), which
-  // emails it to the business. A field named "email" becomes the Reply-To, so
-  // replying goes straight to the client. Resolves true when the service took
-  // it, false when it didn't (or none is set). Never rejects.
+  // Sends a message to this copy's inbox (C.target.inbox: on mkgservices.com
+  // the form service in plans.js, formEndpoint, which emails the business).
+  // A field named "email" becomes the Reply-To, so replying goes straight to
+  // the client. Resolves true when the inbox took it, false when it didn't,
+  // or when this copy has no inbox of its own. Never rejects.
   function notify(fields) {
-    if (!C.formEndpoint || !window.fetch) return Promise.resolve(false);
-    return fetch(C.formEndpoint, {
+    var T = C.target;
+    if (!T.ready || !T.inbox || !window.fetch) return Promise.resolve(false);
+    if (T.env !== "live" && fields._subject) fields = Object.assign({}, fields, { _subject: "[TEST " + T.env + "] " + fields._subject });
+    return fetch(T.inbox, {
       method: "POST",
       headers: { "Content-Type": "application/json", Accept: "application/json" },
       body: JSON.stringify(fields),
