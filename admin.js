@@ -24,6 +24,7 @@
   var AV = C.availability;
   var INV = C.invite;
   var ledger = [], balances = {}, owners = {}, view = "requests", selected = "";
+  var reqLoaded = false, internalLoaded = false;   // Today waits for both before judging assignments
   var CLOSED = { done: true, declined: true, cancelled: true };
   var PRIVATE = ["adminNotes", "assignedTo"];
   var baseTitle = document.title;
@@ -528,11 +529,34 @@
       }).join("") + "</ul>";
   }
   function setView(v) {
+    if (v === "today" && !isOwner()) v = "requests";   // Today / Hoy is the owner's view only
     view = v;
     $all("[data-view-tab]").forEach(function (b) { b.setAttribute("aria-pressed", String(b.getAttribute("data-view-tab") === v)); });
     $all("[data-view]").forEach(function (d) { d.hidden = d.getAttribute("data-view") !== v; });
     if (v === "credits") renderCredits();
+    if (C.today) C.today.show(v === "today");
   }
+
+  // ---------- links from Today / Hoy back to the record ----------
+  function scrollTo(el) { if (el && el.scrollIntoView) el.scrollIntoView({ block: "start", behavior: "smooth" }); }
+  var nav = {
+    openRequest: function (id) {
+      setView("requests");
+      filter = "all"; $all("[data-filter]").forEach(function (x) { x.setAttribute("aria-pressed", String(x.getAttribute("data-filter") === "all")); });
+      query = ""; $("[data-admin-search]").value = "";
+      renderList();
+      var art = $('[data-id="' + id + '"]');
+      if (art) { scrollTo(art); art.classList.add("is-flash"); setTimeout(function () { art.classList.remove("is-flash"); }, 1600); }
+    },
+    openDay: function (ymd) { setView("requests"); openDay = ymd; renderDay(); scrollTo($("[data-calendar]")); },
+    openTeamTime: function () { setView("requests"); var d = $("[data-tc-report-wrap]"); if (d) { d.open = true; scrollTo(d); } },
+    openNew: function () {
+      setView("requests");
+      filter = "new"; $all("[data-filter]").forEach(function (x) { x.setAttribute("aria-pressed", String(x.getAttribute("data-filter") === "new")); });
+      query = ""; $("[data-admin-search]").value = "";
+      renderList(); scrollTo($("[data-admin-list]"));
+    },
+  };
   $all("[data-view-tab]").forEach(function (b) { b.addEventListener("click", function () { setView(b.getAttribute("data-view-tab")); }); });
   $("[data-credit-search]").addEventListener("input", renderCredits);
   $("[data-credit-balances]").addEventListener("click", function (ev) {
@@ -559,6 +583,8 @@
     subs.forEach(function (f) { try { f(); } catch (e) { /* already closed */ } }); subs = [];
     if (recheck) { clearInterval(recheck); recheck = null; }
     if (C.timeclock) C.timeclock.leave();
+    if (C.today) C.today.leave();
+    reqLoaded = false; internalLoaded = false;
   }
   function enter(u) {
     user = u;
@@ -568,11 +594,14 @@
     stopAll();
     mountTeam();
     var ct = $('[data-view-tab="credits"]'); if (ct) ct.hidden = !isOwner();
-    if (!isOwner() && view === "credits") setView("requests");
+    var tt = $('[data-view-tab="today"]'); if (tt) tt.hidden = !isOwner();
+    if (C.today) C.today.enter(me, function () { return reqLoaded && internalLoaded ? items : null; }, nav);
+    if (isOwner()) setView("today");                 // the owner starts the day on Today / Hoy
+    else if (view === "credits" || view === "today") setView("requests");
     if (C.timeclock) C.timeclock.enter(u, me, function () { return items; });
     subs.push(B.watchRequests(function (list, err) {
-      if (err) { if (window.console) console.warn(err); $("[data-admin-empty]").hidden = false; $("[data-admin-empty]").textContent = t("adm.failed"); return; }
-      raw = list; merge(); loadOwners(); renderList(); reconcileCredits(); if (openDay) renderDay(); if (C.timeclock) C.timeclock.refresh();
+      if (err) { if (window.console) console.warn(err); $("[data-admin-empty]").hidden = false; $("[data-admin-empty]").textContent = t("adm.failed"); if (C.today) C.today.requestsChanged("requests", err); return; }
+      raw = list; reqLoaded = true; merge(); loadOwners(); renderList(); reconcileCredits(); if (openDay) renderDay(); if (C.timeclock) C.timeclock.refresh(); if (C.today) C.today.requestsChanged("requests");
     }));
     subs.push(B.watchCredits(function (list, err) {
       if (err) { if (window.console) console.warn(err); return; }
@@ -581,8 +610,8 @@
     // The window counters the rules enforce capacity with: make them agree with the holds for the bookable stretch ahead.
     B.syncCounters(D.ymd(new Date()), D.ymd(D.addDays(new Date(), (AV.horizonDays || 60) + 7))).catch(function (e) { if (window.console) console.warn("counters", e); });
     subs.push(B.watchInternal(function (m, err) {
-      if (err) { if (window.console) console.warn(err); return; }
-      internal = m; merge(); renderList(); if (C.timeclock) C.timeclock.refresh();
+      if (err) { if (window.console) console.warn(err); if (C.today) C.today.requestsChanged("internal", err); return; }
+      internal = m; internalLoaded = true; merge(); renderList(); if (C.timeclock) C.timeclock.refresh(); if (C.today) C.today.requestsChanged("internal");
     }));
     // Someone removed from the team is signed out here within a couple of minutes.
     recheck = setInterval(function () {
