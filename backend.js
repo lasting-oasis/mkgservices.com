@@ -1,12 +1,16 @@
 /*
   The site's connection to Firebase (Firestore for data, Auth for sign-in).
 
-  Nothing here needs configuring: Firebase Hosting serves the project's own
-  config at /__/firebase/init.json, so the same files work on mkgservices.com,
-  on preview channels, and in the local emulator. Opened from anywhere else
-  (a plain file server), there is no Firebase and every page falls back to
-  "demo" behaviour: the calendar shows all windows open and the quote form
-  shows its demo confirmation.
+  Which project this copy talks to is decided in app.js (C.target):
+  - mkgservices.com: the live project, from the config Firebase Hosting serves
+    at /__/firebase/init.json.
+  - every other copy (the emulator, preview channels, a file opened from
+    disk): only the test project that app.js's readiness check approved,
+    never init.json (on a preview channel that is the live project's). On the
+    emulator, Firestore and Auth are pointed at the local emulators by hand,
+    so a stopped emulator never means Google's servers. A copy that isn't
+    ready loads no Firebase at all: the calendar shows all windows open and
+    the quote form refuses to send.
 
   Data layout (and who may do what) is in firestore.rules. In short: a
   request's hold on the calendar is holds/{requestId}, mirrored by a counter
@@ -34,8 +38,10 @@
     });
   }
 
+  // Where this copy sends things (app.js). Without app.js: nowhere.
+  var T = C.target || { env: "preview", ready: false, reason: "app.js not loaded" };
   // The live site. www.mkgservices.com redirects here, but is listed too.
-  var SITE = /^(www\.)?mkgservices\.com$/.test(location.hostname);
+  var SITE = T.env === "live";
 
   // Resolves to true when Firebase is available, false otherwise. Never rejects.
   //
@@ -51,8 +57,9 @@
   // Elsewhere (preview channels, the emulator) neither applies.
   var ready = (function () {
     if (location.protocol === "file:") return Promise.resolve(false);
-    var useEmu = /[?&]emulator=1/.test(location.search) || /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
-    var useAppCheck = SITE && !useEmu && !!C.appCheckKey;
+    var useEmu = T.env === "emulator";
+    if (!T.ready) return Promise.resolve(false);   // app.js readiness check: nothing starts
+    var useAppCheck = SITE && !!C.appCheckKey;
     return script(base + SDK + "/firebase-app-compat.js")
       .then(function () { return script(base + SDK + "/firebase-auth-compat.js"); })
       .then(function () { return script(base + SDK + "/firebase-firestore-compat.js"); })
@@ -61,14 +68,15 @@
         return script(base + SDK + "/firebase-app-check-compat.js").catch(function () { useAppCheck = false; });
       })
       .then(function () {
-        if (useEmu) return script(base + "init.js?useEmulator=true");
+        if (!SITE) return Object.assign({}, T.firebase);
         return fetch(base + "init.json").then(function (r) {
           if (!r.ok) throw new Error("no firebase config");
           return r.json();
-        }).then(function (cfg) {
-          if (SITE) cfg.authDomain = location.hostname;
-          window.firebase.initializeApp(cfg);
         });
+      })
+      .then(function (cfg) {
+        if (SITE) cfg.authDomain = location.hostname;
+        window.firebase.initializeApp(cfg);
       })
       .then(function () {
         if (!window.firebase || !window.firebase.apps || !window.firebase.apps.length) return false;
@@ -79,6 +87,11 @@
         }
         db = fb.firestore();
         auth = fb.auth();
+        if (useEmu) {
+          var f = T.emulator.firestore.split(":");
+          db.useEmulator(f[0], Number(f[1]));
+          auth.useEmulator("http://" + T.emulator.auth);
+        }
         return true;
       })
       .catch(function () { return false; });
