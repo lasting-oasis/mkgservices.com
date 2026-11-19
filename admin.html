@@ -14,7 +14,7 @@
   <link rel="shortcut icon" href="favicon.ico">
   <link rel="apple-touch-icon" href="brand/apple-touch-icon.png">
   <meta name="theme-color" content="#176b61">
-  <link rel="stylesheet" href="styles.css?v=23">
+  <link rel="stylesheet" href="styles.css?v=24">
 </head>
 <body>
   <div class="topbar">
@@ -99,9 +99,12 @@
         </div>
 
         <div class="seg admin-tabs" role="group">
+          <button type="button" class="seg-btn" data-view-tab="today" aria-pressed="false" hidden><span class="seg-label" data-i18n="today.tab">Today</span></button>
           <button type="button" class="seg-btn" data-view-tab="requests" aria-pressed="true"><span class="seg-label" data-i18n="adm.tab.requests">Requests</span></button>
           <button type="button" class="seg-btn" data-view-tab="credits" aria-pressed="false"><span class="seg-label" data-i18n="adm.tab.credits">Credits</span><span class="seg-off" data-credit-total></span></button>
         </div>
+
+        <div class="today" data-view="today" data-today hidden></div>
 
         <div class="admin-credits" data-view="credits" hidden>
           <div>
@@ -201,12 +204,13 @@
   </footer>
 
   <script src="plans.js?v=23"></script>
-  <script src="i18n.js?v=23"></script>
+  <script src="i18n.js?v=24"></script>
   <script src="app.js?v=23"></script>
   <script src="backend.js?v=23"></script>
   <script src="calendar.js?v=23"></script>
   <script src="referral.js?v=23"></script>
   <script src="timeclock.js?v=23"></script>
-  <script src="admin.js?v=23"></script>
+  <script src="today.js?v=24"></script>
+  <script src="admin.js?v=24"></script>
 </body>
 </html>
