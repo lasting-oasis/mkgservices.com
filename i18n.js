@@ -111,9 +111,9 @@
     "plans.noscriptLink": "request a quote",
 
     "singles.h2.home": "Need one clean, not a plan?",
-    "singles.lead.home": "These are quoted individually because every home is different. Most plans start with a deep clean, so the regular visits only have to keep up.",
+    "singles.lead.home": "These are quoted individually because every home is different. If your plan's checklist covers what your home needs, your plan simply starts; a deep clean is for homes that need more.",
     "singles.h2.plans": "Single cleans",
-    "singles.lead.plans": "Quoted individually, because a first deep clean or an empty house for move-out is a different job from keeping a home tidy.",
+    "singles.lead.plans": "Quoted individually, because a deep clean or a move-in or move-out clean is a different job from keeping a home tidy.",
     "singles.cta": "Get a quote",
 
     "local.h2": "Charlotte's own, since 2014",
@@ -124,7 +124,7 @@
     "why.2.h": "Change your mind any time",
     "why.2.p": "No contracts. Skip a visit, pause for a trip, move from weekly to monthly, or stop altogether.",
     "why.3.h": "The same checklist, every time",
-    "why.3.p": "Each plan has a written list of what gets done. Add a note about your home and it becomes part of the list.",
+    "why.3.p": "Each plan has a written list of what gets done. Add a note about your home: anything beyond the list is quoted first and added once you approve it in writing.",
 
     "faq.h2": "Questions people ask first",
     "faq.q1": "How does the recurring discount work?",
@@ -136,7 +136,7 @@
     "faq.q4": "Do you bring supplies and equipment?",
     "faq.a4": "Yes. If you'd rather we use specific products in your home, leave them out and add a note to your plan.",
     "faq.q5": "How is the price set?",
-    "faq.a5": "By the plan you choose and the size of your home. Bedrooms and bathrooms are the biggest factors. If the home needs a deep clean first, we'll quote that separately so the plan price stays predictable.",
+    "faq.a5": "By the plan you choose and the size of your home. Bedrooms and bathrooms are the biggest factors. If your home needs work beyond your plan's checklist, we'll quote a deep clean separately so the plan price stays predictable.",
     "faq.q6": "Where do you work?",
     "faq.a6": "Enter your ZIP code in the quote form and we'll confirm whether you're in our area before anything else. You can also call or text {phone}.",
 
@@ -158,7 +158,7 @@
     "plansPage.lead": "The price adjusts as you go. Set your home size and schedule once; every number on this page updates.",
     "compare.h2": "What each plan covers",
     "compare.lead": "The same list every visit. “Rotation” items are done on alternating visits so each clean stays the same length.",
-    "compare.legend": "Add a note about your home in the quote form and it becomes part of your list.",
+    "compare.legend": "Add a note about your home in the quote form. Anything beyond your plan's list is quoted first and added once you approve it in writing.",
     "compare.aria": "What each plan includes",
     "compare.col": "What gets cleaned",
     "compare.yes": "Included",
@@ -1037,9 +1037,9 @@
     "plans.noscriptLink": "pide una cotización",
 
     "singles.h2.home": "¿Necesitas una sola limpieza, no un plan?",
-    "singles.lead.home": "Se cotizan por separado porque cada casa es distinta. La mayoría de los planes empiezan con una limpieza profunda, para que las visitas regulares solo tengan que mantenerla.",
+    "singles.lead.home": "Se cotizan por separado porque cada casa es distinta. Si la lista de tu plan cubre lo que tu casa necesita, tu plan simplemente empieza; la limpieza profunda es para casas que necesitan más.",
     "singles.h2.plans": "Limpiezas únicas",
-    "singles.lead.plans": "Se cotizan por separado, porque una primera limpieza profunda o una casa vacía por mudanza es un trabajo distinto a mantener una casa en orden.",
+    "singles.lead.plans": "Se cotizan por separado, porque una limpieza profunda o una de mudanza es un trabajo distinto a mantener una casa en orden.",
     "singles.cta": "Pedir cotización",
 
     "local.h2": "De Charlotte, desde 2014",
@@ -1050,7 +1050,7 @@
     "why.2.h": "Cambia de opinión cuando quieras",
     "why.2.p": "Sin contratos. Salta una visita, pausa por un viaje, pasa de semanal a mensual o cancela del todo.",
     "why.3.h": "La misma lista, cada vez",
-    "why.3.p": "Cada plan tiene una lista escrita de lo que se hace. Agrega una nota sobre tu casa y pasa a ser parte de la lista.",
+    "why.3.p": "Cada plan tiene una lista escrita de lo que se hace. Agrega una nota sobre tu casa: lo que no esté en la lista se cotiza primero y se agrega cuando lo apruebes por escrito.",
 
     "faq.h2": "Lo que la gente pregunta primero",
     "faq.q1": "¿Cómo funciona el descuento recurrente?",
@@ -1062,7 +1062,7 @@
     "faq.q4": "¿Traen productos y equipo?",
     "faq.a4": "Sí. Si prefieres que usemos productos específicos en tu casa, déjalos a la vista y agrega una nota a tu plan.",
     "faq.q5": "¿Cómo se define el precio?",
-    "faq.a5": "Según el plan que elijas y el tamaño de tu casa. Las habitaciones y los baños son lo que más pesa. Si la casa necesita primero una limpieza profunda, la cotizamos aparte para que el precio del plan sea predecible.",
+    "faq.a5": "Según el plan que elijas y el tamaño de tu casa. Las habitaciones y los baños son lo que más pesa. Si tu casa necesita tareas que no están en la lista de tu plan, cotizamos aparte una limpieza profunda para que el precio del plan sea predecible.",
     "faq.q6": "¿Dónde trabajan?",
     "faq.a6": "Escribe tu código postal en el formulario de cotización y te confirmamos si estás en nuestra zona antes que nada. También puedes llamar o escribir al {phone}.",
 
@@ -1084,7 +1084,7 @@
     "plansPage.lead": "El precio se ajusta sobre la marcha. Define el tamaño de tu casa y la frecuencia una vez; todos los números de esta página se actualizan.",
     "compare.h2": "Qué cubre cada plan",
     "compare.lead": "La misma lista en cada visita. Los puntos en “rotación” se hacen en visitas alternas para que cada limpieza dure lo mismo.",
-    "compare.legend": "Agrega una nota sobre tu casa en el formulario y pasa a ser parte de tu lista.",
+    "compare.legend": "Agrega una nota sobre tu casa en el formulario. Lo que no esté en la lista de tu plan se cotiza primero y se agrega cuando lo apruebes por escrito.",
     "compare.aria": "Qué incluye cada plan",
     "compare.col": "Qué se limpia",
     "compare.yes": "Incluido",
