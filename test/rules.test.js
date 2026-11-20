@@ -236,11 +236,9 @@ async function expect(title, shouldPass, run) {
     takeOver(beto, "beto-uid", "q-race", "ana@mkg.test", "beto@mkg.test"),
   ]);
   let after = null, ownerEvents = [];
-  await env.withSecurityRulesDisabled(async (ctx) => {
-    const db = ctx.firestore();
-    after = (await db.doc("internal/q-race").get()).data();
-    ownerEvents = (await db.collection("internal/q-race/events").get()).docs.map((d) => d.data()).filter((e) => e.kind === "owner");
-  });
+  // Read back as staff (allowed by the rules): a second rules-disabled context can't be opened in one run.
+  after = (await staff.doc("internal/q-race").get()).data();
+  ownerEvents = (await staff.collection("internal/q-race/events").get()).docs.map((d) => d.data()).filter((e) => e.kind === "owner");
   const wins = race.filter((x) => x.status === "fulfilled").length, refused = race.filter((x) => x.status === "rejected" && x.reason && x.reason.code === "mkg/owner-changed").length;
   const winner = race[0].status === "fulfilled" ? "carla@mkg.test" : "beto@mkg.test";
   await expect("exactly one take-over succeeds and the other is refused as stale", true, async () => { if (wins !== 1 || refused !== 1) throw new Error(wins + " won, " + refused + " refused"); });
@@ -263,11 +261,11 @@ async function expect(title, shouldPass, run) {
   try { await saveEdit(staff, "staff-uid", "q-race", { assignedTo: "staff@mkg.test" }, { assignedTo: "ana@mkg.test" }); } catch (e) { stale = e; }
   await expect("a panel that still showed Ana as owner can't reassign it", true, async () => { if (!stale || stale.code !== "mkg/owner-changed") throw new Error("not refused"); });
   await expect("a panel that changes only the notes leaves the new owner alone", true, () => saveEdit(staff, "staff-uid", "q-race", { adminNotes: "call after 9" }, { adminNotes: "" }));
-  await env.withSecurityRulesDisabled(async (ctx) => {
-    const x = (await ctx.firestore().doc("internal/q-race").get()).data();
-    const n = (await ctx.firestore().collection("internal/q-race/events").get()).docs.filter((d) => d.data().kind === "owner").length;
+  {
+    const x = (await staff.doc("internal/q-race").get()).data();
+    const n = (await staff.collection("internal/q-race/events").get()).docs.filter((d) => d.data().kind === "owner").length;
     await expect("the owner is still the take-over winner, with still one owner event", true, async () => { if (x.assignedTo !== winner || n !== 1 || x.adminNotes !== "call after 9") throw new Error(JSON.stringify([x.assignedTo, n, x.adminNotes])); });
-  });
+  }
 
   await env.cleanup();
   console.log("\n" + passes + " passed, " + failures + " failed");
