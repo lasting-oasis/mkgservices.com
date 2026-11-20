@@ -82,7 +82,7 @@ jobs:
           trap 'rm -f "$RUNNER_TEMP/firebase-sa.json"' EXIT
           export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/firebase-sa.json"
           log="$RUNNER_TEMP/functions-deploy.log"
-          if npx --yes firebase-tools@13.35.1 deploy --only functions:recordCustomerMove --non-interactive >"$log" 2>&1; then
+          if npx --yes firebase-tools@13.35.1 deploy --only functions:recordCustomerMove --non-interactive --force >"$log" 2>&1; then
             cat "$log"
           else
             status=$?
