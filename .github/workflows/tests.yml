@@ -26,6 +26,11 @@ jobs:
         run: |
           node test/queue.test.js
           node test/today.test.js
+      - name: Browser checks (admin page, fictional records, in-memory backend)
+        working-directory: test/browser
+        run: |
+          npm install --no-audit --no-fund --no-package-lock
+          node run.js
       - name: Install the rules-test tools
         working-directory: test
         run: npm install --no-audit --no-fund

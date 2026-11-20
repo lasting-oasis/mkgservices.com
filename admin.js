@@ -28,7 +28,7 @@
   var CLOSED = { done: true, declined: true, cancelled: true };
   var PRIVATE = ["adminNotes", "assignedTo"];
   // Request queue (queue.js): owner filter, per-item drafts and open panels, history.
-  var qOwner = "", qDrafts = {}, qOpen = {}, qBase = {}, qMoved = {}, qMsg = {}, evs = {}, evSubs = {}, qTick = null, qPending = false;
+  var qOwner = "", qDrafts = {}, qOpen = {}, qBase = {}, qMoved = {}, qMsg = {}, cardAck = {}, cardMsg = {}, evs = {}, evSubs = {}, qTick = null, qPending = false;
   var baseTitle = document.title;
 
   function isOwner() { return !!me && me.role === "owner"; }
@@ -229,8 +229,8 @@
   // A status change and everything that follows it: the window is freed or
   // held again, credits are granted (confirmed, done) or taken back (declined,
   // cancelled). timeclock.js uses it too, so "done" means the same everywhere.
-  function setStatus(r, what) {
-    return B.updateRequest(r.id, { status: what }).then(function () {
+  function setStatus(r, what, expectedMovedMs) {
+    return B.setStatusIf(r.id, what, expectedMovedMs).then(function () {
       if (CLOSED[what]) return B.releaseHolds(r.id);
       return B.ensureHold(Object.assign({}, r, { status: what }));
     }).then(function () {
@@ -285,7 +285,7 @@
     var price = draftOf(r, "quotedPrice", typeof r.quotedPrice === "number" ? String(r.quotedPrice) : "");
     var dirty = !!drafts[r.id];
 
-    return '<article class="admin-item" data-id="' + esc(r.id) + '">' +
+    return '<article class="admin-item" data-id="' + esc(r.id) + '" data-moved="' + (typeof r.movedMs === "number" ? r.movedMs : "") + '">' +
       '<header><div><b>' + esc(r.name || "?") + "</b> <span class='muted'>#" + esc(r.id.slice(0, 6).toUpperCase()) + " · " + esc(fmtTs(r.createdAt)) + "</span></div>" +
         "<div>" + (moved ? '<span class="status status-moved">' + esc(t("adm.movedH")) + "</span> " : "") + pill(s) + "</div></header>" +
       '<dl class="review">' + details.map(function (x) { return '<div class="review-row"><dt>' + esc(x[0]) + "</dt><dd>" + x[1] + "</dd></div>"; }).join("") + "</dl>" +
@@ -295,6 +295,7 @@
         (!CLOSED[s] ? '<button type="button" class="btn btn-sm btn-secondary" data-act="declined">' + esc(t("adm.decline")) + "</button>" : "") +
         (CLOSED[s] ? '<button type="button" class="btn btn-sm btn-secondary" data-act="new">' + esc(t("adm.reopen")) + "</button>" : "") +
       "</div>" +
+      (cardMsg[r.id] ? '<p class="field-error" role="alert" data-card-msg>' + esc(cardMsg[r.id]) + "</p>" : "") +
       creditBlock(r) +
       '<details class="admin-edit"' + (openEdits[r.id] ? " open" : "") + "><summary>" + esc(t("adm.edit")) + '<span class="admin-unsaved"' + (dirty ? "" : " hidden") + ' data-unsaved> · ' + esc(t("adm.unsaved")) + "</span></summary>" +
         '<div class="two-up"><div class="field"><label>' + esc(t("adm.date")) + '</label><input class="input" type="date" data-f="date" value="' + esc(draftOf(r, "date", r.date || "")) + '"></div>' +
@@ -326,6 +327,8 @@
       var art = f.closest("[data-id]"), id = art.getAttribute("data-id");
       function keep() {
         var d = drafts[id] = drafts[id] || {}, k = f.getAttribute("data-f");
+        // The customer's last move as this card showed it when typing began (a newer move refuses the save).
+        if (d.__moved === undefined) d.__moved = cardMoved(art, id);
         // What the panel showed for a staff field, so a save can tell whether someone else changed it since.
         if (f.hasAttribute("data-orig")) { d.__base = d.__base || {}; if (d.__base[k] === undefined) d.__base[k] = f.getAttribute("data-orig"); }
         d[k] = f.value; var u = $("[data-unsaved]", art); if (u) u.hidden = false;
@@ -479,6 +482,20 @@
     });
   }
   wireQueue();
+  // The customer's last move as this card is showing it (or as acknowledged after a refusal).
+  function cardMoved(art, id) {
+    if (cardAck[id] !== undefined) return cardAck[id];
+    var v = art.getAttribute("data-moved");
+    return v ? Number(v) : null;
+  }
+  // A card action refused because the customer moved the visit after the card showed it:
+  // nothing changed; say where the booking is now. Acting again counts as the review.
+  function cardRefused(id, e) {
+    var at = e.date ? Q.slotStart(e.date, e.slot) : null;
+    cardAck[id] = typeof e.movedMs === "number" ? e.movedMs : null;
+    cardMsg[id] = t("adm.cardMoved", { when: at ? qWhen(at) : (e.date || "—") });
+    renderList();
+  }
   function act(b) {
     var art = b.closest("[data-id]"), id = art.getAttribute("data-id"), what = b.getAttribute("data-act"), r = byId(id);
     if (!r) return;
@@ -513,13 +530,20 @@
         patch.youPay = np === null ? null : Math.max(0, rounded(np - r.creditApplied));
       }
       var moved = date !== (r.date || "") || slot !== (r.slot || "");
+      // Booking changes and replies are checked against the customer's moves since typing began.
+      var expMoved = moved || patch.replyNote !== undefined ? (cardAck[id] !== undefined ? cardAck[id] : d.__moved !== undefined ? d.__moved : cardMoved(art, id)) : undefined;
       b.disabled = true;
-      p = B.saveEdit(id, patch, priv, base, user.uid).then(function () {
+      p = B.saveEdit(id, patch, priv, base, user.uid, expMoved).then(function () {
         return moved ? B.reschedule(r, date, slot, false) : null;
       }).then(function () {
-        delete drafts[id]; savedFlash[id] = true; renderList();
+        delete drafts[id]; delete cardAck[id]; delete cardMsg[id]; savedFlash[id] = true; renderList();
         setTimeout(function () { delete savedFlash[id]; var m = $('[data-id="' + id + '"] [data-saved]'); if (m) m.textContent = ""; }, 2500);
       }, function (e) {
+        if (e && e.code === "mkg/request-moved") {
+          // Keep the typed reply and notes, drop the stale date and window so the card shows the customer's booking.
+          if (drafts[id]) { delete drafts[id].date; delete drafts[id].slot; drafts[id].__moved = typeof e.movedMs === "number" ? e.movedMs : null; }
+          b.disabled = false; cardRefused(id, e); return;
+        }
         if (!e || (e.code !== "mkg/owner-changed" && e.code !== "mkg/notes-changed")) throw e;
         // Refused: someone else changed it first. A stale owner choice is dropped and the panel shows the
         // new owner, so reassigning takes a fresh choice. Note text is kept so nothing typed is lost;
@@ -539,7 +563,10 @@
       });
     } else if (what === "delete") {
       b.disabled = true;
-      p = B.deleteRequest(id).then(function () { delete drafts[id]; delete openEdits[id]; });
+      // Not if the customer moved the visit after this card showed it: that booking is new.
+      p = B.checkMoved(id, cardMoved(art, id)).then(function () {
+        return B.deleteRequest(id).then(function () { delete drafts[id]; delete openEdits[id]; delete cardAck[id]; delete cardMsg[id]; });
+      }, function (e) { if (e && e.code === "mkg/request-moved") { b.disabled = false; cardRefused(id, e); return; } throw e; });
     } else if (what === "applyCredit") {
       var n = rounded(Number($("[data-credit-amount]", art).value)), have = bal(r.emailLower), price = visitPrice(r);
       if (!(n > 0) || n > have || n > INV.cap(price)) { alert(t("adm.credit.tooMuch")); return; }
@@ -551,7 +578,12 @@
       p = B.removeCredit("use-" + id).then(function () { return B.updateRequest(id, { creditApplied: 0, youPay: null }); });
     } else {
       b.disabled = true;
-      p = windowCheck(r, what).then(function (go) { if (!go) { b.disabled = false; return null; } return setStatus(r, what); });
+      var expS = cardMoved(art, id);
+      p = windowCheck(r, what).then(function (go) { if (!go) { b.disabled = false; return null; } return setStatus(r, what, expS); })
+        .then(function () { delete cardAck[id]; delete cardMsg[id]; }, function (e) {
+          if (e && e.code === "mkg/request-moved") { b.disabled = false; cardRefused(id, e); return; }
+          throw e;
+        });
     }
     p.catch(function (e) { b.disabled = false; fail(e); }).then(function () { if (cal) cal.refresh().then(renderDay); });
   }
@@ -814,7 +846,7 @@
   function leave(removed) {
     stopAll();
     user = null; me = null; ledger = []; balances = {}; owners = {}; raw = []; items = []; internal = {}; drafts = {}; team = [];
-    qDrafts = {}; qOpen = {}; qBase = {}; qMoved = {}; qMsg = {};
+    qDrafts = {}; qOpen = {}; qBase = {}; qMoved = {}; qMsg = {}; cardAck = {}; cardMsg = {};
     document.title = baseTitle;
     B.signOut().then(function () { show("login"); $("[data-admin-notadmin]").hidden = !removed; });
   }

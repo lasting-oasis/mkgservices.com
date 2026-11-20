@@ -533,13 +533,7 @@
   // re-plan a reschedule nobody has looked at yet.
   function saveQueue(id, q, expectedSetMs, uid, text, expectedMovedMs) {
     return db.runTransaction(function (tx) {
-      var movedNow = null;
-      return tx.get(db.collection("requests").doc(id)).then(function (rd) {
-        var m = rd.exists ? rd.data().movedByClientAt : null;
-        movedNow = isTs(m) ? m.toMillis() : null;
-        return currentPrivate(tx, id);
-      }).then(function (cur) {
-        if (expectedMovedMs !== undefined && movedNow !== (expectedMovedMs === null ? null : expectedMovedMs)) throw stale("mkg/request-moved", { movedMs: movedNow });
+      return movedCheck(tx, id, expectedMovedMs).then(function () { return currentPrivate(tx, id); }).then(function (cur) {
         var have = cur.queue && isTs(cur.queue.setAt) ? cur.queue.setAt.toMillis() : null;
         if (have !== (expectedSetMs === undefined ? null : expectedSetMs)) throw stale("mkg/queue-changed");
         var next = { state: q.state, nextAction: String(q.nextAction || "").slice(0, 200), setAt: stamp() };
@@ -553,9 +547,12 @@
   // (notes, owner) is refused if someone else changed it since the panel
   // showed it (base holds what the panel showed). A changed note to the
   // customer is recorded as a "reply" event: the last promise.
-  function saveEdit(id, reqPatch, priv, base, uid) {
+  // expectedMovedMs (optional): the customer's last move the card was showing;
+  // a newer move refuses the save, so a stale card can't overwrite the new
+  // booking or mark it answered.
+  function saveEdit(id, reqPatch, priv, base, uid, expectedMovedMs) {
     return db.runTransaction(function (tx) {
-      return currentPrivate(tx, id).then(function (cur) {
+      return movedCheck(tx, id, expectedMovedMs).then(function () { return currentPrivate(tx, id); }).then(function (cur) {
         Object.keys(priv).forEach(function (k) {
           if ((cur[k] || "") !== (base[k] || "")) throw stale(k === "assignedTo" ? "mkg/owner-changed" : "mkg/notes-changed", { who: cur.assignedTo || "" });
         });
@@ -569,6 +566,28 @@
           var qv = cur.queue && typeof cur.queue.state === "string" ? { repliedAt: stamp() } : { state: "open", setAt: stamp(), repliedAt: stamp() };
           tx.set(internalRef(id), { queue: qv, updatedAt: stamp() }, { merge: true });
         }
+      });
+    });
+  }
+  // Refuses (mkg/request-moved, with the new booking) when the customer moved
+  // the visit after the screen last showed it. undefined skips the check.
+  function movedCheck(tx, id, expectedMovedMs) {
+    if (expectedMovedMs === undefined) return Promise.resolve();
+    return tx.get(db.collection("requests").doc(id)).then(function (rd) {
+      var x = rd.exists ? rd.data() : {}, m = x.movedByClientAt, now = isTs(m) ? m.toMillis() : null;
+      if (now !== expectedMovedMs) throw stale("mkg/request-moved", { movedMs: now, date: x.date || "", slot: x.slot || "" });
+    });
+  }
+  // Only the check, for card actions that aren't one transaction (delete).
+  function checkMoved(id, expectedMovedMs) {
+    return db.runTransaction(function (tx) { return movedCheck(tx, id, expectedMovedMs); });
+  }
+  // A status change from a request card, refused if the customer moved the
+  // visit after the card showed it.
+  function setStatusIf(id, status, expectedMovedMs) {
+    return db.runTransaction(function (tx) {
+      return movedCheck(tx, id, expectedMovedMs).then(function () {
+        tx.update(db.collection("requests").doc(id), { status: status, updatedAt: stamp() });
       });
     });
   }
@@ -702,7 +721,7 @@
     watchMyShifts: watchMyShifts, watchShiftsSince: watchShiftsSince, clockIn: clockIn, clockOut: clockOut, updateShift: updateShift, deleteShift: deleteShift, tsFromDate: tsFromDate,
     myRequests: myRequests, reschedule: reschedule, cancelRequest: cancelRequest, toMs: toMs,
     watchRequests: watchRequests, updateRequest: updateRequest, watchInternal: watchInternal, saveInternal: saveInternal,
-    takeOver: takeOver, saveQueue: saveQueue, saveEdit: saveEdit, watchEvents: watchEvents,
+    takeOver: takeOver, saveQueue: saveQueue, saveEdit: saveEdit, setStatusIf: setStatusIf, checkMoved: checkMoved, watchEvents: watchEvents,
     releaseHolds: releaseHolds, ensureHold: ensureHold, addPhoneBooking: addPhoneBooking, deleteRequest: deleteRequest, unschedule: unschedule, setDay: setDay,
     windowCount: windowCount, syncCounters: syncCounters,
     checkReferral: checkReferral, ensureCode: ensureCode, myCredits: credits, creditsFor: credits, creditBalance: balance, ownerOfCode: ownerOfCode,
