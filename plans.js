@@ -206,8 +206,8 @@
         id: "deep",
         name: { en: "Deep clean", es: "Limpieza profunda" },
         description: {
-          en: "A top-to-bottom reset: built-up grime, inside appliances, baseboards, and the spots a regular visit skips. We quote it separately when your home needs work beyond your plan's checklist, or much more time on the first visit; otherwise your plan simply starts.",
-          es: "Un reinicio de arriba abajo: mugre acumulada, interior de electrodomésticos, zócalos y los rincones que una visita regular no cubre. La cotizamos aparte cuando tu casa necesita tareas que no están en la lista de tu plan o mucho más tiempo en la primera visita; si no, tu plan simplemente empieza.",
+          en: "A top-to-bottom reset: built-up grime, inside appliances, baseboards, and the spots a regular visit skips. We quote it separately when your home needs work beyond your plan's checklist, or an item on it needs substantially more time on the first visit; otherwise your plan simply starts.",
+          es: "Un reinicio de arriba abajo: mugre acumulada, interior de electrodomésticos, zócalos y los rincones que una visita regular no cubre. La cotizamos aparte cuando tu casa necesita tareas que no están en la lista de tu plan, o alguna tarea de la lista requiere mucho más tiempo en la primera visita; si no, tu plan simplemente empieza.",
         },
       },
       {

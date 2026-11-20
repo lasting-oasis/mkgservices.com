@@ -111,7 +111,7 @@
     "plans.noscriptLink": "request a quote",
 
     "singles.h2.home": "Need one clean, not a plan?",
-    "singles.lead.home": "These are quoted individually because every home is different. If your plan's checklist covers what your home needs, your plan simply starts; a deep clean is for homes that need more.",
+    "singles.lead.home": "These are quoted individually because every home is different. If your plan's checklist covers what your home needs, your plan simply starts. We quote a deep clean separately when your home needs work beyond the checklist, or an item on it needs substantially more time on the first visit.",
     "singles.h2.plans": "Single cleans",
     "singles.lead.plans": "Quoted individually, because a deep clean or a move-in or move-out clean is a different job from keeping a home tidy.",
     "singles.cta": "Get a quote",
@@ -136,7 +136,7 @@
     "faq.q4": "Do you bring supplies and equipment?",
     "faq.a4": "Yes. If you'd rather we use specific products in your home, leave them out and add a note to your plan.",
     "faq.q5": "How is the price set?",
-    "faq.a5": "By the plan you choose and the size of your home. Bedrooms and bathrooms are the biggest factors. If your home needs work beyond your plan's checklist, we'll quote a deep clean separately so the plan price stays predictable.",
+    "faq.a5": "By the plan you choose and the size of your home. Bedrooms and bathrooms are the biggest factors. If your home needs work beyond your plan's checklist, or an item on it needs substantially more time on the first visit, we'll quote a deep clean separately so the plan price stays predictable.",
     "faq.q6": "Where do you work?",
     "faq.a6": "Enter your ZIP code in the quote form and we'll confirm whether you're in our area before anything else. You can also call or text {phone}.",
 
@@ -1037,7 +1037,7 @@
     "plans.noscriptLink": "pide una cotización",
 
     "singles.h2.home": "¿Necesitas una sola limpieza, no un plan?",
-    "singles.lead.home": "Se cotizan por separado porque cada casa es distinta. Si la lista de tu plan cubre lo que tu casa necesita, tu plan simplemente empieza; la limpieza profunda es para casas que necesitan más.",
+    "singles.lead.home": "Se cotizan por separado porque cada casa es distinta. Si la lista de tu plan cubre lo que tu casa necesita, tu plan simplemente empieza. Cotizamos aparte una limpieza profunda cuando tu casa necesita tareas que no están en la lista, o alguna tarea de la lista requiere mucho más tiempo en la primera visita.",
     "singles.h2.plans": "Limpiezas únicas",
     "singles.lead.plans": "Se cotizan por separado, porque una limpieza profunda o una de mudanza es un trabajo distinto a mantener una casa en orden.",
     "singles.cta": "Pedir cotización",
@@ -1062,7 +1062,7 @@
     "faq.q4": "¿Traen productos y equipo?",
     "faq.a4": "Sí. Si prefieres que usemos productos específicos en tu casa, déjalos a la vista y agrega una nota a tu plan.",
     "faq.q5": "¿Cómo se define el precio?",
-    "faq.a5": "Según el plan que elijas y el tamaño de tu casa. Las habitaciones y los baños son lo que más pesa. Si tu casa necesita tareas que no están en la lista de tu plan, cotizamos aparte una limpieza profunda para que el precio del plan sea predecible.",
+    "faq.a5": "Según el plan que elijas y el tamaño de tu casa. Las habitaciones y los baños son lo que más pesa. Si tu casa necesita tareas que no están en la lista de tu plan, o si alguna tarea de la lista requiere mucho más tiempo en la primera visita, cotizamos aparte una limpieza profunda para que el precio del plan sea predecible.",
     "faq.q6": "¿Dónde trabajan?",
     "faq.a6": "Escribe tu código postal en el formulario de cotización y te confirmamos si estás en nuestra zona antes que nada. También puedes llamar o escribir al {phone}.",
 
