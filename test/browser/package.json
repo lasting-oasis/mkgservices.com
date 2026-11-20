@@ -1,0 +1,7 @@
+{
+  "name": "mkg-browser-checks",
+  "private": true,
+  "description": "Browser checks for admin.html with fictional records and an in-memory backend.",
+  "scripts": { "test": "node run.js" },
+  "devDependencies": { "puppeteer-core": "^23.11.1" }
+}

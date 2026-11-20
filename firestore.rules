@@ -21,9 +21,10 @@ rules_version = '2';
 //                         windows, past days, or days past the booking horizon.
 //                         The limits live in calendarLimits() below and must
 //                         match plans.js `availability`.
-//   internal/{id}         staff-only fields for a request: private notes and
-//                         who it's assigned to. Admins only; customers never
-//                         receive these.
+//   internal/{id}         staff-only fields for a request: private notes, who
+//                         it's assigned to, and its request-queue fields
+//                         (queue). Admins only; customers never receive these.
+//   internal/{id}/events  that request's staff history, append-only.
 //   days/{date}           days off and blocked windows. Admins write.
 //   admins/{uid}          one per team member. The owner's (role 'owner') is
 //                         made by hand in the console; an invited person
@@ -253,12 +254,50 @@ service cloud.firestore {
     }
 
     // ---------- staff-only request fields ----------
+    // queue: the request queue's staff fields (admin.js, queue.js):
+    // { state: 'open' | 'waiting' | 'closed', dueAt?, nextAction?, setAt, repliedAt? }.
+    // setAt is the server's time of the last queue change; repliedAt the
+    // server's time of the last reply logged to the customer.
+    function queueOk(q) {
+      return q is map && q.keys().hasOnly(['state', 'dueAt', 'nextAction', 'setAt', 'repliedAt']) &&
+        q.state in ['open', 'waiting', 'closed'] && q.setAt is timestamp &&
+        (!('dueAt' in q) || q.dueAt is timestamp) && (!('repliedAt' in q) || q.repliedAt is timestamp) &&
+        optStr(q, 'nextAction', 200);
+    }
+    function internalOk(d) {
+      return d.keys().hasOnly(['adminNotes', 'assignedTo', 'updatedAt', 'queue']) &&
+        optStr(d, 'adminNotes', 4000) && optStr(d, 'assignedTo', 200) && (!('queue' in d) || queueOk(d.queue));
+    }
+    // A queue write is either a queue change (setAt is now) or a logged reply
+    // that only stamps repliedAt. repliedAt is always the server's time or kept as it was.
+    function queueWriteOk(o) {
+      let n = request.resource.data.queue;
+      return (!('repliedAt' in n) || n.repliedAt == request.time || n.repliedAt == o.get('repliedAt', null)) &&
+        (n.setAt == request.time || (n.setAt == o.get('setAt', null) && n.diff(o).affectedKeys().hasOnly(['repliedAt'])));
+    }
     match /internal/{id} {
       allow read: if isAdmin();
-      allow create, update: if isAdmin() &&
-        request.resource.data.keys().hasOnly(['adminNotes', 'assignedTo', 'updatedAt']) &&
-        optStr(request.resource.data, 'adminNotes', 4000) && optStr(request.resource.data, 'assignedTo', 200);
+      allow create: if isAdmin() && internalOk(request.resource.data) &&
+        (!('queue' in request.resource.data) || queueWriteOk({}));
+      allow update: if isAdmin() && internalOk(request.resource.data) &&
+        (!('queue' in changed()) || queueWriteOk(resource.data.get('queue', {})));
       allow delete: if isAdmin();
+
+      // The request's staff history: one document per event, written in the
+      // same batch as the change it records. Append-only: nobody edits or
+      // deletes an entry, and each one carries the server's time and the
+      // writer's own uid.
+      match /events/{eid} {
+        allow read: if isAdmin();
+        allow create: if isAdmin() &&
+          request.resource.data.keys().hasOnly(['at', 'by', 'kind', 'text', 'priv']) &&
+          request.resource.data.keys().hasAll(['at', 'by', 'kind']) &&
+          request.resource.data.at == request.time && request.resource.data.by == request.auth.uid &&
+          request.resource.data.kind in ['reply', 'owner', 'queue'] &&
+          optStr(request.resource.data, 'text', 2000) &&
+          (!('priv' in request.resource.data) || request.resource.data.priv is bool);
+        allow update, delete: if false;
+      }
     }
 
     // ---------- days off ----------

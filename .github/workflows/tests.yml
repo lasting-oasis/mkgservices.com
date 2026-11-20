@@ -1,0 +1,39 @@
+# Runs the repository's tests on each pull request: the Firestore rules
+# against the emulator (needs Java), and the Node-only logic tests. Nothing is
+# deployed and no secrets are used.
+name: Tests
+
+on: pull_request
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - name: Logic tests (no emulator)
+        run: |
+          node test/queue.test.js
+          node test/today.test.js
+      - name: Browser checks (admin page, fictional records, in-memory backend)
+        working-directory: test/browser
+        run: |
+          npm install --no-audit --no-fund --no-package-lock
+          node run.js
+      - name: Install the rules-test tools
+        working-directory: test
+        run: npm install --no-audit --no-fund
+      - name: Firestore rules tests (emulator)
+        working-directory: test
+        run: npm test

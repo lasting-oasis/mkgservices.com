@@ -470,16 +470,132 @@
     patch.updatedAt = stamp();
     return db.collection("requests").doc(id).update(patch);
   }
-  // Staff-only fields, live: { requestId: { adminNotes, assignedTo } }.
+  // Staff-only fields, live: { requestId: { adminNotes, assignedTo, queue } }.
+  // queue (the request queue, queue.js): { state, dueMs, nextAction, setMs } or null.
+  function cleanQueue(q) {
+    if (!q || typeof q !== "object" || typeof q.state !== "string") return null;
+    return { state: q.state, dueMs: isTs(q.dueAt) ? q.dueAt.toMillis() : null, nextAction: typeof q.nextAction === "string" ? q.nextAction : "",
+      setMs: isTs(q.setAt) ? q.setAt.toMillis() : null, repliedMs: isTs(q.repliedAt) ? q.repliedAt.toMillis() : null };
+  }
   function watchInternal(cb) {
     return db.collection("internal").onSnapshot(function (r) {
       var m = {};
-      r.docs.forEach(function (d) { var x = d.data(); m[d.id] = { adminNotes: typeof x.adminNotes === "string" ? x.adminNotes : "", assignedTo: typeof x.assignedTo === "string" ? x.assignedTo : "" }; });
+      r.docs.forEach(function (d) {
+        var x = d.data(EST);
+        m[d.id] = { adminNotes: typeof x.adminNotes === "string" ? x.adminNotes : "", assignedTo: typeof x.assignedTo === "string" ? x.assignedTo : "", queue: cleanQueue(x.queue) };
+      });
       cb(m);
     }, function (e) { cb(null, e); });
   }
   function saveInternal(id, data) {
     return db.collection("internal").doc(id).set({ adminNotes: String(data.adminNotes || ""), assignedTo: String(data.assignedTo || ""), updatedAt: stamp() }, { merge: true });
+  }
+
+  // ---------- the request queue (Task 3B-1) ----------
+  // Every staff change below goes in one transaction with its history event,
+  // so an event exists only for a change that was saved, and a change made
+  // from a stale screen is refused instead of overwriting someone else's.
+  function internalRef(id) { return db.collection("internal").doc(id); }
+  function eventData(uid, kind, text) { return { at: stamp(), by: String(uid), kind: kind, text: String(text || "").slice(0, 2000) }; }
+  function addEventTx(tx, id, uid, kind, text) { tx.set(internalRef(id).collection("events").doc(), eventData(uid, kind, text)); }
+  function stale(code, extra) { var e = new Error(code); e.code = code; Object.assign(e, extra || {}); return e; }
+  // The staff fields as they are now: the internal/ document, or for older
+  // requests the copies still on the request itself (moved over on the write).
+  function currentPrivate(tx, id) {
+    return tx.get(internalRef(id)).then(function (d) {
+      if (d.exists) { var x = d.data(); return { exists: true, adminNotes: x.adminNotes || "", assignedTo: x.assignedTo || "", queue: x.queue || null, legacy: false }; }
+      return tx.get(db.collection("requests").doc(id)).then(function (rd) {
+        var r = rd.exists ? rd.data() : {};
+        return { exists: false, adminNotes: r.adminNotes || "", assignedTo: r.assignedTo || "", queue: null, legacy: r.adminNotes !== undefined || r.assignedTo !== undefined };
+      });
+    });
+  }
+  function privWrite(tx, id, cur, fields) {
+    var data = Object.assign({ adminNotes: cur.adminNotes, assignedTo: cur.assignedTo }, fields, { updatedAt: stamp() });
+    tx.set(internalRef(id), data, { merge: true });
+    if (cur.legacy) { var del = fb.firestore.FieldValue.delete(); tx.update(db.collection("requests").doc(id), { adminNotes: del, assignedTo: del, updatedAt: stamp() }); }
+  }
+  // A dispatcher takes a request. Applies only if the owner is still the one
+  // the screen showed; the owner is the only field it changes.
+  function takeOver(id, expected, to, uid) {
+    return db.runTransaction(function (tx) {
+      return currentPrivate(tx, id).then(function (cur) {
+        if ((cur.assignedTo || "") !== (expected || "")) throw stale("mkg/owner-changed", { who: cur.assignedTo || "" });
+        privWrite(tx, id, cur, { assignedTo: String(to || "") });
+        addEventTx(tx, id, uid, "owner", (expected || "-") + " -> " + (to || "-"));
+      });
+    });
+  }
+  // Next action, due time and state. q: { state, dueMs (or null), nextAction }.
+  // expectedSetMs: the queue version the screen showed (null if none).
+  // expectedMovedMs: the customer's last move the panel was opened with (null
+  // for none). A move made since is refused, so an older panel can't close or
+  // re-plan a reschedule nobody has looked at yet.
+  function saveQueue(id, q, expectedSetMs, uid, text, expectedMovedMs) {
+    return db.runTransaction(function (tx) {
+      return movedCheck(tx, id, expectedMovedMs).then(function () { return currentPrivate(tx, id); }).then(function (cur) {
+        var have = cur.queue && isTs(cur.queue.setAt) ? cur.queue.setAt.toMillis() : null;
+        if (have !== (expectedSetMs === undefined ? null : expectedSetMs)) throw stale("mkg/queue-changed");
+        var next = { state: q.state, nextAction: String(q.nextAction || "").slice(0, 200), setAt: stamp() };
+        next.dueAt = typeof q.dueMs === "number" ? fb.firestore.Timestamp.fromMillis(q.dueMs) : fb.firestore.FieldValue.delete();
+        privWrite(tx, id, cur, { queue: next });
+        addEventTx(tx, id, uid, "queue", text);
+      });
+    });
+  }
+  // The edit panel's save: only the fields the person changed. A staff field
+  // (notes, owner) is refused if someone else changed it since the panel
+  // showed it (base holds what the panel showed). A changed note to the
+  // customer is recorded as a "reply" event: the last promise.
+  // expectedMovedMs (optional): the customer's last move the card was showing;
+  // a newer move refuses the save, so a stale card can't overwrite the new
+  // booking or mark it answered.
+  function saveEdit(id, reqPatch, priv, base, uid, expectedMovedMs) {
+    return db.runTransaction(function (tx) {
+      return movedCheck(tx, id, expectedMovedMs).then(function () { return currentPrivate(tx, id); }).then(function (cur) {
+        Object.keys(priv).forEach(function (k) {
+          if ((cur[k] || "") !== (base[k] || "")) throw stale(k === "assignedTo" ? "mkg/owner-changed" : "mkg/notes-changed", { who: cur.assignedTo || "" });
+        });
+        var keys = Object.keys(reqPatch);
+        if (keys.length) { reqPatch.updatedAt = stamp(); tx.update(db.collection("requests").doc(id), reqPatch); }
+        if (Object.keys(priv).length || cur.legacy) privWrite(tx, id, cur, priv);
+        if (priv.assignedTo !== undefined) addEventTx(tx, id, uid, "owner", (cur.assignedTo || "-") + " -> " + (priv.assignedTo || "-"));
+        if (typeof reqPatch.replyNote === "string" && reqPatch.replyNote) {
+          addEventTx(tx, id, uid, "reply", reqPatch.replyNote);
+          // The first response is logged: the queue stops holding it to the first-response deadline.
+          var qv = cur.queue && typeof cur.queue.state === "string" ? { repliedAt: stamp() } : { state: "open", setAt: stamp(), repliedAt: stamp() };
+          tx.set(internalRef(id), { queue: qv, updatedAt: stamp() }, { merge: true });
+        }
+      });
+    });
+  }
+  // Refuses (mkg/request-moved, with the new booking) when the customer moved
+  // the visit after the screen last showed it. undefined skips the check.
+  function movedCheck(tx, id, expectedMovedMs) {
+    if (expectedMovedMs === undefined) return Promise.resolve();
+    return tx.get(db.collection("requests").doc(id)).then(function (rd) {
+      var x = rd.exists ? rd.data() : {}, m = x.movedByClientAt, now = isTs(m) ? m.toMillis() : null;
+      if (now !== expectedMovedMs) throw stale("mkg/request-moved", { movedMs: now, date: x.date || "", slot: x.slot || "" });
+    });
+  }
+  // Only the check, for card actions that aren't one transaction (delete).
+  function checkMoved(id, expectedMovedMs) {
+    return db.runTransaction(function (tx) { return movedCheck(tx, id, expectedMovedMs); });
+  }
+  // A status change from a request card, refused if the customer moved the
+  // visit after the card showed it.
+  function setStatusIf(id, status, expectedMovedMs) {
+    return db.runTransaction(function (tx) {
+      return movedCheck(tx, id, expectedMovedMs).then(function () {
+        tx.update(db.collection("requests").doc(id), { status: status, updatedAt: stamp() });
+      });
+    });
+  }
+  // One request's history, newest first.
+  function watchEvents(id, cb) {
+    return internalRef(id).collection("events").orderBy("at", "desc").limit(50).onSnapshot(function (r) {
+      cb(r.docs.map(function (d) { var x = d.data(EST); return { id: d.id, kind: String(x.kind || ""), text: String(x.text || ""), by: String(x.by || ""), atMs: isTs(x.at) ? x.at.toMillis() : 0 }; }));
+    }, function (e) { cb(null, e); });
   }
   // Declining or finishing a request frees its window.
   function releaseHolds(requestId) {
@@ -605,6 +721,7 @@
     watchMyShifts: watchMyShifts, watchShiftsSince: watchShiftsSince, clockIn: clockIn, clockOut: clockOut, updateShift: updateShift, deleteShift: deleteShift, tsFromDate: tsFromDate,
     myRequests: myRequests, reschedule: reschedule, cancelRequest: cancelRequest, toMs: toMs,
     watchRequests: watchRequests, updateRequest: updateRequest, watchInternal: watchInternal, saveInternal: saveInternal,
+    takeOver: takeOver, saveQueue: saveQueue, saveEdit: saveEdit, setStatusIf: setStatusIf, checkMoved: checkMoved, watchEvents: watchEvents,
     releaseHolds: releaseHolds, ensureHold: ensureHold, addPhoneBooking: addPhoneBooking, deleteRequest: deleteRequest, unschedule: unschedule, setDay: setDay,
     windowCount: windowCount, syncCounters: syncCounters,
     checkReferral: checkReferral, ensureCode: ensureCode, myCredits: credits, creditsFor: credits, creditBalance: balance, ownerOfCode: ownerOfCode,
