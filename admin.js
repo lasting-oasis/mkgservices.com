@@ -54,10 +54,23 @@
   function draftOf(r, k, saved) { var d = drafts[r.id]; return d && d[k] !== undefined ? d[k] : saved; }
 
   // ---------- requests ----------
+  // Search ignores accents and case ("ramirez" finds "Ramírez"), and a query
+  // that is only a phone number ignores formatting ("7045550163" finds
+  // "(704) 555-0163"). Every word must still appear, as before.
+  function fold(s) { return String(s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase(); }
+  function phoneQuery(q) {
+    if (!/^[\d\s().+-]+$/.test(q)) return "";
+    var d = digits(q);
+    if (d.length === 11 && d.charAt(0) === "1") d = d.slice(1);
+    return d.length >= 7 ? d : "";
+  }
   function matches(r) {
     if (!query) return true;
-    var hay = [r.name, r.email, r.phone, r.zip, r.company, r.id, r.service, r.plan, r.notes, r.adminNotes, r.assignedTo].join(" ").toLowerCase();
-    return query.split(/\s+/).every(function (w) { w = w.replace(/^#+/, ""); return !w || hay.indexOf(w) !== -1; });
+    var hay = fold([r.name, r.email, r.phone, r.zip, r.company, r.id, r.service, r.plan, r.notes, r.adminNotes, r.assignedTo].join(" "));
+    var words = query.split(/\s+/).every(function (w) { w = fold(w.replace(/^#+/, "")); return !w || hay.indexOf(w) !== -1; });
+    if (words) return true;
+    var tel = phoneQuery(query);
+    return !!tel && digits(r.phone).indexOf(tel) !== -1;
   }
   function visible() {
     var list = items.filter(matches);
