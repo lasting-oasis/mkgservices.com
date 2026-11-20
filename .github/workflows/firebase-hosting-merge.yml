@@ -62,6 +62,35 @@ jobs:
               while IFS= read -r line; do echo "::error title=Firestore rules deploy::$line"; done
             exit "$status"
           fi
+      # The customer-reschedule recorder (functions/index.js), and only that
+      # function: --only functions:recordCustomerMove. Runs only here, on a push
+      # to main (a merged, approved PR), after the rules and before Hosting; if
+      # it fails, Hosting is not deployed either. The deploy account needs the
+      # roles listed in PR #7 (Cloud Functions Developer, Service Account User on
+      # the runtime account, Service Usage Consumer). The trigger's region
+      # follows the Firestore database's location.
+      - name: Install the recorder's dependencies (locked)
+        if: steps.check.outputs.ready == 'true'
+        working-directory: functions
+        run: npm ci --no-audit --no-fund
+      - name: Deploy the customer-reschedule recorder
+        if: steps.check.outputs.ready == 'true'
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > "$RUNNER_TEMP/firebase-sa.json"
+          trap 'rm -f "$RUNNER_TEMP/firebase-sa.json"' EXIT
+          export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/firebase-sa.json"
+          log="$RUNNER_TEMP/functions-deploy.log"
+          if npx --yes firebase-tools@13.35.1 deploy --only functions:recordCustomerMove --non-interactive >"$log" 2>&1; then
+            cat "$log"
+          else
+            status=$?
+            cat "$log"
+            { grep -iE "error|denied|permission|missing|invalid|failed" "$log" || true; } | tail -n 8 | sed 's/%/%25/g' |
+              while IFS= read -r line; do echo "::error title=Recorder deploy::$line"; done
+            exit "$status"
+          fi
       - uses: FirebaseExtended/action-hosting-deploy@v0
         if: steps.check.outputs.ready == 'true'
         with:
