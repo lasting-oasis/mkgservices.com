@@ -1,0 +1,119 @@
+/*
+  The committed function manifest, functions/functions.yaml.
+
+  Why it exists: the functions SDK always reports an `extensions` list, even an
+  empty one, and firebase-tools then runs its Firebase Extensions check on
+  every functions deploy (deploy/functions/prepare.js: `wantBuilds.some(b =>
+  b.extensions)`). That check needs the Firebase Extensions API and the
+  `firebaseextensions.instances.list` permission, which no narrow role has
+  (PR #7, deploy run #37). firebase-tools reads `functions.yaml` from the
+  source folder before asking the SDK (runtimes/node: detectFromYaml), so a
+  committed manifest without the empty `extensions` key skips that check.
+
+  The manifest is generated from the actual recorder code with the pinned
+  firebase-tools (13.35.1, the version the deploy workflow uses): its Node
+  runtime delegate starts the SDK's own manifest server, exactly as a deploy
+  without functions.yaml would, and the raw manifest is read from it.
+
+    node functions-manifest.js --write   # regenerate functions/functions.yaml
+    node functions-manifest.js           # print the generated manifest
+
+  compareManifests() is the CI check: the committed file must equal the
+  generated manifest, except that an EMPTY `extensions` field is left out. A
+  real extension, or any change to the recorder's configuration, fails it.
+*/
+const fs = require("fs");
+const path = require("path");
+const assert = require("assert");
+// The YAML parser firebase-tools itself uses to read functions.yaml.
+const YAML = require(require.resolve("yaml", { paths: [path.dirname(require.resolve("firebase-tools/package.json", { paths: [__dirname] }))] }));
+
+const ROOT = path.join(__dirname, "..");
+const FUNCTIONS_DIR = path.join(ROOT, "functions");
+const MANIFEST_PATH = path.join(FUNCTIONS_DIR, "functions.yaml");
+const PROJECT = "gen-lang-client-0946383119";
+const RUNTIME = "nodejs22";
+const PINNED_TOOLS = "13.35.1";
+
+function tools(mod) { return require(require.resolve("firebase-tools/lib/" + mod, { paths: [__dirname] })); }
+function toolsVersion() { return require(require.resolve("firebase-tools/package.json", { paths: [__dirname] })).version; }
+
+function delegate() {
+  const { Delegate } = tools("deploy/functions/runtimes/node");
+  return new Delegate(PROJECT, ROOT, FUNCTIONS_DIR, RUNTIME);
+}
+
+async function freePort() {
+  const net = require("net");
+  return new Promise((resolve, reject) => {
+    const s = net.createServer();
+    s.listen(0, "127.0.0.1", () => { const p = s.address().port; s.close(() => resolve(p)); });
+    s.on("error", reject);
+  });
+}
+
+// Start the SDK's manifest server through the pinned firebase-tools and run fn(port).
+async function withSdkServer(fn) {
+  if (toolsVersion() !== PINNED_TOOLS) throw new Error("firebase-tools " + toolsVersion() + " installed; expected the pinned " + PINNED_TOOLS);
+  const port = await freePort();
+  const kill = await delegate().serveAdmin(String(port), {}, {});
+  try { return await fn(port); } finally { await kill(); }
+}
+
+async function fetchManifestText(port) {
+  const url = "http://127.0.0.1:" + port + "/__/functions.yaml";
+  const deadline = Date.now() + 30000;
+  for (;;) {
+    try {
+      const res = await fetch(url);
+      if (res.ok) return await res.text();
+    } catch (e) { /* not up yet */ }
+    if (Date.now() > deadline) throw new Error("the SDK manifest server did not answer at " + url);
+    await new Promise((r) => setTimeout(r, 200));
+  }
+}
+
+// The raw manifest the SDK reports for the actual code (JSON text parsed).
+async function generateManifest() {
+  return withSdkServer(async (port) => JSON.parse(await fetchManifestText(port)));
+}
+
+// What the committed file must contain: the generated manifest, minus an empty extensions field.
+function expectedCommitted(generated) {
+  const g = JSON.parse(JSON.stringify(generated));
+  if ("extensions" in g) {
+    const ext = g.extensions;
+    if (ext && typeof ext === "object" && !Array.isArray(ext) && Object.keys(ext).length === 0) delete g.extensions;
+    else throw new Error("the code now declares Firebase Extensions (" + JSON.stringify(ext) + "): the static manifest can't drop them, so the Extensions check and its permissions are needed again");
+  }
+  return g;
+}
+
+// Throws (with the reason) unless committed == generated, allowing only an omitted empty extensions field.
+function compareManifests(generated, committed) {
+  const want = expectedCommitted(generated);
+  if (committed && "extensions" in committed) throw new Error("functions.yaml must not contain an extensions field (it would bring back the Extensions check)");
+  try { assert.deepStrictEqual(committed, want); }
+  catch (e) { throw new Error("functions/functions.yaml is out of date with the code; run `node test/functions-manifest.js --write` and review the diff.\n" + e.message); }
+}
+
+function readCommitted() { return YAML.parse(fs.readFileSync(MANIFEST_PATH, "utf8")); }
+
+function header() {
+  return "# Generated by test/functions-manifest.js from functions/index.js with firebase-tools " + PINNED_TOOLS + ".\n" +
+    "# Do not edit by hand: run `node test/functions-manifest.js --write`. CI checks it against the code.\n" +
+    "# It is the SDK's manifest without the empty `extensions` field, so deploys skip the Firebase Extensions check.\n";
+}
+
+module.exports = { ROOT, FUNCTIONS_DIR, MANIFEST_PATH, PROJECT, RUNTIME, PINNED_TOOLS, tools, delegate, withSdkServer, fetchManifestText, generateManifest, expectedCommitted, compareManifests, readCommitted };
+
+if (require.main === module) {
+  generateManifest().then((m) => {
+    if (process.argv.includes("--write")) {
+      fs.writeFileSync(MANIFEST_PATH, header() + YAML.stringify(expectedCommitted(m)));
+      console.log("wrote " + path.relative(ROOT, MANIFEST_PATH));
+    } else {
+      console.log(JSON.stringify(m, null, 2));
+    }
+  }).catch((e) => { console.error(e); process.exit(1); });
+}

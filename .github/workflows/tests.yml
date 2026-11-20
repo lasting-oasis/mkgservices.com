@@ -40,6 +40,9 @@ jobs:
       - name: Install the rules-test tools
         working-directory: test
         run: npm install --no-audit --no-fund
+      - name: Recorder function manifest vs code, and pinned deploy discovery (firebase-tools 13.35.1)
+        working-directory: test
+        run: node functions-manifest.test.js
       - name: Firestore rules tests (emulator)
         working-directory: test
         run: npm test
