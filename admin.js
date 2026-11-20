@@ -28,7 +28,7 @@
   var CLOSED = { done: true, declined: true, cancelled: true };
   var PRIVATE = ["adminNotes", "assignedTo"];
   // Request queue (queue.js): owner filter, per-item drafts and open panels, history.
-  var qOwner = "", qDrafts = {}, qOpen = {}, qBase = {}, qMsg = {}, evs = {}, evSubs = {}, qTick = null, qPending = false;
+  var qOwner = "", qDrafts = {}, qOpen = {}, qBase = {}, qMoved = {}, qMsg = {}, evs = {}, evSubs = {}, qTick = null, qPending = false;
   var baseTitle = document.title;
 
   function isOwner() { return !!me && me.role === "owner"; }
@@ -372,6 +372,7 @@
     var owner = it.owner ? esc(shortWho(it.owner)) : '<span class="q-owner-none">' + esc(t("adm.q.triageOwner")) + "</span>";
     var next = it.nextAction || (it.kind !== "followup" ? t("adm.q.next." + it.kind) : "");
     var why = it.dueFrom === "staff" ? t("adm.q.why.staff") : it.dueFrom === "visit" ? t("adm.q.why.visit", { rule: qWhen(it.ruleDue) }) : t("adm.q.why.rule", { start: qWhen(it.start) });
+    if (it.dueFrom !== "staff" && it.staffDue !== null && it.staffDue > it.dueMs) why += " · " + t("adm.q.staffLater", { when: qWhen(it.staffDue) });
     var due = it.dueMs === null ? t("adm.q.noDue") : (it.late ? t("adm.q.lateSince", { when: qWhen(it.dueMs) }) : t("adm.q.due", { when: qWhen(it.dueMs) }));
     var dueLine = '<span class="q-due' + (it.late ? " is-late" : "") + '">' + esc(due) + "</span>" + (it.dueMs !== null ? ' <span class="muted">· ' + esc(why) + (it.promiseDue && it.kind !== "followup" ? " · " + esc(t("adm.q.promiseBound", { when: qWhen(it.promiseDue) })) : "") + "</span>" : "");
     // The last promise: the newest reply staff logged since this item started, else what the website said.
@@ -434,6 +435,8 @@
       var det = ev.target; if (!det.matches || !det.matches("[data-q-details]")) return;
       var id = det.getAttribute("data-q-details"); qOpen[id] = det.open;
       if (det.open && qBase[id] === undefined) { var r = byId(id); qBase[id] = r && r.queue ? r.queue.setMs : null; }
+      // The customer's last move as this panel saw it: a newer move refuses the save (backend.saveQueue).
+      if (det.open && qMoved[id] === undefined) { var rm = byId(id); qMoved[id] = rm && typeof rm.movedMs === "number" ? rm.movedMs : null; }
     }, true);
     box.addEventListener("click", function (ev) {
       var b = ev.target.closest("button"); if (!b) return;
@@ -454,13 +457,21 @@
         if (dueStr && dueMs === null) { err.textContent = t("adm.q.badDue"); return; }
         if (state === "waiting" && dueMs === null) { err.textContent = t("adm.q.needDue"); return; }
         var r = byId(id), expected = qBase[id] !== undefined ? qBase[id] : (r && r.queue ? r.queue.setMs : null);
+        var expMoved = qMoved[id] !== undefined ? qMoved[id] : (r && typeof r.movedMs === "number" ? r.movedMs : null);
         var text = (state === "closed" ? t("adm.q.closed") : t(state === "waiting" ? "adm.q.kind.followup" : "adm.q.open")) + (next ? " · " + next : "") + (dueMs ? " · " + t("adm.q.due", { when: qWhen(dueMs) }) : "");
         b.disabled = true;
-        B.saveQueue(id, { state: state, dueMs: dueMs, nextAction: next }, expected, user.uid, text).then(function () {
-          delete qDrafts[id]; delete qBase[id]; if (state === "closed") delete qOpen[id];
+        B.saveQueue(id, { state: state, dueMs: dueMs, nextAction: next }, expected, user.uid, text, expMoved).then(function () {
+          delete qDrafts[id]; delete qBase[id]; delete qMoved[id]; delete qMsg[id]; if (state === "closed") delete qOpen[id];
           renderQueue();
         }, function (e) {
           b.disabled = false;
+          if (e && e.code === "mkg/request-moved") {
+            // The customer moved the visit after this panel opened: nothing was saved. Keep the panel
+            // and the typed text, and ask for a review; the next save is checked against this move.
+            qMoved[id] = typeof e.movedMs === "number" ? e.movedMs : null; qOpen[id] = true;
+            qMsg[id] = t("adm.q.moved", { when: e.movedMs ? qWhen(e.movedMs) : "" });
+            renderQueue(); return;
+          }
           if (e && e.code === "mkg/queue-changed") { var cur = byId(id); qBase[id] = cur && cur.queue ? cur.queue.setMs : null; err.textContent = t("adm.q.changed"); return; }
           fail(e);
         });
@@ -803,7 +814,7 @@
   function leave(removed) {
     stopAll();
     user = null; me = null; ledger = []; balances = {}; owners = {}; raw = []; items = []; internal = {}; drafts = {}; team = [];
-    qDrafts = {}; qOpen = {}; qBase = {}; qMsg = {};
+    qDrafts = {}; qOpen = {}; qBase = {}; qMoved = {}; qMsg = {};
     document.title = baseTitle;
     B.signOut().then(function () { show("login"); $("[data-admin-notadmin]").hidden = !removed; });
   }

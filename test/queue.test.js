@@ -46,6 +46,32 @@ check("an earlier staff promise replaces the rule", function () {
   assert.strictEqual(it.dueFrom, "staff");
   assert.strictEqual(it.nextAction, "Call back before 5");
 });
+check("regression: Friday 8 am quote, noon target, 5 pm staff deadline: overdue at 1 pm", function () {
+  var r = req("fr8", { createdMs: at(2026, 12, 4, 8), queue: { state: "open", dueMs: at(2026, 12, 4, 17), setMs: at(2026, 12, 4, 8, 30), nextAction: "Call with price" } });
+  var it = Q.itemFor(r, at(2026, 12, 4, 13));
+  assert.strictEqual(show(it.targetDue), "2026-12-4 12:00");
+  assert.strictEqual(show(it.dueMs), "2026-12-4 12:00");
+  assert.strictEqual(it.dueFrom, "rule");
+  assert.strictEqual(it.late, true);
+  assert.strictEqual(it.staffDue, at(2026, 12, 4, 17));
+  // marking it "waiting" without a reply doesn't move the first deadline either
+  var w = Q.itemFor(req("fr8w", { createdMs: at(2026, 12, 4, 8), queue: { state: "waiting", dueMs: at(2026, 12, 7, 10), setMs: at(2026, 12, 4, 8, 30) } }), at(2026, 12, 4, 13));
+  assert.strictEqual(w.kind, "quote"); assert.strictEqual(w.late, true);
+});
+check("a reschedule awaiting reply takes the earliest of rule, visit and staff time", function () {
+  var r = req("rs", { movedMs: at(2026, 12, 7, 9, 45), movedFrom: "2026-12-08 0800", date: "2026-12-07", slot: "1130", queue: { state: "open", dueMs: at(2026, 12, 7, 15), setMs: at(2026, 12, 7, 9, 50) } });
+  var it = Q.itemFor(r, at(2026, 12, 7, 10));
+  assert.strictEqual(it.kind, "reschedule"); assert.strictEqual(show(it.dueMs), "2026-12-7 11:30"); assert.strictEqual(it.dueFrom, "visit");
+});
+check("a genuine follow-up after a reply keeps its own later deadline", function () {
+  var r = req("fu", { createdMs: at(2026, 12, 4, 8), queue: { state: "waiting", dueMs: at(2026, 12, 9, 10), setMs: at(2026, 12, 4, 11), repliedMs: at(2026, 12, 4, 10, 40), nextAction: "Customer checking with spouse" } });
+  var it = Q.itemFor(r, at(2026, 12, 4, 13));
+  assert.strictEqual(it.kind, "followup"); assert.strictEqual(it.awaiting, false);
+  assert.strictEqual(show(it.dueMs), "2026-12-9 10:00"); assert.strictEqual(it.late, false);
+  // a reply from before a later customer move doesn't count: the move awaits its own first response
+  var m = Q.itemFor(Object.assign({}, r, { movedMs: at(2026, 12, 4, 12), movedFrom: "2026-12-10 0800", date: "2026-12-11", slot: "0800" }), at(2026, 12, 4, 13));
+  assert.strictEqual(m.kind, "reschedule"); assert.strictEqual(m.awaiting, true); assert.strictEqual(show(m.dueMs), "2026-12-4 16:00");
+});
 check("a staff promise also holds when it is later than the rule (a follow-up)", function () {
   var r = req("f", { status: "confirmed", createdMs: at(2026, 12, 1, 9), queue: { state: "waiting", dueMs: at(2026, 12, 8, 12), setMs: at(2026, 12, 7, 9, 10), nextAction: "Text Thursday openings" } });
   var it = Q.itemFor(r, at(2026, 12, 8, 8));

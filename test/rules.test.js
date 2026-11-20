@@ -64,6 +64,9 @@ async function expect(title, shouldPass, run) {
     await db.doc("internal/q-1").set({ adminNotes: "gate sticks", assignedTo: "ana@mkg.test", updatedAt: now });
     await db.doc("requests/q-race").set(Object.assign(quote({ name: "Race" }), { createdAt: now, updatedAt: now }));
     await db.doc("internal/q-race").set({ adminNotes: "", assignedTo: "ana@mkg.test", updatedAt: now });
+    // A confirmed visit the customer has just moved (the staff panel was opened before the move).
+    await db.doc("requests/q-move").set(Object.assign(quote({ name: "Moved" }), { createdAt: now, updatedAt: now, status: "new", movedByClientAt: now, movedFrom: "2026-12-08 0800" }));
+    await db.doc("internal/q-move").set({ adminNotes: "", assignedTo: "ana@mkg.test", updatedAt: now, queue: { state: "waiting", nextAction: "Confirm gate code", setAt: TS.fromMillis(now.toMillis() - 36e5) } });
     await db.doc("users/alice-uid").set({ code: "ALICE2", emailLower: "alice@example.com", createdAt: now });
     await db.doc("referrers/ALICE2").set({ uid: "alice-uid", createdAt: now });
     await db.doc("days/" + CLOSED).set({ closed: true });
@@ -218,6 +221,39 @@ async function expect(title, shouldPass, run) {
   await expect("a customer writes a history event", false, () => alice.collection("internal/q-1/events").add(ev("alice-uid", "reply", "x")));
   await expect("a customer sets the queue", false, () => alice.doc("internal/q-1").set({ queue: { state: "closed", setAt: SS() } }, { merge: true }));
   await expect("a visitor reads the history", false, () => anon.collection("internal/q-1/events").get());
+
+  // backend.js saveEdit() logging a reply: stamps queue.repliedAt only.
+  await expect("staff logs a reply: repliedAt stamped, rest of the queue untouched", true, () => staff.doc("internal/q-1").set({ queue: { repliedAt: SS() }, updatedAt: SS() }, { merge: true }));
+  await expect("a reply stamp dated by the browser's clock", false, () => staff.doc("internal/q-1").set({ queue: { repliedAt: TS.fromDate(new Date(Date.now() - 864e5)) }, updatedAt: SS() }, { merge: true }));
+  await expect("a reply stamp that also changes the next action without a new setAt", false, () => staff.doc("internal/q-1").set({ queue: { repliedAt: SS(), nextAction: "sneaky" }, updatedAt: SS() }, { merge: true }));
+  await expect("a queue change that backdates the reply stamp", false, () => staff.doc("internal/q-1").set({ queue: { state: "open", setAt: SS(), repliedAt: TS.fromDate(new Date(2020, 0, 1)) } }, { merge: true }));
+  await expect("a queue change that keeps the reply stamp as it was", true, () => staff.doc("internal/q-1").set({ queue: { state: "open", setAt: SS(), nextAction: "Follow up Friday" } }, { merge: true }));
+  await expect("a first reply on a request with no queue yet", true, () => staff.doc("internal/q-new").set({ queue: { state: "open", setAt: SS(), repliedAt: SS() }, updatedAt: SS() }, { merge: true }));
+  await expect("a customer stamps a reply", false, () => alice.doc("internal/q-1").set({ queue: { repliedAt: SS() } }, { merge: true }));
+
+  // backend.js saveQueue(): refuses a panel opened before the customer's latest move.
+  function saveQueue(db, uid, id, q, expectedSetMs, expectedMovedMs, text) {
+    return db.runTransaction(async (tx) => {
+      const rd = await tx.get(db.doc("requests/" + id)), m = rd.exists ? rd.data().movedByClientAt : null, movedNow = m ? m.toMillis() : null;
+      const d = await tx.get(db.doc("internal/" + id)), cur = d.exists ? d.data() : {};
+      if (movedNow !== expectedMovedMs) { const e = new Error("moved"); e.code = "mkg/request-moved"; throw e; }
+      const have = cur.queue && cur.queue.setAt ? cur.queue.setAt.toMillis() : null;
+      if (have !== expectedSetMs) { const e = new Error("queue changed"); e.code = "mkg/queue-changed"; throw e; }
+      tx.set(db.doc("internal/" + id), { queue: Object.assign({ setAt: SS() }, q), updatedAt: SS() }, { merge: true });
+      tx.set(db.collection("internal/" + id + "/events").doc(), ev(uid, "queue", text));
+    });
+  }
+  console.log("\n-- a stale panel and a new customer reschedule --");
+  const mv = (await staff.doc("internal/q-move").get()).data(), setMs0 = mv.queue.setAt.toMillis();
+  let movedErr = null;
+  try { await saveQueue(staff, "staff-uid", "q-move", { state: "closed" }, setMs0, null, "closed"); } catch (e) { movedErr = e; }
+  await expect("Close from a panel opened before the customer's move is refused", true, async () => { if (!movedErr || movedErr.code !== "mkg/request-moved") throw new Error(movedErr ? movedErr.message : "not refused"); });
+  {
+    const x = (await staff.doc("internal/q-move").get()).data(), n = (await staff.collection("internal/q-move/events").get()).size;
+    await expect("...the queue is unchanged and no history event was written", true, async () => { if (x.queue.state !== "waiting" || n !== 0) throw new Error(JSON.stringify([x.queue.state, n])); });
+  }
+  const movedMs = (await staff.doc("requests/q-move").get()).data().movedByClientAt.toMillis();
+  await expect("after review (panel refreshed with the move), Close goes through", true, () => saveQueue(staff, "staff-uid", "q-move", { state: "closed" }, setMs0, movedMs, "closed after review"));
 
   // backend.js takeOver(): one transaction that reads the owner, refuses if it
   // isn't the one the screen showed, and writes the new owner and one event.

@@ -475,7 +475,7 @@
   function cleanQueue(q) {
     if (!q || typeof q !== "object" || typeof q.state !== "string") return null;
     return { state: q.state, dueMs: isTs(q.dueAt) ? q.dueAt.toMillis() : null, nextAction: typeof q.nextAction === "string" ? q.nextAction : "",
-      setMs: isTs(q.setAt) ? q.setAt.toMillis() : null };
+      setMs: isTs(q.setAt) ? q.setAt.toMillis() : null, repliedMs: isTs(q.repliedAt) ? q.repliedAt.toMillis() : null };
   }
   function watchInternal(cb) {
     return db.collection("internal").onSnapshot(function (r) {
@@ -528,9 +528,18 @@
   }
   // Next action, due time and state. q: { state, dueMs (or null), nextAction }.
   // expectedSetMs: the queue version the screen showed (null if none).
-  function saveQueue(id, q, expectedSetMs, uid, text) {
+  // expectedMovedMs: the customer's last move the panel was opened with (null
+  // for none). A move made since is refused, so an older panel can't close or
+  // re-plan a reschedule nobody has looked at yet.
+  function saveQueue(id, q, expectedSetMs, uid, text, expectedMovedMs) {
     return db.runTransaction(function (tx) {
-      return currentPrivate(tx, id).then(function (cur) {
+      var movedNow = null;
+      return tx.get(db.collection("requests").doc(id)).then(function (rd) {
+        var m = rd.exists ? rd.data().movedByClientAt : null;
+        movedNow = isTs(m) ? m.toMillis() : null;
+        return currentPrivate(tx, id);
+      }).then(function (cur) {
+        if (expectedMovedMs !== undefined && movedNow !== (expectedMovedMs === null ? null : expectedMovedMs)) throw stale("mkg/request-moved", { movedMs: movedNow });
         var have = cur.queue && isTs(cur.queue.setAt) ? cur.queue.setAt.toMillis() : null;
         if (have !== (expectedSetMs === undefined ? null : expectedSetMs)) throw stale("mkg/queue-changed");
         var next = { state: q.state, nextAction: String(q.nextAction || "").slice(0, 200), setAt: stamp() };
@@ -554,7 +563,12 @@
         if (keys.length) { reqPatch.updatedAt = stamp(); tx.update(db.collection("requests").doc(id), reqPatch); }
         if (Object.keys(priv).length || cur.legacy) privWrite(tx, id, cur, priv);
         if (priv.assignedTo !== undefined) addEventTx(tx, id, uid, "owner", (cur.assignedTo || "-") + " -> " + (priv.assignedTo || "-"));
-        if (typeof reqPatch.replyNote === "string" && reqPatch.replyNote) addEventTx(tx, id, uid, "reply", reqPatch.replyNote);
+        if (typeof reqPatch.replyNote === "string" && reqPatch.replyNote) {
+          addEventTx(tx, id, uid, "reply", reqPatch.replyNote);
+          // The first response is logged: the queue stops holding it to the first-response deadline.
+          var qv = cur.queue && typeof cur.queue.state === "string" ? { repliedAt: stamp() } : { state: "open", setAt: stamp(), repliedAt: stamp() };
+          tx.set(internalRef(id), { queue: qv, updatedAt: stamp() }, { merge: true });
+        }
       });
     });
   }

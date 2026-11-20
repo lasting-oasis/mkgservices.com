@@ -255,23 +255,32 @@ service cloud.firestore {
 
     // ---------- staff-only request fields ----------
     // queue: the request queue's staff fields (admin.js, queue.js):
-    // { state: 'open' | 'waiting' | 'closed', dueAt?, nextAction?, setAt }.
-    // setAt is the server's time of the last queue change.
+    // { state: 'open' | 'waiting' | 'closed', dueAt?, nextAction?, setAt, repliedAt? }.
+    // setAt is the server's time of the last queue change; repliedAt the
+    // server's time of the last reply logged to the customer.
     function queueOk(q) {
-      return q is map && q.keys().hasOnly(['state', 'dueAt', 'nextAction', 'setAt']) &&
+      return q is map && q.keys().hasOnly(['state', 'dueAt', 'nextAction', 'setAt', 'repliedAt']) &&
         q.state in ['open', 'waiting', 'closed'] && q.setAt is timestamp &&
-        (!('dueAt' in q) || q.dueAt is timestamp) && optStr(q, 'nextAction', 200);
+        (!('dueAt' in q) || q.dueAt is timestamp) && (!('repliedAt' in q) || q.repliedAt is timestamp) &&
+        optStr(q, 'nextAction', 200);
     }
     function internalOk(d) {
       return d.keys().hasOnly(['adminNotes', 'assignedTo', 'updatedAt', 'queue']) &&
         optStr(d, 'adminNotes', 4000) && optStr(d, 'assignedTo', 200) && (!('queue' in d) || queueOk(d.queue));
     }
+    // A queue write is either a queue change (setAt is now) or a logged reply
+    // that only stamps repliedAt. repliedAt is always the server's time or kept as it was.
+    function queueWriteOk(o) {
+      let n = request.resource.data.queue;
+      return (!('repliedAt' in n) || n.repliedAt == request.time || n.repliedAt == o.get('repliedAt', null)) &&
+        (n.setAt == request.time || (n.setAt == o.get('setAt', null) && n.diff(o).affectedKeys().hasOnly(['repliedAt'])));
+    }
     match /internal/{id} {
       allow read: if isAdmin();
       allow create: if isAdmin() && internalOk(request.resource.data) &&
-        (!('queue' in request.resource.data) || request.resource.data.queue.setAt == request.time);
+        (!('queue' in request.resource.data) || queueWriteOk({}));
       allow update: if isAdmin() && internalOk(request.resource.data) &&
-        (!('queue' in changed()) || request.resource.data.queue.setAt == request.time);
+        (!('queue' in changed()) || queueWriteOk(resource.data.get('queue', {})));
       allow delete: if isAdmin();
 
       // The request's staff history: one document per event, written in the

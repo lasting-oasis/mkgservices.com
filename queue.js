@@ -79,35 +79,51 @@
   function num(v) { return typeof v === "number" && isFinite(v) ? v : null; }
   /*
     r: a merged request (admin.js items): status, createdMs, movedMs, date, slot,
-       movedFrom ("YYYY-MM-DD SLOT"), assignedTo, queue: { state, dueMs, nextAction, setMs }
-    Returns null, or { id, kind, start, ruleDue, targetDue, promiseDue, visitDue,
-       dueMs, dueFrom ('rule' | 'visit' | 'staff'), owner, nextAction, state, late }.
+       movedFrom ("YYYY-MM-DD SLOT"), assignedTo,
+       queue: { state, dueMs, nextAction, setMs, repliedMs }
+    Returns null, or { id, kind, start, awaiting, ruleDue, targetDue, promiseDue, visitDue,
+       staffDue, dueMs, dueFrom ('rule' | 'visit' | 'staff'), owner, nextAction, state, late }.
+
+    A quote or reschedule still awaiting its first response (no reply logged
+    since it started) is due at the EARLIEST of the internal target, the
+    website promise, the visit (reschedules) and any due time staff entered.
+    A later staff time never pushes that first deadline back. Once a reply is
+    logged, the item's own staff due time stands, so a genuine follow-up can
+    be later.
   */
   function itemFor(r, now) {
     var s = r.status || "new", q = r.queue || {}, moved = s === "new" && num(r.movedMs) !== null;
     var start = moved ? r.movedMs : num(r.createdMs);
     var setMs = num(q.setMs), staffNewer = setMs !== null && (start === null || setMs >= start);
+    var replied = num(q.repliedMs), answered = replied !== null && (start === null || replied >= start);
     var state = staffNewer && STATES[q.state] ? q.state : "open";
+    var awaiting = s === "new" && !answered;
     var kind = null;
-    if (state === "waiting") kind = "followup";
+    if (awaiting) kind = moved ? "reschedule" : "quote";
+    else if (state === "waiting") kind = "followup";
     else if (s === "new") kind = moved ? "reschedule" : "quote";
     if (!kind || state === "closed") return null;
     if (kind === "followup" && (s === "done" || s === "declined" || s === "cancelled")) return null;
 
-    var it = { id: r.id, kind: kind, start: start, owner: r.assignedTo || "", state: state,
-      nextAction: staffNewer && q.nextAction ? q.nextAction : "", dueFrom: "rule" };
-    if (start !== null) {
+    var staffDue = staffNewer && num(q.dueMs) !== null ? q.dueMs : null;
+    var it = { id: r.id, kind: kind, start: start, owner: r.assignedTo || "", state: state, awaiting: awaiting, staffDue: staffDue,
+      nextAction: staffNewer && q.nextAction ? q.nextAction : "", dueFrom: "staff", dueMs: staffDue };
+    if (awaiting && start !== null) {
       it.targetDue = addWorkHours(start, TARGET_HOURS);
       it.promiseDue = addWorkHours(start, PROMISE_HOURS);
       it.ruleDue = Math.min(it.targetDue, it.promiseDue);
-      it.dueMs = it.ruleDue;
+      var cands = [[it.ruleDue, "rule"]];
       if (kind === "reschedule") {
         var from = (r.movedFrom || "").split(" "), a = slotStart(from[0], from[1]), b = slotStart(r.date, r.slot);
         var visit = [a, b].filter(function (x) { return x !== null; }).sort(function (x, y) { return x - y; })[0];
-        if (visit !== undefined && visit < it.dueMs) { it.visitDue = visit; it.dueMs = visit; it.dueFrom = "visit"; }
+        if (visit !== undefined) { it.visitDue = visit; cands.push([visit, "visit"]); }
       }
-    } else it.dueMs = null;
-    if (staffNewer && num(q.dueMs) !== null) { it.dueMs = q.dueMs; it.dueFrom = "staff"; }
+      if (staffDue !== null) cands.push([staffDue, "staff"]);
+      // Earliest wins; on a tie the explanation prefers staff, then visit, then the rule.
+      var rank = { staff: 0, visit: 1, rule: 2 };
+      cands.sort(function (x, y) { return x[0] - y[0] || rank[x[1]] - rank[y[1]]; });
+      it.dueMs = cands[0][0]; it.dueFrom = cands[0][1];
+    }
     it.late = it.dueMs !== null && it.dueMs < now;
     return it;
   }
