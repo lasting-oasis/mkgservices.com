@@ -384,7 +384,7 @@
       : "“" + esc(sitePromise(r)) + "” · " + esc(t("adm.q.promiseSite")) + (lp ? ' <span class="muted">(' + esc(t("adm.q.ev.reply")) + ", " + esc(qWhen(lp.atMs)) + ": “" + esc(lp.text) + "”)</span>" : "");
     var dr = qDrafts[it.id] || {};
     var nextVal = dr.next !== undefined ? dr.next : it.nextAction, dueVal = dr.due !== undefined ? dr.due : (it.dueFrom === "staff" ? toLocalInput(it.dueMs) : "");
-    var hist = (evs[it.id] || []).slice(0, 6).map(function (e) { return "<li>" + esc(qWhen(e.atMs)) + " · " + esc(t("adm.q.ev." + e.kind)) + " · " + esc(whoByUid(e.by)) + ": " + esc(e.text) + "</li>"; }).join("");
+    var hist = histHtml(evs[it.id] || []);
     var take = mine ? "" : '<button type="button" class="btn btn-sm" data-q-take="' + esc(it.id) + '" data-q-expect="' + esc(it.owner) + '">' + esc(it.owner ? t("adm.q.takeOverFrom", { who: shortWho(it.owner) }) : t("adm.q.takeOver")) + "</button>";
     return '<article class="q-row' + (it.late ? " is-late" : "") + (!it.owner ? " is-triage" : "") + '" data-qid="' + esc(it.id) + '">' +
       '<div class="q-row-head"><span>' + kind + " " + name + "</span><span>" + esc(t("adm.q.ownerFilter")) + ": " + owner + "</span></div>" +
@@ -400,6 +400,30 @@
         '<p class="q-actions"><button type="button" class="btn btn-sm" data-q-save="open">' + esc(t("adm.q.save")) + '</button><button type="button" class="btn btn-sm btn-secondary" data-q-save="waiting">' + esc(t("adm.q.saveFollow")) + '</button><button type="button" class="link-btn" data-q-save="closed">' + esc(t("adm.q.close")) + "</button></p>" +
         (hist ? "<b>" + esc(t("adm.q.history")) + '</b><ul class="q-history">' + hist + "</ul>" : "") +
       "</div></details></article>";
+  }
+  // "2026-12-09 1130" -> "Wed, Dec 9, 11:30 AM" (Charlotte time).
+  function slotText(v) {
+    var p = String(v || "").split(" ");
+    if (!p[0]) return "—";
+    var ms = Q.slotStart(p[0], p[1] || "");
+    return ms === null ? p[0] : (p[1] ? qWhen(ms) : new Date(ms).toLocaleDateString(locale(), { timeZone: Q.TZ, weekday: "short", month: "short", day: "numeric" }));
+  }
+  // The history list, newest first by when it happened. A customer move shows its old and new time;
+  // one written more than a minute after the move is marked late; a move whose previous move isn't
+  // in the list (still arriving, or from before history was kept) gets a note.
+  function histHtml(list) {
+    var moves = {}, gap = false;
+    list.forEach(function (e) { if (e.kind === "move") moves[e.atMs] = true; });
+    list.forEach(function (e) { if (e.kind === "move" && e.prevMovedMs !== null && !moves[e.prevMovedMs]) gap = true; });
+    var rows = list.slice(0, 6).map(function (e) {
+      if (e.kind === "move") {
+        var late = e.recordedMs !== null && e.recordedMs - e.atMs > 60000;
+        return '<li class="q-ev-move">' + esc(qWhen(e.atMs)) + " · " + esc(t("adm.q.ev.move")) + ": " +
+          esc(slotText(e.from)) + " → " + esc(slotText(e.to)) + (late ? ' <span class="muted">(' + esc(t("adm.q.ev.late", { when: qWhen(e.recordedMs) })) + ")</span>" : "") + "</li>";
+      }
+      return "<li>" + esc(qWhen(e.atMs)) + " · " + esc(t("adm.q.ev." + e.kind)) + " · " + esc(whoByUid(e.by)) + ": " + esc(e.text) + "</li>";
+    }).join("");
+    return (gap ? '<li class="muted" data-q-gap>' + esc(t("adm.q.ev.gap")) + "</li>" : "") + rows;
   }
   function renderQueue() {
     var box = $("[data-admin-queue]");
