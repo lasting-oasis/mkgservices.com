@@ -57,6 +57,13 @@ async function expect(title, shouldPass, run) {
     const db = ctx.firestore(), now = TS.now();
     await db.doc("admins/owner-uid").set({ email: "owner@mkg.test", role: "owner" });
     await db.doc("admins/staff-uid").set({ email: "staff@mkg.test", role: "admin", createdAt: now });
+    await db.doc("admins/carla-uid").set({ email: "carla@mkg.test", role: "admin", createdAt: now });
+    await db.doc("admins/beto-uid").set({ email: "beto@mkg.test", role: "admin", createdAt: now });
+    // The request queue: a new quote owned by Ana, with staff fields, and a second one for the take-over race.
+    await db.doc("requests/q-1").set(Object.assign(quote({ name: "Queue One" }), { createdAt: now, updatedAt: now }));
+    await db.doc("internal/q-1").set({ adminNotes: "gate sticks", assignedTo: "ana@mkg.test", updatedAt: now });
+    await db.doc("requests/q-race").set(Object.assign(quote({ name: "Race" }), { createdAt: now, updatedAt: now }));
+    await db.doc("internal/q-race").set({ adminNotes: "", assignedTo: "ana@mkg.test", updatedAt: now });
     await db.doc("users/alice-uid").set({ code: "ALICE2", emailLower: "alice@example.com", createdAt: now });
     await db.doc("referrers/ALICE2").set({ uid: "alice-uid", createdAt: now });
     await db.doc("days/" + CLOSED).set({ closed: true });
@@ -80,6 +87,8 @@ async function expect(title, shouldPass, run) {
   const alice = env.authenticatedContext("alice-uid", { email: "alice@example.com", email_verified: true }).firestore();
   const bob = env.authenticatedContext("bob-uid", { email: "bob@example.com", email_verified: true }).firestore();
   const staff = env.authenticatedContext("staff-uid", { email: "staff@mkg.test", email_verified: true }).firestore();
+  const carla = env.authenticatedContext("carla-uid", { email: "carla@mkg.test", email_verified: true }).firestore();
+  const beto = env.authenticatedContext("beto-uid", { email: "beto@mkg.test", email_verified: true }).firestore();
 
   // The real client path: one transaction with the request, the hold, and the counter.
   async function visitorBooks(db, id, date, slot, over, counterOver) {
@@ -174,6 +183,91 @@ async function expect(title, shouldPass, run) {
   }));
   await expect("a visitor can now take the freed window", true, () => visitorBooks(anon, "v-freed", D4, "1500"));
   await expect("and the next visitor cannot", false, () => visitorBooks(anon, "v-freed-2", D4, "1500"));
+
+  console.log("\n-- the request queue: staff-only fields and history --");
+  const SS = () => FV.serverTimestamp();
+  function ev(by, kind, text) { return { at: SS(), by, kind, text }; }
+  // What backend.js saveQueue() writes: the queue change and its event, together.
+  function queueWrite(db, uid, id, q, text) {
+    const b = db.batch();
+    b.set(db.doc("internal/" + id), { queue: Object.assign({ setAt: SS() }, q), updatedAt: SS() }, { merge: true });
+    b.set(db.collection("internal/" + id + "/events").doc(), ev(uid, "queue", text));
+    return b.commit();
+  }
+  await expect("staff saves a next action and due time with its event", true, () => queueWrite(staff, "staff-uid", "q-1",
+    { state: "open", nextAction: "Price it and reply", dueAt: TS.fromDate(new Date(Date.now() + 36e5)) }, "open · Price it and reply"));
+  await expect("staff saves a follow-up (state waiting)", true, () => queueWrite(staff, "staff-uid", "q-1", { state: "waiting", nextAction: "Text Thursday openings", dueAt: TS.now() }, "follow-up"));
+  await expect("staff changes the private notes; the queue stays as it was", true, () => staff.doc("internal/q-1").set({ adminNotes: "gate sticks; lift handle", updatedAt: SS() }, { merge: true }));
+  await expect("a queue change stamped with the browser's own clock", false, () => staff.doc("internal/q-1").set({ queue: { state: "open", setAt: TS.now() }, updatedAt: SS() }, { merge: true }));
+  await expect("a queue state that doesn't exist", false, () => staff.doc("internal/q-1").set({ queue: { state: "done", setAt: SS() } }, { merge: true }));
+  await expect("an unknown field inside queue", false, () => staff.doc("internal/q-1").set({ queue: { state: "open", setAt: SS(), price: 5 } }, { merge: true }));
+  await expect("a next action longer than 200 characters", false, () => staff.doc("internal/q-1").set({ queue: { state: "open", setAt: SS(), nextAction: "x".repeat(201) } }, { merge: true }));
+  await expect("a due time that is not a timestamp", false, () => staff.doc("internal/q-1").set({ queue: { state: "open", setAt: SS(), dueAt: "tomorrow" } }, { merge: true }));
+  await expect("an unknown top-level field on internal", false, () => staff.doc("internal/q-1").set({ secret: "x", updatedAt: SS() }, { merge: true }));
+  await expect("an event signed with someone else's uid", false, () => staff.collection("internal/q-1/events").add(ev("carla-uid", "reply", "x")));
+  await expect("an event dated by the browser's clock", false, () => staff.collection("internal/q-1/events").add({ at: TS.now(), by: "staff-uid", kind: "reply", text: "x" }));
+  await expect("an event of an unknown kind", false, () => staff.collection("internal/q-1/events").add(ev("staff-uid", "price", "x")));
+  await expect("an event with 2,001 characters", false, () => staff.collection("internal/q-1/events").add(ev("staff-uid", "reply", "x".repeat(2001))));
+  let evId = "";
+  await expect("a plain reply event", true, async () => { const r = await staff.collection("internal/q-1/events").add(ev("staff-uid", "reply", "I'll text you by Tuesday noon")); evId = r.id; });
+  await expect("staff edits a history event", false, () => staff.doc("internal/q-1/events/" + evId).update({ text: "changed" }));
+  await expect("staff deletes a history event", false, () => staff.doc("internal/q-1/events/" + evId).delete());
+  await expect("staff reads the history", true, () => staff.collection("internal/q-1/events").get());
+  await expect("a customer reads the staff fields of a request", false, () => alice.doc("internal/q-1").get());
+  await expect("a customer reads the history", false, () => alice.collection("internal/q-1/events").get());
+  await expect("a customer writes a history event", false, () => alice.collection("internal/q-1/events").add(ev("alice-uid", "reply", "x")));
+  await expect("a customer sets the queue", false, () => alice.doc("internal/q-1").set({ queue: { state: "closed", setAt: SS() } }, { merge: true }));
+  await expect("a visitor reads the history", false, () => anon.collection("internal/q-1/events").get());
+
+  // backend.js takeOver(): one transaction that reads the owner, refuses if it
+  // isn't the one the screen showed, and writes the new owner and one event.
+  function takeOver(db, uid, id, expected, to) {
+    return db.runTransaction(async (tx) => {
+      const d = await tx.get(db.doc("internal/" + id));
+      const cur = (d.exists && d.data().assignedTo) || "";
+      if (cur !== expected) { const e = new Error("owner changed to " + cur); e.code = "mkg/owner-changed"; throw e; }
+      tx.set(db.doc("internal/" + id), { assignedTo: to, updatedAt: SS() }, { merge: true });
+      tx.set(db.collection("internal/" + id + "/events").doc(), ev(uid, "owner", expected + " -> " + to));
+    });
+  }
+  console.log("\n-- two dispatchers take over the same request at once --");
+  const race = await Promise.allSettled([
+    takeOver(carla, "carla-uid", "q-race", "ana@mkg.test", "carla@mkg.test"),
+    takeOver(beto, "beto-uid", "q-race", "ana@mkg.test", "beto@mkg.test"),
+  ]);
+  let after = null, ownerEvents = [];
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    const db = ctx.firestore();
+    after = (await db.doc("internal/q-race").get()).data();
+    ownerEvents = (await db.collection("internal/q-race/events").get()).docs.map((d) => d.data()).filter((e) => e.kind === "owner");
+  });
+  const wins = race.filter((x) => x.status === "fulfilled").length, refused = race.filter((x) => x.status === "rejected" && x.reason && x.reason.code === "mkg/owner-changed").length;
+  const winner = race[0].status === "fulfilled" ? "carla@mkg.test" : "beto@mkg.test";
+  await expect("exactly one take-over succeeds and the other is refused as stale", true, async () => { if (wins !== 1 || refused !== 1) throw new Error(wins + " won, " + refused + " refused"); });
+  await expect("the owner is the winner", true, async () => { if (after.assignedTo !== winner) throw new Error(after.assignedTo); });
+  await expect("exactly one owner event, for the winner's change", true, async () => {
+    if (ownerEvents.length !== 1 || ownerEvents[0].text !== "ana@mkg.test -> " + winner) throw new Error(JSON.stringify(ownerEvents.map((e) => e.text)));
+  });
+
+  // backend.js saveEdit(): an edit panel opened while Ana owned it, saved after the take-over.
+  console.log("\n-- an older edit panel after the take-over --");
+  function saveEdit(db, uid, id, priv, base) {
+    return db.runTransaction(async (tx) => {
+      const d = await tx.get(db.doc("internal/" + id)), cur = d.exists ? d.data() : {};
+      for (const k of Object.keys(priv)) if ((cur[k] || "") !== (base[k] || "")) { const e = new Error(k + " changed"); e.code = k === "assignedTo" ? "mkg/owner-changed" : "mkg/notes-changed"; throw e; }
+      tx.set(db.doc("internal/" + id), Object.assign({}, priv, { updatedAt: SS() }), { merge: true });
+      if (priv.assignedTo !== undefined) tx.set(db.collection("internal/" + id + "/events").doc(), ev(uid, "owner", (cur.assignedTo || "-") + " -> " + priv.assignedTo));
+    });
+  }
+  let stale = null;
+  try { await saveEdit(staff, "staff-uid", "q-race", { assignedTo: "staff@mkg.test" }, { assignedTo: "ana@mkg.test" }); } catch (e) { stale = e; }
+  await expect("a panel that still showed Ana as owner can't reassign it", true, async () => { if (!stale || stale.code !== "mkg/owner-changed") throw new Error("not refused"); });
+  await expect("a panel that changes only the notes leaves the new owner alone", true, () => saveEdit(staff, "staff-uid", "q-race", { adminNotes: "call after 9" }, { adminNotes: "" }));
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    const x = (await ctx.firestore().doc("internal/q-race").get()).data();
+    const n = (await ctx.firestore().collection("internal/q-race/events").get()).docs.filter((d) => d.data().kind === "owner").length;
+    await expect("the owner is still the take-over winner, with still one owner event", true, async () => { if (x.assignedTo !== winner || n !== 1 || x.adminNotes !== "call after 9") throw new Error(JSON.stringify([x.assignedTo, n, x.adminNotes])); });
+  });
 
   await env.cleanup();
   console.log("\n" + passes + " passed, " + failures + " failed");

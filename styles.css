@@ -767,3 +767,30 @@ button.cal-slot:not(:disabled):hover { border-color: var(--pine); }
   .today-kv { grid-template-columns: 64px minmax(0, 1fr); }
   .today-q > header { flex-wrap: wrap; }
 }
+
+/* ---------- request queue (Requests tab, Task 3B-1) ---------- */
+.admin-queue { border: 1.5px solid var(--line); border-radius: var(--r-lg); padding: 16px 18px; display: grid; gap: 12px; background: var(--paper); margin-bottom: 18px; }
+.admin-queue h2 { margin: 0; font-size: 1.3rem; }
+.admin-queue-lead { margin: 0; font-size: 0.9rem; }
+.admin-queue-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.q-chip { display: inline-flex; gap: 6px; align-items: baseline; padding: 4px 12px; border-radius: var(--r-pill); background: var(--mist); font-size: 0.9rem; }
+.q-chip b { font-size: 1.05rem; }
+.q-chip.is-late { background: #fbe2dd; color: var(--danger); }
+.q-chip.is-triage { background: #fde7c4; color: #7a4a00; }
+.admin-queue-bar .select { width: auto; min-width: 10rem; margin-left: auto; }
+.q-list { display: grid; gap: 8px; }
+.q-row { border: 1.5px solid var(--line); border-left-width: 6px; border-radius: var(--r-md); padding: 10px 14px; display: grid; gap: 4px; }
+.q-row.is-late { border-left-color: var(--danger); }
+.q-row.is-triage { border-left-color: #e0a13a; }
+.q-row-head { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; justify-content: space-between; }
+.q-kind { font-size: 0.75rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.03em; padding: 2px 8px; border-radius: var(--r-sm); background: var(--mist-deep); }
+.q-kind-reschedule { background: #e6dcf7; }
+.q-kind-followup { background: #d9eef4; }
+.q-lang { font-size: 0.7rem; font-weight: 800; border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; margin-left: 4px; }
+.q-row p { margin: 0; font-size: 0.92rem; }
+.q-due.is-late { color: var(--danger); font-weight: 700; }
+.q-owner-none { color: #7a4a00; font-weight: 700; }
+.q-promise { color: var(--muted); }
+.q-actions { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.q-edit { display: grid; gap: 8px; margin-top: 4px; }
+.q-history { margin: 0; padding-left: 18px; font-size: 0.85rem; color: var(--muted); }

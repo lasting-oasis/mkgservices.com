@@ -11,8 +11,8 @@
 */
 (function () {
   "use strict";
-  var C = window.MKG, I = C && C.i18n, B = C && C.backend, A = C && C.app, Cal = C && C.calendar;
-  if (!I || !B || !A || !Cal) return;
+  var C = window.MKG, I = C && C.i18n, B = C && C.backend, A = C && C.app, Cal = C && C.calendar, Q = C && C.queueLogic;
+  if (!I || !B || !A || !Cal || !Q) return;
   var t = I.t, L = I.L, esc = A.esc, D = B.dates;
   var $ = function (s, r) { return (r || document).querySelector(s); };
   var $all = function (s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); };
@@ -27,6 +27,8 @@
   var reqLoaded = false, internalLoaded = false;   // Today waits for both before judging assignments
   var CLOSED = { done: true, declined: true, cancelled: true };
   var PRIVATE = ["adminNotes", "assignedTo"];
+  // Request queue (queue.js): owner filter, per-item drafts and open panels, history.
+  var qOwner = "", qDrafts = {}, qOpen = {}, qBase = {}, qMsg = {}, evs = {}, evSubs = {}, qTick = null, qPending = false;
   var baseTitle = document.title;
 
   function isOwner() { return !!me && me.role === "owner"; }
@@ -48,6 +50,9 @@
     items = raw.map(function (r) {
       var i = internal[r.id], x = Object.assign({}, r);
       PRIVATE.forEach(function (k) { x[k] = i ? i[k] : (r[k] || ""); });
+      x.queue = i ? i.queue : null;
+      x.createdMs = r.createdAt ? B.toMs(r.createdAt) : null;
+      x.movedMs = r.movedByClientAt ? B.toMs(r.movedByClientAt) : null;
       return x;
     });
   }
@@ -298,8 +303,8 @@
         '<div class="field"><label>' + esc(t("adm.finalPrice")) + '</label><input class="input" type="number" min="0" step="1" inputmode="decimal" data-f="quotedPrice" value="' + esc(price) + '" placeholder="' + esc(t("adm.finalPriceHint")) + '"></div></div>' +
         '<div class="field"><label>' + esc(t("adm.note")) + '</label><textarea class="textarea" rows="2" maxlength="2000" data-f="replyNote">' + esc(draftOf(r, "replyNote", r.replyNote || "")) + "</textarea></div>" +
         '<div class="field"><label>' + esc(t("adm.payLink")) + '</label><input class="input" type="url" data-f="payLink" value="' + esc(draftOf(r, "payLink", r.payLink || "")) + '" placeholder="https://buy.stripe.com/..."></div>' +
-        '<div class="field"><label>' + esc(t("adm.private")) + '</label><textarea class="textarea" rows="2" maxlength="4000" data-f="adminNotes">' + esc(draftOf(r, "adminNotes", r.adminNotes || "")) + "</textarea></div>" +
-        '<div class="field"><label>' + esc(t("adm.assign")) + '</label><select class="select" data-f="assignedTo">' + assignOpts + "</select></div>" +
+        '<div class="field"><label>' + esc(t("adm.private")) + '</label><textarea class="textarea" rows="2" maxlength="4000" data-f="adminNotes" data-orig="' + esc(r.adminNotes || "") + '">' + esc(draftOf(r, "adminNotes", r.adminNotes || "")) + "</textarea></div>" +
+        '<div class="field"><label>' + esc(t("adm.assign")) + '</label><select class="select" data-f="assignedTo" data-orig="' + esc(r.assignedTo || "") + '">' + assignOpts + "</select></div>" +
         '<p class="field-error" data-edit-err></p>' +
         '<p><button type="button" class="btn btn-sm" data-act="save">' + esc(t("adm.save")) + "</button> " +
           (dirty ? '<button type="button" class="link-btn" data-act="discard">' + esc(t("adm.discard")) + "</button> " : "") +
@@ -313,16 +318,156 @@
     box.innerHTML = list.map(card).join("");
     counts();
     renderUpcoming();
+    renderQueue();
     $all(".admin-edit", box).forEach(function (d) {
       d.addEventListener("toggle", function () { openEdits[d.closest("[data-id]").getAttribute("data-id")] = d.open; });
     });
     $all("[data-f]", box).forEach(function (f) {
       var art = f.closest("[data-id]"), id = art.getAttribute("data-id");
-      function keep() { (drafts[id] = drafts[id] || {})[f.getAttribute("data-f")] = f.value; var u = $("[data-unsaved]", art); if (u) u.hidden = false; }
+      function keep() {
+        var d = drafts[id] = drafts[id] || {}, k = f.getAttribute("data-f");
+        // What the panel showed for a staff field, so a save can tell whether someone else changed it since.
+        if (f.hasAttribute("data-orig")) { d.__base = d.__base || {}; if (d.__base[k] === undefined) d.__base[k] = f.getAttribute("data-orig"); }
+        d[k] = f.value; var u = $("[data-unsaved]", art); if (u) u.hidden = false;
+      }
       f.addEventListener("input", keep); f.addEventListener("change", keep);
     });
     $all("[data-act]", box).forEach(function (b) { b.addEventListener("click", function () { act(b); }); });
   }
+  // ---------- the request queue (queue.js) ----------
+  // Who needs a response, who owns it, what's next and by when. Every change
+  // here is one transaction with its history event (backend.js).
+  function qWhen(ms) { return ms ? new Date(ms).toLocaleString(locale(), { timeZone: Q.TZ, weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : ""; }
+  function pad2(n) { return (n < 10 ? "0" : "") + n; }
+  function toLocalInput(ms) { if (!ms) return ""; var p = Q.parts(ms); return p.y + "-" + pad2(p.m) + "-" + pad2(p.d) + "T" + pad2(p.h) + ":" + pad2(p.mi); }
+  function fromLocalInput(v) { var m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(v || ""); return m ? Q.wall(+m[1], +m[2], +m[3], +m[4], +m[5]) : null; }
+  function shortWho(email) { return email ? String(email).split("@")[0] : ""; }
+  function whoByUid(uid) { var m = team.filter(function (x) { return x.uid === uid; })[0]; return m ? shortWho(m.email) : String(uid || "").slice(0, 6); }
+  // What the website told this customer, in the language they used.
+  function sitePromise(r) {
+    var lang = r.language === "es" ? "es" : "en", dict = I.dictionaries[lang] || I.dictionaries.en;
+    var key = r.movedByClientAt && (r.status || "new") === "new" ? "acct.note.new" : r.segment === "commercial" ? "commercial:q.done.p" : "q.done.p";
+    var s = dict[key] || I.dictionaries.en[key] || "", rt = C.business && C.business.responseTime;
+    return s.replace("{responseTime}", rt ? (rt[lang] || rt.en || "") : "");
+  }
+  function myEmail() { return user && user.email ? String(user.email).toLowerCase() : ""; }
+  function qFiltered(list) {
+    if (!qOwner) return list;
+    return list.filter(function (it) { return qOwner === "none" ? !it.owner : qOwner === "me" ? it.owner.toLowerCase() === myEmail() : it.owner === qOwner; });
+  }
+  function syncEventSubs(list) {
+    var want = {};
+    list.forEach(function (it) { want[it.id] = true; });
+    Object.keys(evSubs).forEach(function (id) { if (!want[id]) { try { evSubs[id](); } catch (e) { /* closed */ } delete evSubs[id]; delete evs[id]; } });
+    Object.keys(want).forEach(function (id) {
+      if (evSubs[id]) return;
+      evSubs[id] = B.watchEvents(id, function (rows, err) { if (err) { if (window.console) console.warn(err); return; } evs[id] = rows; renderQueue(); });
+    });
+  }
+  function qRow(it) {
+    var r = byId(it.id) || {}, mine = it.owner && it.owner.toLowerCase() === myEmail();
+    var kind = '<span class="q-kind q-kind-' + esc(it.kind) + '">' + esc(t("adm.q.kind." + it.kind)) + "</span>";
+    var name = "<b>" + esc(r.name || "?") + "</b>" + (r.language === "es" ? '<span class="q-lang" title="' + esc(t("adm.q.spanish")) + '">ES</span>' : "") +
+      ' <span class="muted">#' + esc(it.id.slice(0, 6).toUpperCase()) + (r.zip ? " · " + esc(r.zip) : "") + "</span>";
+    var owner = it.owner ? esc(shortWho(it.owner)) : '<span class="q-owner-none">' + esc(t("adm.q.triageOwner")) + "</span>";
+    var next = it.nextAction || (it.kind !== "followup" ? t("adm.q.next." + it.kind) : "");
+    var why = it.dueFrom === "staff" ? t("adm.q.why.staff") : it.dueFrom === "visit" ? t("adm.q.why.visit", { rule: qWhen(it.ruleDue) }) : t("adm.q.why.rule", { start: qWhen(it.start) });
+    var due = it.dueMs === null ? t("adm.q.noDue") : (it.late ? t("adm.q.lateSince", { when: qWhen(it.dueMs) }) : t("adm.q.due", { when: qWhen(it.dueMs) }));
+    var dueLine = '<span class="q-due' + (it.late ? " is-late" : "") + '">' + esc(due) + "</span>" + (it.dueMs !== null ? ' <span class="muted">· ' + esc(why) + (it.promiseDue && it.kind !== "followup" ? " · " + esc(t("adm.q.promiseBound", { when: qWhen(it.promiseDue) })) : "") + "</span>" : "");
+    // The last promise: the newest reply staff logged since this item started, else what the website said.
+    var lp = Q.lastPromise(evs[it.id]), current = lp && (it.start === null || lp.atMs >= it.start || it.kind === "followup") ? lp : null;
+    var promise = !current && it.kind === "followup" ? "—" : current ? "“" + esc(current.text) + "” · " + esc(whoByUid(current.by)) + ", " + esc(qWhen(current.atMs))
+      : "“" + esc(sitePromise(r)) + "” · " + esc(t("adm.q.promiseSite")) + (lp ? ' <span class="muted">(' + esc(t("adm.q.ev.reply")) + ", " + esc(qWhen(lp.atMs)) + ": “" + esc(lp.text) + "”)</span>" : "");
+    var dr = qDrafts[it.id] || {};
+    var nextVal = dr.next !== undefined ? dr.next : it.nextAction, dueVal = dr.due !== undefined ? dr.due : (it.dueFrom === "staff" ? toLocalInput(it.dueMs) : "");
+    var hist = (evs[it.id] || []).slice(0, 6).map(function (e) { return "<li>" + esc(qWhen(e.atMs)) + " · " + esc(t("adm.q.ev." + e.kind)) + " · " + esc(whoByUid(e.by)) + ": " + esc(e.text) + "</li>"; }).join("");
+    var take = mine ? "" : '<button type="button" class="btn btn-sm" data-q-take="' + esc(it.id) + '" data-q-expect="' + esc(it.owner) + '">' + esc(it.owner ? t("adm.q.takeOverFrom", { who: shortWho(it.owner) }) : t("adm.q.takeOver")) + "</button>";
+    return '<article class="q-row' + (it.late ? " is-late" : "") + (!it.owner ? " is-triage" : "") + '" data-qid="' + esc(it.id) + '">' +
+      '<div class="q-row-head"><span>' + kind + " " + name + "</span><span>" + esc(t("adm.q.ownerFilter")) + ": " + owner + "</span></div>" +
+      "<p><b>" + esc(t("adm.q.nextLabel")) + ":</b> " + esc(next || "—") + "</p>" +
+      "<p>" + dueLine + "</p>" +
+      '<p class="q-promise"><b>' + esc(t("adm.q.promise")) + ":</b> " + promise + "</p>" +
+      (qMsg[it.id] ? '<p class="field-error">' + esc(qMsg[it.id]) + "</p>" : "") +
+      '<div class="q-actions">' + take + '<button type="button" class="btn btn-sm btn-secondary" data-q-openreq="' + esc(it.id) + '">' + esc(t("adm.q.openReq")) + "</button></div>" +
+      '<details class="q-edit-wrap" data-q-details="' + esc(it.id) + '"' + (qOpen[it.id] ? " open" : "") + "><summary>" + esc(t("adm.q.edit")) + "</summary>" +
+        '<div class="q-edit"><div class="two-up"><div class="field"><label>' + esc(t("adm.q.nextLabel")) + '</label><input class="input" maxlength="200" data-q-next value="' + esc(nextVal || "") + '"></div>' +
+        '<div class="field"><label>' + esc(t("adm.q.dueLabel")) + '</label><input class="input" type="datetime-local" data-q-due value="' + esc(dueVal) + '"></div></div>' +
+        '<p class="field-error" data-q-err></p>' +
+        '<p class="q-actions"><button type="button" class="btn btn-sm" data-q-save="open">' + esc(t("adm.q.save")) + '</button><button type="button" class="btn btn-sm btn-secondary" data-q-save="waiting">' + esc(t("adm.q.saveFollow")) + '</button><button type="button" class="link-btn" data-q-save="closed">' + esc(t("adm.q.close")) + "</button></p>" +
+        (hist ? "<b>" + esc(t("adm.q.history")) + '</b><ul class="q-history">' + hist + "</ul>" : "") +
+      "</div></details></article>";
+  }
+  function renderQueue() {
+    var box = $("[data-admin-queue]");
+    if (!box || !user) return;
+    var a = document.activeElement;
+    if (a && box.contains(a) && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) { qPending = true; return; }   // don't redraw under someone typing
+    qPending = false;
+    var now = Date.now(), all = Q.build(items, now), list = qFiltered(all), sum = Q.summary(all, now);
+    syncEventSubs(all);
+    var opts = [["", t("adm.q.everyone")], ["me", t("adm.q.mine")], ["none", t("adm.q.triageOwner")]].concat(team.map(function (m) { return [m.email, m.email]; }));
+    box.innerHTML = '<h2 id="q-h">' + esc(t("adm.q.h")) + "</h2>" + '<p class="admin-queue-lead muted">' + esc(t("adm.q.lead")) + "</p>" +
+      '<div class="admin-queue-bar">' +
+        '<span class="q-chip is-late"><b>' + sum.late + "</b> " + esc(t("adm.q.late")) + "</span>" +
+        '<span class="q-chip"><b>' + sum.today + "</b> " + esc(t("adm.q.today")) + "</span>" +
+        '<span class="q-chip is-triage"><b>' + sum.triage + "</b> " + esc(t("adm.q.triage")) + "</span>" +
+        '<span class="q-chip"><b>' + sum.all + "</b> " + esc(t("adm.q.open")) + "</span>" +
+        '<label class="visually-hidden" for="q-owner">' + esc(t("adm.q.ownerFilter")) + '</label><select class="select" id="q-owner" data-q-owner>' +
+          opts.map(function (o) { return '<option value="' + esc(o[0]) + '"' + (o[0] === qOwner ? " selected" : "") + ">" + esc(o[1]) + "</option>"; }).join("") + "</select>" +
+      "</div>" +
+      '<div class="q-list">' + (list.length ? list.map(qRow).join("") : '<p class="muted">' + esc(all.length ? t("adm.q.emptyFilter") : t("adm.q.empty")) + "</p>") + "</div>";
+  }
+  function wireQueue() {
+    var box = $("[data-admin-queue]");
+    if (!box) return;
+    box.addEventListener("focusout", function () { setTimeout(function () { if (qPending) renderQueue(); }, 0); });
+    box.addEventListener("change", function (ev) {
+      if (ev.target.matches("[data-q-owner]")) { qOwner = ev.target.value; renderQueue(); }
+    });
+    box.addEventListener("input", function (ev) {
+      var row = ev.target.closest("[data-qid]"); if (!row) return;
+      var id = row.getAttribute("data-qid"), d = qDrafts[id] = qDrafts[id] || {};
+      if (ev.target.matches("[data-q-next]")) d.next = ev.target.value;
+      if (ev.target.matches("[data-q-due]")) d.due = ev.target.value;
+    });
+    box.addEventListener("toggle", function (ev) {
+      var det = ev.target; if (!det.matches || !det.matches("[data-q-details]")) return;
+      var id = det.getAttribute("data-q-details"); qOpen[id] = det.open;
+      if (det.open && qBase[id] === undefined) { var r = byId(id); qBase[id] = r && r.queue ? r.queue.setMs : null; }
+    }, true);
+    box.addEventListener("click", function (ev) {
+      var b = ev.target.closest("button"); if (!b) return;
+      var row = b.closest("[data-qid]"), id = row && row.getAttribute("data-qid");
+      if (b.hasAttribute("data-q-openreq")) { nav.openRequest(b.getAttribute("data-q-openreq")); return; }
+      if (b.hasAttribute("data-q-take")) {
+        b.disabled = true; delete qMsg[id];
+        B.takeOver(id, b.getAttribute("data-q-expect"), myEmail(), user.uid).then(function () { renderQueue(); }, function (e) {
+          if (e && e.code === "mkg/owner-changed") { qMsg[id] = t("adm.q.taken", { who: shortWho(e.who) || t("adm.q.triageOwner") }); renderQueue(); return; }
+          b.disabled = false; fail(e);
+        });
+        return;
+      }
+      if (b.hasAttribute("data-q-save")) {
+        var state = b.getAttribute("data-q-save"), err = $("[data-q-err]", row);
+        var next = $("[data-q-next]", row).value.trim(), dueStr = $("[data-q-due]", row).value, dueMs = dueStr ? fromLocalInput(dueStr) : null;
+        err.textContent = "";
+        if (dueStr && dueMs === null) { err.textContent = t("adm.q.badDue"); return; }
+        if (state === "waiting" && dueMs === null) { err.textContent = t("adm.q.needDue"); return; }
+        var r = byId(id), expected = qBase[id] !== undefined ? qBase[id] : (r && r.queue ? r.queue.setMs : null);
+        var text = (state === "closed" ? t("adm.q.closed") : t(state === "waiting" ? "adm.q.kind.followup" : "adm.q.open")) + (next ? " · " + next : "") + (dueMs ? " · " + t("adm.q.due", { when: qWhen(dueMs) }) : "");
+        b.disabled = true;
+        B.saveQueue(id, { state: state, dueMs: dueMs, nextAction: next }, expected, user.uid, text).then(function () {
+          delete qDrafts[id]; delete qBase[id]; if (state === "closed") delete qOpen[id];
+          renderQueue();
+        }, function (e) {
+          b.disabled = false;
+          if (e && e.code === "mkg/queue-changed") { var cur = byId(id); qBase[id] = cur && cur.queue ? cur.queue.setMs : null; err.textContent = t("adm.q.changed"); return; }
+          fail(e);
+        });
+      }
+    });
+  }
+  wireQueue();
   function act(b) {
     var art = b.closest("[data-id]"), id = art.getAttribute("data-id"), what = b.getAttribute("data-act"), r = byId(id);
     if (!r) return;
@@ -335,31 +480,51 @@
     }
     var p, del = B.firebase.firestore.FieldValue.delete();
     if (what === "save") {
-      var patch = {}, priv = {}, date = "", slot = "", bad = "";
-      $all("[data-f]", art).forEach(function (f) {
-        var k = f.getAttribute("data-f"), v = f.value.trim();
-        if (k === "date") date = v;
-        else if (k === "slot") slot = v;
-        else if (k === "serviceChoice") { if (v && v !== serviceValue(r)) Object.assign(patch, servicePatch(r, v)); }
-        else if (k === "quotedPrice") { if (v === "") patch.quotedPrice = del; else if (isFinite(Number(v)) && Number(v) >= 0) patch.quotedPrice = Number(v); else bad = t("adm.priceBad"); }
-        else if (k === "payLink") { if (v && !/^https:\/\/\S+$/i.test(v)) bad = t("adm.payLinkBad"); else patch.payLink = v; }
-        else if (PRIVATE.indexOf(k) !== -1) priv[k] = v;
-        else patch[k] = v;
+      // Only what the person changed in this panel is sent, so an older panel
+      // can't put back someone else's newer owner, notes or price.
+      var d = drafts[id] || {}, base = d.__base || {}, patch = {}, priv = {}, bad = "";
+      var date = d.date !== undefined ? String(d.date).trim() : (r.date || ""), slot = d.slot !== undefined ? d.slot : (r.slot || "");
+      Object.keys(d).forEach(function (k) {
+        if (k === "__base" || k === "date" || k === "slot") return;
+        var v = String(d[k]).trim();
+        if (k === "serviceChoice") { if (v && v !== serviceValue(r)) Object.assign(patch, servicePatch(r, v)); }
+        else if (k === "quotedPrice") {
+          if (v === (typeof r.quotedPrice === "number" ? String(r.quotedPrice) : "")) return;
+          if (v === "") patch.quotedPrice = del; else if (isFinite(Number(v)) && Number(v) >= 0) patch.quotedPrice = Number(v); else bad = t("adm.priceBad");
+        }
+        else if (k === "payLink") { if (v === (r.payLink || "")) return; if (v && !/^https:\/\/\S+$/i.test(v)) bad = t("adm.payLinkBad"); else patch.payLink = v; }
+        else if (PRIVATE.indexOf(k) !== -1) { var was = base[k] !== undefined ? base[k] : (r[k] || ""); if (v !== was) { priv[k] = v; base[k] = was; } }
+        else if (k === "replyNote") { if (v !== (r.replyNote || "")) patch.replyNote = v; }
       });
       if (bad) { $("[data-edit-err]", art).textContent = bad; return; }
-      var old = raw.filter(function (x) { return x.id === id; })[0] || {};
-      PRIVATE.forEach(function (k) { if (old[k] !== undefined) patch[k] = del; }); // move older fields off the customer-readable request
       if (patch.quotedPrice !== undefined && r.creditApplied > 0) { // a new price changes what the client pays after their credit
         var np = typeof patch.quotedPrice === "number" ? patch.quotedPrice : estimateOf(r);
         patch.youPay = np === null ? null : Math.max(0, rounded(np - r.creditApplied));
       }
       var moved = date !== (r.date || "") || slot !== (r.slot || "");
       b.disabled = true;
-      p = Promise.all([B.updateRequest(id, patch), B.saveInternal(id, priv)]).then(function () {
+      p = B.saveEdit(id, patch, priv, base, user.uid).then(function () {
         return moved ? B.reschedule(r, date, slot, false) : null;
       }).then(function () {
         delete drafts[id]; savedFlash[id] = true; renderList();
         setTimeout(function () { delete savedFlash[id]; var m = $('[data-id="' + id + '"] [data-saved]'); if (m) m.textContent = ""; }, 2500);
+      }, function (e) {
+        if (!e || (e.code !== "mkg/owner-changed" && e.code !== "mkg/notes-changed")) throw e;
+        // Refused: someone else changed it first. A stale owner choice is dropped and the panel shows the
+        // new owner, so reassigning takes a fresh choice. Note text is kept so nothing typed is lost;
+        // saving it again after the warning replaces the newer notes on purpose.
+        var dk = e.code === "mkg/owner-changed" ? "assignedTo" : "adminNotes";
+        if (drafts[id] && drafts[id].__base) delete drafts[id].__base[dk];
+        if (dk === "assignedTo") {
+          if (drafts[id]) delete drafts[id].assignedTo;
+          var sel = $('[data-f="assignedTo"]', art);
+          if (sel) { var who = e.who || "";
+            if (who && !$('option[value="' + who.replace(/"/g, "") + '"]', sel)) { var o = document.createElement("option"); o.value = who; o.textContent = who; sel.appendChild(o); }
+            sel.value = who; sel.setAttribute("data-orig", who); }
+        }
+        b.disabled = false;
+        var err = $("[data-edit-err]", art);
+        if (err) err.textContent = e.code === "mkg/owner-changed" ? t("adm.q.ownerChanged", { who: e.who || t("adm.q.triageOwner") }) : t("adm.q.notesChanged");
       });
     } else if (what === "delete") {
       b.disabled = true;
@@ -595,6 +760,8 @@
   function stopAll() {
     subs.forEach(function (f) { try { f(); } catch (e) { /* already closed */ } }); subs = [];
     if (recheck) { clearInterval(recheck); recheck = null; }
+    if (qTick) { clearInterval(qTick); qTick = null; }
+    Object.keys(evSubs).forEach(function (id) { try { evSubs[id](); } catch (e) { /* closed */ } }); evSubs = {}; evs = {};
     if (C.timeclock) C.timeclock.leave();
     if (C.today) C.today.leave();
     reqLoaded = false; internalLoaded = false;
@@ -626,6 +793,7 @@
       if (err) { if (window.console) console.warn(err); if (C.today) C.today.requestsChanged("internal", err); return; }
       internal = m; internalLoaded = true; merge(); renderList(); if (C.timeclock) C.timeclock.refresh(); if (C.today) C.today.requestsChanged("internal");
     }));
+    qTick = setInterval(renderQueue, 60000);   // due times turn overdue as the clock moves
     // Someone removed from the team is signed out here within a couple of minutes.
     recheck = setInterval(function () {
       if (!user) return;
@@ -635,6 +803,7 @@
   function leave(removed) {
     stopAll();
     user = null; me = null; ledger = []; balances = {}; owners = {}; raw = []; items = []; internal = {}; drafts = {}; team = [];
+    qDrafts = {}; qOpen = {}; qBase = {}; qMsg = {};
     document.title = baseTitle;
     B.signOut().then(function () { show("login"); $("[data-admin-notadmin]").hidden = !removed; });
   }
