@@ -26,7 +26,7 @@ server.listen(0, "127.0.0.1", async () => {
   const browser = await puppeteer.launch({ executablePath: process.env.CHROME_PATH || "/usr/bin/google-chrome", args: ["--no-sandbox"], env: Object.assign({}, process.env, { TZ: "UTC" }) });
   let total = { pass: 0, fail: 0 };
   try {
-    for (const [name, mod] of [["queue strip", "./queue-strip.js"], ["stale request card vs. customer reschedule", "./stale-card.js"]]) {
+    for (const [name, mod] of [["queue strip", "./queue-strip.js"], ["stale request card vs. customer reschedule", "./stale-card.js"], ["customer-move history", "./move-history.js"]]) {
       console.log("\n-- " + name + " --");
       const r = await require(mod)(browser, base); total.pass += r.pass; total.fail += r.fail;
     }

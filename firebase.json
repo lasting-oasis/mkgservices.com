@@ -2,6 +2,14 @@
   "firestore": {
     "rules": "firestore.rules"
   },
+  "functions": [
+    {
+      "source": "functions",
+      "codebase": "default",
+      "runtime": "nodejs22",
+      "ignore": ["node_modules", "test", ".git", "*.log"]
+    }
+  ],
   "hosting": {
     "public": ".",
     "ignore": [
@@ -13,7 +21,8 @@
       "brand/*.py",
       "brand/source/**",
       "README.md",
-      "firestore.rules"
+      "firestore.rules",
+      "functions/**"
     ],
     "headers": [
       {

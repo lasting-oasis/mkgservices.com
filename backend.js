@@ -594,7 +594,13 @@
   // One request's history, newest first.
   function watchEvents(id, cb) {
     return internalRef(id).collection("events").orderBy("at", "desc").limit(50).onSnapshot(function (r) {
-      cb(r.docs.map(function (d) { var x = d.data(EST); return { id: d.id, kind: String(x.kind || ""), text: String(x.text || ""), by: String(x.by || ""), atMs: isTs(x.at) ? x.at.toMillis() : 0 }; }));
+      cb(r.docs.map(function (d) {
+        var x = d.data(EST);
+        // Customer moves (functions/recorder.js) also carry from, to, when they were recorded and the previous move.
+        return { id: d.id, kind: String(x.kind || ""), text: String(x.text || ""), by: String(x.by || ""), atMs: isTs(x.at) ? x.at.toMillis() : 0,
+          from: typeof x.from === "string" ? x.from : "", to: typeof x.to === "string" ? x.to : "",
+          recordedMs: isTs(x.recordedAt) ? x.recordedAt.toMillis() : null, prevMovedMs: isTs(x.prevMovedAt) ? x.prevMovedAt.toMillis() : null };
+      }));
     }, function (e) { cb(null, e); });
   }
   // Declining or finishing a request frees its window.

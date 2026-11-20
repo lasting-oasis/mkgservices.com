@@ -26,6 +26,12 @@ jobs:
         run: |
           node test/queue.test.js
           node test/today.test.js
+      - name: Install the function's dependencies (locked)
+        working-directory: functions
+        run: npm ci --no-audit --no-fund
+      - name: Customer-move recorder (unit)
+        working-directory: functions
+        run: npm test
       - name: Browser checks (admin page, fictional records, in-memory backend)
         working-directory: test/browser
         run: |
@@ -37,3 +43,6 @@ jobs:
       - name: Firestore rules tests (emulator)
         working-directory: test
         run: npm test
+      - name: Customer-move recorder and history access (emulator)
+        working-directory: test
+        run: npx firebase emulators:exec --only firestore --project demo-mkg-rules --config ../firebase.json "node recorder.emulator.test.js"
